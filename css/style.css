@@ -10,8 +10,9 @@
 body {
     background-color: #0b0f17;
     color: #f3f4f6;
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    justify-items: center;
     align-items: center;
     min-height: 100vh;
     padding: 20px;
@@ -295,9 +296,12 @@ textarea:focus, input[type="text"]:focus {
 }
 
 .card-footer {
-    margin-top: 24px;
+    grid-row: 2;
+    width: 100%;
+    margin-top: 16px;
     font-size: 0.75rem;
     color: #4b5563;
+    text-align: center;
 }
 
 .card-footer > a {

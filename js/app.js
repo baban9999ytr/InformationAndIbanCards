@@ -39,6 +39,7 @@ async function initApp() {
     } catch (err) {
         console.error("Kart bilgisi alınırken hata oluştu:", err);
         showError();
+        return;
     }
 }
 
@@ -64,6 +65,8 @@ async function fetchCardData(id, token, slug) {
 
 function renderCardUI(data) {
     document.getElementById("loading").classList.add("hidden");
+    document.getElementById("error-card").classList.add("hidden");
+    document.getElementById("generic-landing").classList.add("hidden");
     document.getElementById("app-content").classList.remove("hidden");
     document.getElementById("card-title").innerText = data.title;
 
@@ -87,6 +90,8 @@ function showGenericLanding() {
     window.location.replace("https://openstacktool.com");
     */
     document.getElementById("loading").classList.add("hidden");
+    document.getElementById("error-card").classList.add("hidden");
+    document.getElementById("app-content").classList.add("hidden");
     document.getElementById("generic-landing").classList.remove("hidden");
 }
 
@@ -256,6 +261,8 @@ function setupLink(elementId, url, defaultText) {
 
 function showError() {
     document.getElementById("loading").classList.add("hidden");
+    document.getElementById("app-content").classList.add("hidden");
+    document.getElementById("generic-landing").classList.add("hidden");
     document.getElementById("error-card").classList.remove("hidden");
 }
 

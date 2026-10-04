@@ -2,7 +2,6 @@ const SUPABASE_URL = "https://lglocublmofeorophqbm.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_RXZ9AgOMTMzmUlVRC65x5Q_TGqF-1HC";
 
 let activeCardData = null;
-let selectedStarRating = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
     initApp();
@@ -100,12 +99,19 @@ function setupGoogleReviewMode(data) {
     modeSection.classList.remove("hidden");
 
     const stars = document.querySelectorAll(".star");
-    const feedbackContainer = document.getElementById("feedback-form-container");
+    const feedbackContainer = document.getElementById("feedback-options-container");
+    const feedbackStatus = document.getElementById("feedback-contact-status");
+    const feedbackOptions = buildFeedbackOptions(data);
+
+    feedbackOptions.forEach(option => {
+        const link = document.getElementById(option.id);
+        link.href = option.href;
+        link.classList.remove("hidden");
+    });
 
     stars.forEach(star => {
         star.addEventListener("click", () => {
             const rating = parseInt(star.getAttribute("data-value"));
-            selectedStarRating = rating;
 
             stars.forEach(s => {
                 if (parseInt(s.getAttribute("data-value")) <= rating) {
@@ -116,9 +122,10 @@ function setupGoogleReviewMode(data) {
             });
 
             if (rating <= 2) {
-                feedbackContainer.classList.remove("hidden");
+                showFeedbackOptions(feedbackOptions, feedbackContainer, feedbackStatus);
             } else {
                 feedbackContainer.classList.add("hidden");
+                feedbackStatus.innerText = "";
                 if (data.google_review_url) {
                     setTimeout(() => {
                         window.location.href = data.google_review_url;
@@ -129,57 +136,58 @@ function setupGoogleReviewMode(data) {
             }
         });
     });
-
-    document.getElementById("btn-submit-feedback").addEventListener("click", async () => {
-        const message = document.getElementById("feedback-text").value.trim();
-        const contact = document.getElementById("feedback-contact").value.trim();
-        const statusEl = document.getElementById("feedback-status");
-
-        if (!message) {
-            statusEl.innerText = "Lütfen yaşadığınız sorunu kısaca belirtin.";
-            statusEl.style.color = "#ef4444";
-            return;
-        }
-
-        statusEl.innerText = "İletiliyor...";
-        statusEl.style.color = "#9ca3af";
-
-        const success = await sendFeedback(data.id, message, contact, selectedStarRating);
-        if (success) {
-            statusEl.innerText = "Bildiriminiz başarıyla iletildi. Teşekkür ederiz.";
-            statusEl.style.color = "#10b981";
-            document.getElementById("feedback-text").value = "";
-            document.getElementById("feedback-contact").value = "";
-            
-            setTimeout(() => {
-                feedbackContainer.classList.add("hidden");
-            }, 3000);
-        } else {
-            statusEl.innerText = "Sistemsel bir hata oluştu, lütfen daha sonra tekrar deneyin.";
-            statusEl.style.color = "#ef4444";
-        }
-    });
 }
 
-async function sendFeedback(cardId, message, contact, rating) {
-    try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/submit_card_feedback`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "apikey": SUPABASE_ANON_KEY,
-                "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
-                p_card_id: cardId,
-                p_message: message,
-                p_contact: contact || null,
-                p_rating: rating
-            })
+function buildFeedbackOptions(data) {
+    const options = [];
+    const email = typeof data.email === "string" ? data.email.trim() : "";
+    const phone = normalizePhone(data.phone);
+    const whatsappPhone = normalizePhone(data.whatsapp_number) || normalizePhone(data.phone);
+
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        options.push({
+            id: "feedback-email",
+            href: `mailto:${encodeURI(email)}?subject=${encodeURIComponent("Geri Bildirim")}`
         });
-        return response.ok;
-    } catch {
-        return false;
+    }
+
+    if (whatsappPhone) {
+        const whatsappDigits = whatsappPhone.replace(/\D/g, "");
+        options.push({
+            id: "feedback-whatsapp",
+            href: `https://wa.me/${whatsappDigits}?text=${encodeURIComponent("Merhaba, hizmetinizle ilgili geri bildirimde bulunmak istiyorum.")}`
+        });
+    }
+
+    if (phone) {
+        options.push({
+            id: "feedback-sms",
+            href: `sms:${phone}`
+        });
+    }
+
+    return options;
+}
+
+function normalizePhone(value) {
+    if (typeof value !== "string") return null;
+
+    const phone = value.trim().replace(/[^\d+]/g, "");
+    return /^\+?\d{7,15}$/.test(phone) ? phone : null;
+}
+
+function showFeedbackOptions(options, container, status) {
+    status.innerText = "";
+
+    if (options.length === 1) {
+        window.location.href = options[0].href;
+        return;
+    }
+
+    container.classList.remove("hidden");
+
+    if (options.length === 0) {
+        status.innerText = "İşletme için kullanılabilir bir iletişim kanalı bulunmuyor.";
     }
 }
 

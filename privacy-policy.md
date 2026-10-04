@@ -4,6 +4,10 @@ Effective date: 4 October 2026
 
 InformationAndIbanCards displays NFC-linked digital cards for account details and customer reviews. The service processes information only as needed to retrieve a requested card and, when a visitor chooses to send it, transmit customer feedback.
 
+## Data controller and contact
+
+For operation of the InformationAndIbanCards platform and handling privacy requests, the data controller and service operator is **Mustafa Göksal**, an independent software developer and individual. Privacy and data-subject requests (including access, rectification, and erasure requests) may be sent to [gogsalmustafa19@gmail.com](mailto:gogsalmustafa19@gmail.com). The notice location is **Nilüfer, Bursa, Türkiye**. A full street address is not published for personal privacy; formal written notices are accepted by email, and a postal address may be requested through that email contact.
+
 ## Data and use
 
 When a card is opened, the browser sends its available `id`, `token`, and/or `slug` to the Supabase `get_nfc_card_data` RPC. The response may include the card's title, IBAN, account-holder name, bank name, links, access mode, or review destination. Card operators decide what information to publish and are responsible for the accuracy and lawful publication of their content.
@@ -18,8 +22,8 @@ Supabase provides the REST/RPC database interface; the static hosting provider s
 
 ## Your rights and contact
 
-Depending on applicable law, visitors may have rights to access, correct, erase, restrict, object to, or obtain a copy of personal data. Contact the card issuer or service operator to exercise those rights. The service operator must insert its legal identity, postal address, and privacy contact before production use; those details were not supplied with the project.
+Depending on applicable law, visitors may have rights to access, correct, erase, restrict, object to, or obtain a copy of personal data. Send requests to [gogsalmustafa19@gmail.com](mailto:gogsalmustafa19@gmail.com). For information a card issuer independently controls, the request may also need to be directed to that issuer.
 
 ## Updates
 
-Material changes will be reflected here with a new effective date. This policy describes the current repository implementation and should be reviewed when providers or data flows change.
+Material changes will be reflected here with a new effective date. This policy describes the current repository implementation and should be reviewed when providers, data flows, or applicable legal requirements change.

@@ -2,7 +2,7 @@
 
 Effective date: 4 October 2026
 
-By accessing InformationAndIbanCards, you agree to these terms. If you do not agree, do not use the service. The service is provided by the project operator, whose legal identity and contact details must be published by the deploying organization.
+By accessing InformationAndIbanCards, you agree to these terms. If you do not agree, do not use the service. The service provider and operator is **Mustafa Göksal**, an independent software developer and individual. For notices, contact [gogsalmustafa19@gmail.com](mailto:gogsalmustafa19@gmail.com). The notice location is Nilüfer, Bursa, Türkiye; a full street address is not published for personal privacy. Formal written notices are accepted by email, and a postal address may be requested through that email contact.
 
 ## The service
 
@@ -20,4 +20,4 @@ Do not misuse the service, attempt unauthorized access, interfere with its opera
 
 ## Availability, changes, and governing law
 
-The service is provided on an "as available" basis, subject to mandatory legal protections. These terms may be updated by publishing a revised version and effective date. Applicable law and dispute procedures depend on the identity and location of the service operator and the user's mandatory legal protections. The operator must publish its legal identity, contact details, and applicable jurisdiction before production use.
+The service is provided on an "as available" basis, subject to mandatory legal protections. These terms may be updated by publishing a revised version and effective date. Applicable law and dispute procedures depend on the operator's location and the user's mandatory legal protections. Contact the operator at [gogsalmustafa19@gmail.com](mailto:gogsalmustafa19@gmail.com) for notices and inquiries.

@@ -25,8 +25,8 @@ The repository's client code does not define database retention periods. The dat
 
 ## Choices and requests
 
-Visitors can choose not to submit feedback or optional contact details. Requests to access, correct, or delete information should be directed to the organization that issued the card or operates the relevant Supabase project. The responsible operator must publish its legal identity and a working privacy contact before relying on this policy.
+Visitors can choose not to submit feedback or optional contact details. For platform processing, requests to access, correct, or delete information may be sent to Mustafa Göksal at [gogsalmustafa19@gmail.com](mailto:gogsalmustafa19@gmail.com). The operator's notice location is Nilüfer, Bursa, Türkiye; formal written notices are accepted via that email, and a postal address may be requested through it. Requests concerning content independently controlled by a card issuer may also need to be directed to that issuer.
 
 ## Changes and contact
 
-Updates will be published on this page with a revised effective date. Add the operator's legal name, address, and privacy contact here before production use; these details were not present in the repository supplied for this document.
+Updates will be published on this page with a revised effective date. The named platform operator and privacy contact are Mustafa Göksal, [gogsalmustafa19@gmail.com](mailto:gogsalmustafa19@gmail.com). The full street address is withheld for personal privacy; the notice location is Nilüfer, Bursa, Türkiye.

@@ -14,6 +14,11 @@
     <p class="effective-date">Effective date: 4 October 2026</p>
     <p>InformationAndIbanCards displays NFC-linked digital cards for account details and customer reviews. The service processes information only as needed to retrieve a requested card and, when a visitor chooses to send it, transmit customer feedback.</p>
     <section>
+        <h2>Data controller and contact</h2>
+        <p>For operation of the InformationAndIbanCards platform and handling privacy requests, the data controller and service operator is <strong>Mustafa Göksal</strong>, an independent software developer and individual.</p>
+        <p>Privacy and data-subject requests, including access, rectification, and erasure requests, may be sent to <a href="mailto:gogsalmustafa19@gmail.com">gogsalmustafa19@gmail.com</a>. Notice location: <strong>Nilüfer, Bursa, Türkiye</strong>. A full street address is not published for personal privacy; formal written notices are accepted by email, and a postal address may be requested through that email contact.</p>
+    </section>
+    <section>
         <h2>Data and use</h2>
         <p>When a card is opened, the browser sends its available <code>id</code>, <code>token</code>, and/or <code>slug</code> to the Supabase <code>get_nfc_card_data</code> RPC. The response may include the card's title, IBAN, account-holder name, bank name, links, access mode, or review destination. Card operators decide what information to publish and are responsible for the accuracy and lawful publication of their content.</p>
         <p>When a visitor submits feedback, the browser sends the card ID, message, rating, and optional contact detail to the Supabase <code>submit_card_feedback</code> RPC. Do not submit passwords, payment credentials, or other sensitive information. Copying an IBAN or receiver name is a visitor-initiated browser clipboard action; this client does not transmit clipboard contents or retain them in local storage.</p>
@@ -25,8 +30,7 @@
     </section>
     <section>
         <h2>Your rights and contact</h2>
-        <p>Depending on applicable law, visitors may have rights to access, correct, erase, restrict, object to, or obtain a copy of personal data. Contact the card issuer or service operator to exercise those rights.</p>
-        <p class="notice">The deploying operator must add its legal identity, postal address, and working privacy contact before production use. Those details were not included in the source repository.</p>
+        <p>Depending on applicable law, visitors may have rights to access, correct, erase, restrict, object to, or obtain a copy of personal data. Send requests to <a href="mailto:gogsalmustafa19@gmail.com">gogsalmustafa19@gmail.com</a>. For information a card issuer independently controls, the request may also need to be directed to that issuer.</p>
     </section>
     <section>
         <h2>Updates</h2>

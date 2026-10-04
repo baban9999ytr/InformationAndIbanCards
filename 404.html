@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Yönlendiriliyor...</title>
+    <script>
+        const pathSegments = window.location.pathname.split("/").filter(Boolean);
+        const lastSegment = pathSegments[pathSegments.length - 1];
+        if (lastSegment && lastSegment !== "informationpage") {
+            window.location.replace(`/informationpage/index.html?slug=${lastSegment}`);
+        } else {
+            window.location.replace(`/informationpage/index.html`);
+        }
+    </script>
+</head>
+<body>
+    <p>Yönlendiriliyor...</p>
+</body>
+</html>

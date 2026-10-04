@@ -36,7 +36,6 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* Ana Kart Çerçevesi */
 .card {
     background: #111827;
     border: 1px solid #1f293d;
@@ -53,7 +52,6 @@ body {
     display: none !important;
 }
 
-/* Üst Rozet / Alt Başlıklar */
 .badge-label {
     font-size: 0.8rem;
     color: #6b7280;
@@ -108,8 +106,41 @@ h1 {
 .account-holder {
     font-size: 0.95rem;
     color: #e5e7eb;
-    margin-bottom: 16px;
+    margin-top: 5px;
     font-weight: 500;
+}
+
+.receiver-copy-row {
+    margin-bottom: 10px;
+}
+
+.receiver-details {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.receiver-details .box-label {
+    color: #9ca3af;
+    font-size: 0.72rem;
+}
+
+.landing-kicker {
+    color: #f59e0b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.landing-copy {
+    color: #9ca3af;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: -8px 0 20px;
+}
+
+.landing-link {
+    display: block;
+    text-decoration: none;
 }
 
 .iban-copy-row {
@@ -264,9 +295,35 @@ textarea:focus, input[type="text"]:focus {
 }
 
 .card-footer {
-    margin-top: 32px;
+    margin-top: 24px;
     font-size: 0.75rem;
     color: #4b5563;
+}
+
+.card-footer > a {
+    color: #7b8494;
+    text-decoration: none;
+}
+
+.card-footer > a:hover {
+    color: #cbd5e1;
+}
+
+.legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 14px;
+    margin-bottom: 12px;
+}
+
+.legal-links a {
+    color: #7b8494;
+    text-decoration: none;
+}
+
+.legal-links a:hover {
+    color: #cbd5e1;
 }
 
 .icon-error {

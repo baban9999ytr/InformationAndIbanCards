@@ -23,14 +23,14 @@ async function initApp() {
     }
 
     if (!id && !slug) {
-        showError();
+        showGenericLanding();
         return;
     }
 
     try {
         const cardData = await fetchCardData(id, token, slug);
         if (!cardData) {
-            showError();
+            showGenericLanding();
             return;
         }
 
@@ -80,6 +80,14 @@ function renderCardUI(data) {
     } else if (data.type === "iban_card") {
         setupIbanCardMode(data);
     }
+}
+
+function showGenericLanding() {
+    /* Optional redirect for generic or unmatched sessions:
+    window.location.replace("https://openstacktool.com");
+    */
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("generic-landing").classList.remove("hidden");
 }
 
 function setupGoogleReviewMode(data) {
@@ -170,71 +178,35 @@ async function sendFeedback(cardId, message, contact, rating) {
     }
 }
 
-// function setupIbanCardMode(data) {
-//     const modeSection = document.getElementById("iban-card-mode");
-//     modeSection.classList.remove("hidden");
-
-//     if (data.iban) {
-//         document.getElementById("iban-section").classList.remove("hidden");
-//         document.getElementById("bank-name").innerText = data.bank_name || "Banka Hesabı";
-//         document.getElementById("account-holder").innerText = data.title || "";
-//         document.getElementById("iban-text").innerText = data.iban;
-
-//         document.getElementById("btn-copy-iban").addEventListener("click", () => {
-//             navigator.clipboard.writeText(data.iban);
-//             const copyBtn = document.getElementById("btn-copy-iban");
-//             copyBtn.innerText = "Kopyalandı";
-//             setTimeout(() => { copyBtn.innerText = "Kopyala"; }, 2000);
-//         });
-//     }
-
-//     if (data.instagram_url) {
-//         const el = document.getElementById("link-instagram");
-//         el.href = data.instagram_url;
-//         const handle = data.instagram_url.split("/").filter(Boolean).pop();
-//         if (handle) {
-//             const handleEl = document.getElementById("instagram-handle");
-//             if (handleEl) handleEl.innerText = "@" + handle;
-//         }
-//         el.classList.remove("hidden");
-//     }
-
-//     setupLink("link-email", data.email ? `mailto:${data.email}` : null, "E-posta Gönder");
-//     setupLink("link-alt-1", data.alt_link_1, "Bağlantı 1");
-//     setupLink("link-alt-2", data.alt_link_2, "Bağlantı 2");
-//     setupLink("link-alt-3", data.alt_link_3, "Bağlantı 3");
-// }
 function setupIbanCardMode(data) {
     const modeSection = document.getElementById("iban-card-mode");
     modeSection.classList.remove("hidden");
 
+    const ibanBox = document.getElementById("iban-box");
+    const accountHolder = data.account_holder || data.title;
+    const receiverRow = document.getElementById("receiver-copy-row");
+
+    if (data.iban || accountHolder) {
+        ibanBox.classList.remove("hidden");
+    }
+
     if (data.iban) {
-        const ibanBox = document.getElementById("iban-box");
-
-        if (ibanBox) {
-            ibanBox.classList.remove("hidden");
-        }
-
         document.getElementById("bank-name").innerText =
             data.bank_name || "Banka Hesabı";
 
         document.getElementById("iban-text").innerText =
             data.iban;
 
-        document.getElementById("btn-copy-iban").addEventListener("click", async () => {
-            try {
-                await navigator.clipboard.writeText(data.iban);
+        document.getElementById("btn-copy-iban").addEventListener("click", event => {
+            copyToClipboard(data.iban, event.currentTarget);
+        });
+    }
 
-                const copyBtn = document.getElementById("btn-copy-iban");
-                copyBtn.innerText = "Kopyalandı";
-
-                setTimeout(() => {
-                    copyBtn.innerText = "Kopyala";
-                }, 2000);
-
-            } catch (err) {
-                console.error("IBAN kopyalanamadı:", err);
-            }
+    if (accountHolder) {
+        document.getElementById("account-holder").innerText = accountHolder;
+        receiverRow.classList.remove("hidden");
+        document.getElementById("btn-copy-receiver").addEventListener("click", event => {
+            copyToClipboard(accountHolder, event.currentTarget);
         });
     }
 
@@ -244,7 +216,6 @@ function setupIbanCardMode(data) {
         if (el) {
             let instagramUrl = data.instagram_url;
 
-            // Kullanıcı sadece instagram.com yazdıysa otomatik düzelt
             if (!instagramUrl.startsWith("http://") &&
                 !instagramUrl.startsWith("https://")) {
                 instagramUrl = "https://" + instagramUrl;
@@ -254,12 +225,6 @@ function setupIbanCardMode(data) {
             el.classList.remove("hidden");
         }
     }
-
-    setupLink(
-        "link-email",
-        data.email ? `mailto:${data.email}` : null,
-        "E-posta Gönder"
-    );
 
     setupLink(
         "link-alt-1",
@@ -292,4 +257,21 @@ function setupLink(elementId, url, defaultText) {
 function showError() {
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("error-card").classList.remove("hidden");
+}
+
+async function copyToClipboard(value, button) {
+    const defaultText = button.dataset.defaultText || button.innerText;
+    button.dataset.defaultText = defaultText;
+
+    try {
+        await navigator.clipboard.writeText(value);
+        button.innerText = "Kopyalandı";
+    } catch (err) {
+        console.error("Panoya kopyalanamadı:", err);
+        button.innerText = "Kopyalanamadı";
+    }
+
+    window.setTimeout(() => {
+        button.innerText = defaultText;
+    }, 2000);
 }

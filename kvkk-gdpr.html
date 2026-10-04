@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="KVKK and GDPR information for InformationAndIbanCards.">
+    <title>KVKK / GDPR | InformationAndIbanCards</title>
+    <link rel="stylesheet" href="css/legal.css">
+</head>
+<body>
+<main>
+    <p class="eyebrow"><a href="index.html">InformationAndIbanCards</a></p>
+    <h1>KVKK and GDPR Statement</h1>
+    <p class="effective-date">Effective date: 4 October 2026</p>
+    <p>This statement summarizes current client-side data flows relevant to Türkiye's Law No. 6698 on the Protection of Personal Data (KVKK) and the EU General Data Protection Regulation (GDPR). It is informational and does not itself establish legal compliance. The organization operating each card and the service must determine their respective roles and obligations based on actual processing and contracts.</p>
+    <section>
+        <h2>Data flows and purposes</h2>
+        <p>For card display, the browser sends supplied card identifiers (<code>id</code>, <code>token</code>, and/or <code>slug</code>) to a Supabase RPC and receives card content. If a visitor voluntarily submits feedback, the browser sends a message, rating, card ID, and optional contact detail to a second RPC. Copying an IBAN or account-holder name is performed locally by the browser; this client does not send clipboard contents to the service. The current client has no analytics SDK, cookie-setting code, or local-storage use. Hosting and database providers may separately process technical logs.</p>
+        <p>The card operator is responsible for determining the purpose and legal basis for publishing card content and collecting feedback, providing required notices, minimizing data, setting retention periods, and responding to data-subject requests. The responsible parties must document their roles and processing arrangements.</p>
+    </section>
+    <section>
+        <h2>Rights and requests</h2>
+        <p>Subject to applicable law, individuals may have rights to access, rectify, erase, restrict, object to, or port personal data and to complain to a supervisory authority. Requests should be directed to the organization that issued the card or controls the relevant database. The responsible controller must verify requests and respond within applicable statutory deadlines.</p>
+    </section>
+    <section>
+        <h2>Transfers and safeguards</h2>
+        <p>Supabase and static hosting may process data in locations outside the visitor's country. The responsible organization must identify provider locations, assess international transfer rules under KVKK and GDPR, and put required safeguards and processor agreements in place. It must also configure least-privilege access, database row-level security, incident handling, and retention/deletion controls.</p>
+    </section>
+    <section>
+        <h2>Operator details required</h2>
+        <p class="notice">Before production use, publish the controller/service operator's legal name, address, privacy contact, applicable KVKK data-controller contact or registry details where required, and the means for submitting rights requests. These facts were not included in the project repository, so this statement intentionally does not invent them. Review this statement against the actual hosting, Supabase configuration, and card-operator arrangements.</p>
+    </section>
+    <footer><a href="privacy-policy.html">Privacy</a> · <a href="terms-of-service.html">Terms</a> · <a href="cookie-policy.html">Cookies</a></footer>
+</main>
+</body>
+</html>

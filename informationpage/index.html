@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kart Bilgisi</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="loading" class="spinner-container">
+        <div class="spinner"></div>
+        <p>Bilgiler Yükleniyor...</p>
+    </div>
+
+    <div id="error-card" class="card hidden">
+        <div class="icon-error">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        </div>
+        <h2>Geçersiz Bağlantı</h2>
+        <p>Aradığınız kart bulunamadı veya erişim yetkiniz yok.</p>
+    </div>
+
+    <main id="app-content" class="card hidden">
+        <h1 id="card-title"></h1>
+
+        <section id="google-review-mode" class="mode-section hidden">
+            <p class="subtitle">Hizmetimizi nasıl değerlendirirsiniz?</p>
+            
+            <div class="star-rating" id="star-container">
+                <svg class="star" data-value="1" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star" data-value="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star" data-value="3" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star" data-value="4" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star" data-value="5" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+
+            <!-- Sadece 1 ve 2 Yıldız Seçildiğinde Açılan Form -->
+            <div id="feedback-form-container" class="feedback-form hidden">
+                <h3>Deneyiminizi İyileştirelim</h3>
+                <p class="form-desc">Beklentilerinizi karşılayamadığımız için üzgünüz. Lütfen yaşadığınız sorunu kısaca belirtin.</p>
+                <textarea id="feedback-text" rows="3" placeholder="Sorununuzu buraya yazabilirsiniz..."></textarea>
+                <input type="text" id="feedback-contact" placeholder="E-posta veya Telefon numaranız (İsteğe bağlı)">
+                <button id="btn-submit-feedback" class="btn btn-primary">Gönder</button>
+                <p id="feedback-status" class="status-msg"></p>
+            </div>
+        </section>
+
+        <section id="iban-card-mode" class="mode-section hidden">
+            <div id="iban-box" class="info-box hidden">
+                <span class="box-label">Banka Hesabı</span>
+                <p id="bank-name" class="bank-title"></p>
+                <div class="iban-copy-row">
+                    <code id="iban-text"></code>
+                    <button id="btn-copy-iban" class="btn btn-small">Kopyala</button>
+                </div>
+            </div>
+
+            <div id="social-links" class="links-container">
+                <a id="link-instagram" class="btn btn-outline hidden" target="_blank">Instagram</a>
+                <a id="link-email" class="btn btn-outline hidden">E-posta Gönder</a>
+                <a id="link-alt-1" class="btn btn-outline hidden" target="_blank"></a>
+                <a id="link-alt-2" class="btn btn-outline hidden" target="_blank"></a>
+                <a id="link-alt-3" class="btn btn-outline hidden" target="_blank"></a>
+            </div>
+        </section>
+    </main>
+
+    <script src="../js/app.js"></script>
+</body>
+</html>

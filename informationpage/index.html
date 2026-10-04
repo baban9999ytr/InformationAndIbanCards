@@ -2,19 +2,27 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kart Bilgisi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title id="page-title">Kart Bilgisi</title>
+    
+    <meta name="description" content="NFC ve Dijital Kart Bilgi Sayfası">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="robots" content="noindex, nofollow">
+
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+
     <div id="loading" class="spinner-container">
-        <div class="spinner"></div>
+        <div class="spinner" aria-hidden="true"></div>
         <p>Bilgiler Yükleniyor...</p>
     </div>
 
-    <div id="error-card" class="card hidden">
-        <div class="icon-error">
+    <div id="error-card" class="card hidden" role="alert">
+        <div class="icon-error" aria-hidden="true">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -31,41 +39,41 @@
         <section id="google-review-mode" class="mode-section hidden">
             <p class="subtitle">Hizmetimizi nasıl değerlendirirsiniz?</p>
             
-            <div class="star-rating" id="star-container">
-                <svg class="star" data-value="1" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                <svg class="star" data-value="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                <svg class="star" data-value="3" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                <svg class="star" data-value="4" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                <svg class="star" data-value="5" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <div class="star-rating" id="star-container" role="radiogroup" aria-label="Yıldız Değerlendirmesi">
+                <svg class="star" data-value="1" tabindex="0" role="button" aria-label="1 Yıldız" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star" data-value="2" tabindex="0" role="button" aria-label="2 Yıldız" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star" data-value="3" tabindex="0" role="button" aria-label="3 Yıldız" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star" data-value="4" tabindex="0" role="button" aria-label="4 Yıldız" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <svg class="star" data-value="5" tabindex="0" role="button" aria-label="5 Yıldız" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
             </div>
 
-            <!-- Sadece 1 ve 2 Yıldız Seçildiğinde Açılan Form -->
             <div id="feedback-form-container" class="feedback-form hidden">
                 <h3>Deneyiminizi İyileştirelim</h3>
                 <p class="form-desc">Beklentilerinizi karşılayamadığımız için üzgünüz. Lütfen yaşadığınız sorunu kısaca belirtin.</p>
-                <textarea id="feedback-text" rows="3" placeholder="Sorununuzu buraya yazabilirsiniz..."></textarea>
-                <input type="text" id="feedback-contact" placeholder="E-posta veya Telefon numaranız (İsteğe bağlı)">
-                <button id="btn-submit-feedback" class="btn btn-primary">Gönder</button>
-                <p id="feedback-status" class="status-msg"></p>
+                <textarea id="feedback-text" rows="3" placeholder="Sorununuzu buraya yazabilirsiniz..." aria-label="Geri bildirim mesajı"></textarea>
+                <input type="text" id="feedback-contact" placeholder="E-posta veya Telefon numaranız (İsteğe bağlı)" aria-label="İletişim bilgisi">
+                <button type="button" id="btn-submit-feedback" class="btn btn-primary">Gönder</button>
+                <p id="feedback-status" class="status-msg" aria-live="polite"></p>
             </div>
         </section>
 
+        <!-- IBAN / Kişisel Kart Modu -->
         <section id="iban-card-mode" class="mode-section hidden">
             <div id="iban-box" class="info-box hidden">
                 <span class="box-label">Banka Hesabı</span>
                 <p id="bank-name" class="bank-title"></p>
                 <div class="iban-copy-row">
                     <code id="iban-text"></code>
-                    <button id="btn-copy-iban" class="btn btn-small">Kopyala</button>
+                    <button type="button" id="btn-copy-iban" class="btn btn-small">Kopyala</button>
                 </div>
             </div>
 
             <div id="social-links" class="links-container">
-                <a id="link-instagram" class="btn btn-outline hidden" target="_blank">Instagram</a>
+                <a id="link-instagram" class="btn btn-outline hidden" target="_blank" rel="noopener noreferrer">Instagram</a>
                 <a id="link-email" class="btn btn-outline hidden">E-posta Gönder</a>
-                <a id="link-alt-1" class="btn btn-outline hidden" target="_blank"></a>
-                <a id="link-alt-2" class="btn btn-outline hidden" target="_blank"></a>
-                <a id="link-alt-3" class="btn btn-outline hidden" target="_blank"></a>
+                <a id="link-alt-1" class="btn btn-outline hidden" target="_blank" rel="noopener noreferrer"></a>
+                <a id="link-alt-2" class="btn btn-outline hidden" target="_blank" rel="noopener noreferrer"></a>
+                <a id="link-alt-3" class="btn btn-outline hidden" target="_blank" rel="noopener noreferrer"></a>
             </div>
         </section>
     </main>

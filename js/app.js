@@ -131,12 +131,13 @@ function setupGoogleReviewMode(data) {
       } else {
         feedbackContainer.classList.add("hidden");
         feedbackStatus.innerText = "";
+        
         if (data.google_review_url) {
           setTimeout(() => {
             window.location.href = data.google_review_url;
           }, 350);
         } else {
-          alert("Google yorum bağlantısı işletme tarafından henüz tanımlanmamış.");
+          alert("Yorum bağlantısı işletme tarafından tanımlanmamış.");
         }
       }
     });
@@ -149,9 +150,11 @@ function buildFeedbackOptions(data) {
   const whatsappPhone = normalizePhone(data.contact_whatsapp);
   if (whatsappPhone) {
     const whatsappDigits = whatsappPhone.replace(/\D/g, "");
+    const msg = "Merhaba, hizmetinizle ilgili geri bildirimde bulunmak istiyorum.";
+    const encodedMsg = encodeURIComponent(msg);
     options.push({
       id: "feedback-whatsapp",
-      href: `https://wa.me/${whatsappDigits}?text=${encodeURIComponent("Merhaba, hizmetinizle ilgili geri bildirimde bulunmak istiyorum.")}`
+      href: `https://wa.me/${whatsappDigits}?text=${encodedMsg}`
     });
   }
 
@@ -176,9 +179,10 @@ function buildFeedbackOptions(data) {
 
   const email = typeof data.contact_email === "string" ? data.contact_email.trim() : "";
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const subject = encodeURIComponent("Geri Bildirim");
     options.push({
       id: "feedback-email",
-      href: `mailto:${encodeURI(email)}?subject=${encodeURIComponent("Geri Bildirim")}`
+      href: `mailto:${encodeURI(email)}?subject=${subject}`
     });
   }
 
@@ -194,14 +198,22 @@ function normalizePhone(value) {
 function showFeedbackOptions(options, container, status) {
   status.innerText = "";
 
-  ["feedback-whatsapp", "feedback-sms", "feedback-instagram", "feedback-email"].forEach(id => {
+  const elementIds = [
+    "feedback-whatsapp",
+    "feedback-sms", 
+    "feedback-instagram", 
+    "feedback-email"
+  ];
+  
+  elementIds.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   });
 
   if (options.length === 0) {
     container.classList.add("hidden");
-    status.innerText = "İşletme için kullanılabilir bir iletişim kanalı bulunmuyor.";
+    const errText = "İşletme için uygun bir iletişim kanalı bulunmuyor.";
+    status.innerText = errText;
     return;
   }
 
@@ -231,18 +243,21 @@ function setupIbanCardMode(data) {
   }
 
   if (data.iban) {
-    document.getElementById("bank-name").innerText = data.bank_name || "Banka Hesabı";
+    const bName = data.bank_name || "Banka Hesabı";
+    document.getElementById("bank-name").innerText = bName;
     document.getElementById("iban-text").innerText = data.iban;
-    document.getElementById("btn-copy-iban").addEventListener("click", (event) => {
-      copyToClipboard(data.iban, event.currentTarget);
+    
+    document.getElementById("btn-copy-iban").addEventListener("click", (e) => {
+      copyToClipboard(data.iban, e.currentTarget);
     });
   }
 
   if (accountHolder) {
     document.getElementById("account-holder").innerText = accountHolder;
     receiverRow.classList.remove("hidden");
-    document.getElementById("btn-copy-receiver").addEventListener("click", (event) => {
-      copyToClipboard(accountHolder, event.currentTarget);
+    
+    document.getElementById("btn-copy-receiver").addEventListener("click", (e) => {
+      copyToClipboard(accountHolder, e.currentTarget);
     });
   }
 

@@ -85,9 +85,6 @@ function renderCardUI(data) {
 }
 
 function showGenericLanding() {
-    /* Optional redirect for generic or unmatched sessions:
-    window.location.replace("https://openstacktool.com");
-    */
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("error-card").classList.add("hidden");
     document.getElementById("app-content").classList.add("hidden");
@@ -105,8 +102,9 @@ function setupGoogleReviewMode(data) {
 
     feedbackOptions.forEach(option => {
         const link = document.getElementById(option.id);
-        link.href = option.href;
-        link.classList.remove("hidden");
+        if (link) {
+            link.href = option.href;
+        }
     });
 
     stars.forEach(star => {
@@ -140,17 +138,8 @@ function setupGoogleReviewMode(data) {
 
 function buildFeedbackOptions(data) {
     const options = [];
-    const email = typeof data.email === "string" ? data.email.trim() : "";
-    const phone = normalizePhone(data.phone);
-    const whatsappPhone = normalizePhone(data.whatsapp_number) || normalizePhone(data.phone);
 
-    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        options.push({
-            id: "feedback-email",
-            href: `mailto:${encodeURI(email)}?subject=${encodeURIComponent("Geri Bildirim")}`
-        });
-    }
-
+    const whatsappPhone = normalizePhone(data.contact_whatsapp);
     if (whatsappPhone) {
         const whatsappDigits = whatsappPhone.replace(/\D/g, "");
         options.push({
@@ -159,10 +148,31 @@ function buildFeedbackOptions(data) {
         });
     }
 
-    if (phone) {
+    const smsPhone = normalizePhone(data.contact_sms);
+    if (smsPhone) {
         options.push({
             id: "feedback-sms",
-            href: `sms:${phone}`
+            href: `sms:${smsPhone}`
+        });
+    }
+
+    if (data.contact_instagram) {
+        let instaUrl = data.contact_instagram.trim();
+        if (!instaUrl.startsWith("http://") && !instaUrl.startsWith("https://")) {
+            instaUrl = "https://instagram.com/" + instaUrl.replace("@", "");
+        }
+        options.push({
+            id: "feedback-instagram",
+            href: instaUrl
+        });
+    }
+
+    // 4. E-Posta Kontrolü
+    const email = typeof data.contact_email === "string" ? data.contact_email.trim() : "";
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        options.push({
+            id: "feedback-email",
+            href: `mailto:${encodeURI(email)}?subject=${encodeURIComponent("Geri Bildirim")}`
         });
     }
 
@@ -171,7 +181,6 @@ function buildFeedbackOptions(data) {
 
 function normalizePhone(value) {
     if (typeof value !== "string") return null;
-
     const phone = value.trim().replace(/[^\d+]/g, "");
     return /^\+?\d{7,15}$/.test(phone) ? phone : null;
 }
@@ -179,16 +188,28 @@ function normalizePhone(value) {
 function showFeedbackOptions(options, container, status) {
     status.innerText = "";
 
+    ["feedback-whatsapp", "feedback-sms", "feedback-instagram", "feedback-email"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add("hidden");
+    });
+
+    if (options.length === 0) {
+        container.classList.add("hidden");
+        status.innerText = "İşletme için kullanılabilir bir iletişim kanalı bulunmuyor.";
+        return;
+    }
+
+    options.forEach(opt => {
+        const el = document.getElementById(opt.id);
+        if (el) el.classList.remove("hidden");
+    });
+
     if (options.length === 1) {
         window.location.href = options[0].href;
         return;
     }
 
     container.classList.remove("hidden");
-
-    if (options.length === 0) {
-        status.innerText = "İşletme için kullanılabilir bir iletişim kanalı bulunmuyor.";
-    }
 }
 
 function setupIbanCardMode(data) {
@@ -239,31 +260,19 @@ function setupIbanCardMode(data) {
         }
     }
 
-    setupLink(
-        "link-alt-1",
-        data.alt_link_1,
-        "Bağlantı 1"
-    );
-
-    setupLink(
-        "link-alt-2",
-        data.alt_link_2,
-        "Bağlantı 2"
-    );
-
-    setupLink(
-        "link-alt-3",
-        data.alt_link_3,
-        "Bağlantı 3"
-    );
+    setupLink("link-alt-1", data.alt_link_1, "Bağlantı 1");
+    setupLink("link-alt-2", data.alt_link_2, "Bağlantı 2");
+    setupLink("link-alt-3", data.alt_link_3, "Bağlantı 3");
 }
 
 function setupLink(elementId, url, defaultText) {
     if (url) {
         const el = document.getElementById(elementId);
-        el.href = url;
-        el.innerText = defaultText;
-        el.classList.remove("hidden");
+        if (el) {
+            el.href = url;
+            el.innerText = defaultText;
+            el.classList.remove("hidden");
+        }
     }
 }
 

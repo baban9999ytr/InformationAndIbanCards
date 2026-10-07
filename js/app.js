@@ -107,13 +107,6 @@ function setupGoogleReviewMode(data) {
   const feedbackStatus = document.getElementById("feedback-contact-status");
   const feedbackOptions = buildFeedbackOptions(data);
 
-  feedbackOptions.forEach((option) => {
-    const link = document.getElementById(option.id);
-    if (link) {
-      link.href = option.href;
-    }
-  });
-
   stars.forEach((star) => {
     star.addEventListener("click", () => {
       const rating = parseInt(star.getAttribute("data-value"));
@@ -144,50 +137,6 @@ function setupGoogleReviewMode(data) {
   });
 }
 
-// function buildFeedbackOptions(data) {
-//   const options = [];
-
-//   const whatsappPhone = normalizePhone(data.contact_whatsapp);
-//   if (whatsappPhone) {
-//     const whatsappDigits = whatsappPhone.replace(/\D/g, "");
-//     const msg = "Merhaba, hizmetinizle ilgili geri bildirimde bulunmak istiyorum.";
-//     const encodedMsg = encodeURIComponent(msg);
-//     options.push({
-//       id: "feedback-whatsapp",
-//       href: `https://wa.me/${whatsappDigits}?text=${encodedMsg}`
-//     });
-//   }
-
-//   const smsPhone = normalizePhone(data.contact_sms);
-//   if (smsPhone) {
-//     options.push({
-//       id: "feedback-sms",
-//       href: `sms:${smsPhone}`
-//     });
-//   }
-
-//   if (data.contact_instagram) {
-//     let instaUrl = data.contact_instagram.trim();
-//     if (!instaUrl.startsWith("http://") && !instaUrl.startsWith("https://")) {
-//       instaUrl = "https://instagram.com/" + instaUrl.replace("@", "");
-//     }
-//     options.push({
-//       id: "feedback-instagram",
-//       href: instaUrl
-//     });
-//   }
-
-//   const email = typeof data.contact_email === "string" ? data.contact_email.trim() : "";
-//   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-//     const subject = encodeURIComponent("Geri Bildirim");
-//     options.push({
-//       id: "feedback-email",
-//       href: `mailto:${encodeURI(email)}?subject=${subject}`
-//     });
-//   }
-
-//   return options;
-// }
 function buildFeedbackOptions(data) {
   const options = [];
 
@@ -241,6 +190,12 @@ function buildFeedbackOptions(data) {
   return options;
 }
 
+function normalizePhone(value) {
+  if (typeof value !== "string") return null;
+  const phone = value.trim().replace(/[^\d+]/g, "");
+  return /^\+?\d{7,15}$/.test(phone) ? phone : null;
+}
+
 function showFeedbackOptions(options, container, status) {
   status.innerText = "";
 
@@ -277,43 +232,6 @@ function showFeedbackOptions(options, container, status) {
 
   container.classList.remove("hidden");
 }
-function normalizePhone(value) {
-  if (typeof value !== "string") return null;
-  const phone = value.trim().replace(/[^\d+]/g, "");
-  return /^\+?\d{7,15}$/.test(phone) ? phone : null;
-}
-
-// function showFeedbackOptions(options, container, status) {
-//   status.innerText = "";
-
-//   const elementIds = [
-//     "feedback-whatsapp",
-//     "feedback-sms", 
-//     "feedback-instagram", 
-//     "feedback-email"
-//   ];
-  
-//   elementIds.forEach(id => {
-//     const el = document.getElementById(id);
-//     if (el) el.classList.add("hidden");
-//   });
-
-//   container.classList.remove("hidden");
-
-//   if (options.length === 0) {
-//     status.innerText = "İşletme için uygun bir iletişim kanalı bulunmuyor.";
-//     return;
-//   }
-
-//   options.forEach(opt => {
-//     const el = document.getElementById(opt.id);
-//     if (el) el.classList.remove("hidden");
-//   });
-
-//   if (options.length === 1) {
-//     window.location.href = options[0].href;
-//   }
-// }
 
 function setupIbanCardMode(data) {
   const modeSection = document.getElementById("iban-card-mode");
@@ -331,7 +249,6 @@ function setupIbanCardMode(data) {
     const bName = data.bank_name || "Banka Hesabı";
     document.getElementById("bank-name").innerText = bName;
     document.getElementById("iban-text").innerText = data.iban;
-    
     document.getElementById("btn-copy-iban").addEventListener("click", (e) => {
       copyToClipboard(data.iban, e.currentTarget);
     });
@@ -340,7 +257,6 @@ function setupIbanCardMode(data) {
   if (accountHolder) {
     document.getElementById("account-holder").innerText = accountHolder;
     receiverRow.classList.remove("hidden");
-    
     document.getElementById("btn-copy-receiver").addEventListener("click", (e) => {
       copyToClipboard(accountHolder, e.currentTarget);
     });

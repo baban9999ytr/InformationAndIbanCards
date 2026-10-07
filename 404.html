@@ -1,29 +1,31 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Yönlendiriliyor...</title>
     <script>
-        const pathSegments = window.location.pathname.split("/").filter(Boolean);
-        const lastSegment = pathSegments[pathSegments.length - 1];
-        const routePath = "/" + pathSegments.join("/");
-        const legalRoutes = {
-            "/privacy": "/privacy-policy.html",
-            "/terms": "/terms-of-service.html",
-            "/cookie-policy": "/cookie-policy.html",
-            "/kvkk-gdpr": "/kvkk-gdpr.html"
-        };
+      const pathSegments = window.location.pathname.split("/").filter(Boolean);
+      const lastSegment = pathSegments[pathSegments.length - 1];
+      const routePath = "/" + pathSegments.join("/");
+      const legalRoutes = {
+        "/privacy": "/privacy-policy.html",
+        "/terms": "/terms-of-service.html",
+        "/cookie-policy": "/cookie-policy.html",
+        "/kvkk-gdpr": "/kvkk-gdpr.html",
+      };
 
-        if (legalRoutes[routePath]) {
-            window.location.replace(legalRoutes[routePath]);
-        } else if (lastSegment && lastSegment !== "informationpage") {
-            window.location.replace(`/informationpage/index.html?slug=${lastSegment}`);
-        } else {
-            window.location.replace(`/informationpage/index.html`);
-        }
+      if (legalRoutes[routePath]) {
+        window.location.replace(legalRoutes[routePath]);
+      } else if (lastSegment && lastSegment !== "informationpage") {
+        window.location.replace(
+          `/informationpage/index.html?slug=${lastSegment}`,
+        );
+      } else {
+        window.location.replace(`/informationpage/index.html`);
+      }
     </script>
-</head>
-<body>
+  </head>
+  <body>
     <p>Yönlendiriliyor...</p>
-</body>
+  </body>
 </html>

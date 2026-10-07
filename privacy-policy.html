@@ -1,42 +1,112 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Privacy policy for InformationAndIbanCards.">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Privacy policy for InformationAndIbanCards."
+    />
     <title>Privacy Policy | InformationAndIbanCards</title>
-    <link rel="stylesheet" href="css/legal.css">
-</head>
-<body>
-<main>
-    <p class="eyebrow"><a href="index.html">InformationAndIbanCards</a></p>
-    <h1>Privacy Policy</h1>
-    <p class="effective-date">Effective date: 4 October 2026</p>
-    <p>InformationAndIbanCards displays NFC-linked digital cards for account details and customer reviews. The service processes information only as needed to retrieve a requested card and, when a visitor chooses to send it, transmit customer feedback.</p>
-    <section>
+    <link rel="stylesheet" href="css/legal.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow"><a href="index.html">InformationAndIbanCards</a></p>
+      <h1>Privacy Policy</h1>
+      <p class="effective-date">Effective date: 4 October 2026</p>
+      <p>
+        InformationAndIbanCards displays NFC-linked digital cards for account
+        details and customer reviews. The service processes information only as
+        needed to retrieve a requested card and, when a visitor chooses to send
+        it, transmit customer feedback.
+      </p>
+      <section>
         <h2>Data controller and contact</h2>
-        <p>For operation of the InformationAndIbanCards platform and handling privacy requests, the data controller and service operator is <strong>Mustafa Göksal</strong>, an independent software developer and individual.</p>
-        <p>Privacy and data-subject requests, including access, rectification, and erasure requests, may be sent to <a href="mailto:gogsalmustafa19@gmail.com">gogsalmustafa19@gmail.com</a>. Notice location: <strong>Nilüfer, Bursa, Türkiye</strong>. A full street address is not published for personal privacy; formal written notices are accepted by email, and a postal address may be requested through that email contact.</p>
-    </section>
-    <section>
+        <p>
+          For operation of the InformationAndIbanCards platform and handling
+          privacy requests, the data controller and service operator is
+          <strong>Mustafa Göksal</strong>, an independent software developer and
+          individual.
+        </p>
+        <p>
+          Privacy and data-subject requests, including access, rectification,
+          and erasure requests, may be sent to
+          <a href="mailto:gogsalmustafa19@gmail.com"
+            >gogsalmustafa19@gmail.com</a
+          >. Notice location: <strong>Nilüfer, Bursa, Türkiye</strong>. A full
+          street address is not published for personal privacy; formal written
+          notices are accepted by email, and a postal address may be requested
+          through that email contact.
+        </p>
+      </section>
+      <section>
         <h2>Data and use</h2>
-        <p>When a card is opened, the browser sends its available <code>id</code>, <code>token</code>, and/or <code>slug</code> to the Supabase <code>get_nfc_card_data</code> RPC. The response may include the card's title, IBAN, account-holder name, bank name, links, access mode, or review destination. Card operators decide what information to publish and are responsible for the accuracy and lawful publication of their content.</p>
-        <p>When a visitor submits feedback, the browser sends the card ID, message, rating, and optional contact detail to the Supabase <code>submit_card_feedback</code> RPC. Do not submit passwords, payment credentials, or other sensitive information. Copying an IBAN or receiver name is a visitor-initiated browser clipboard action; this client does not transmit clipboard contents or retain them in local storage.</p>
-        <p>The current client has no analytics SDK, advertising tracker, cookie-setting code, or local-storage use. The card page loads Google Fonts from Google's font services, which may receive ordinary connection data such as an IP address. Hosting and Supabase may keep technical security and request logs under their own terms and retention settings. External links are subject to the destination's privacy practices.</p>
-    </section>
-    <section>
+        <p>
+          When a card is opened, the browser sends its available
+          <code>id</code>, <code>token</code>, and/or <code>slug</code> to the
+          Supabase <code>get_nfc_card_data</code> RPC. The response may include
+          the card's title, IBAN, account-holder name, bank name, links, access
+          mode, or review destination. Card operators decide what information to
+          publish and are responsible for the accuracy and lawful publication of
+          their content.
+        </p>
+        <p>
+          When a visitor submits feedback, the browser sends the card ID,
+          message, rating, and optional contact detail to the Supabase
+          <code>submit_card_feedback</code> RPC. Do not submit passwords,
+          payment credentials, or other sensitive information. Copying an IBAN
+          or receiver name is a visitor-initiated browser clipboard action; this
+          client does not transmit clipboard contents or retain them in local
+          storage.
+        </p>
+        <p>
+          The current client has no analytics SDK, advertising tracker,
+          cookie-setting code, or local-storage use. The card page loads Google
+          Fonts from Google's font services, which may receive ordinary
+          connection data such as an IP address. Hosting and Supabase may keep
+          technical security and request logs under their own terms and
+          retention settings. External links are subject to the destination's
+          privacy practices.
+        </p>
+      </section>
+      <section>
         <h2>Providers, retention, and security</h2>
-        <p>Supabase provides the REST/RPC database interface; the static hosting provider serves the website. Database retention and deletion are controlled by the project operator and are not set by this front end. The operator must configure least-privilege database grants, row-level security, and appropriate deletion and backup practices. The browser-visible Supabase key is a publishable key, not a secret; a service-role key must never be shipped to the browser.</p>
-    </section>
-    <section>
+        <p>
+          Supabase provides the REST/RPC database interface; the static hosting
+          provider serves the website. Database retention and deletion are
+          controlled by the project operator and are not set by this front end.
+          The operator must configure least-privilege database grants, row-level
+          security, and appropriate deletion and backup practices. The
+          browser-visible Supabase key is a publishable key, not a secret; a
+          service-role key must never be shipped to the browser.
+        </p>
+      </section>
+      <section>
         <h2>Your rights and contact</h2>
-        <p>Depending on applicable law, visitors may have rights to access, correct, erase, restrict, object to, or obtain a copy of personal data. Send requests to <a href="mailto:gogsalmustafa19@gmail.com">gogsalmustafa19@gmail.com</a>. For information a card issuer independently controls, the request may also need to be directed to that issuer.</p>
-    </section>
-    <section>
+        <p>
+          Depending on applicable law, visitors may have rights to access,
+          correct, erase, restrict, object to, or obtain a copy of personal
+          data. Send requests to
+          <a href="mailto:gogsalmustafa19@gmail.com"
+            >gogsalmustafa19@gmail.com</a
+          >. For information a card issuer independently controls, the request
+          may also need to be directed to that issuer.
+        </p>
+      </section>
+      <section>
         <h2>Updates</h2>
-        <p>Material changes will be reflected here with a new effective date. This policy describes the current repository implementation and should be reviewed when providers or data flows change.</p>
-    </section>
-    <footer><a href="terms-of-service.html">Terms</a> · <a href="cookie-policy.html">Cookies</a> · <a href="kvkk-gdpr.html">KVKK / GDPR</a></footer>
-</main>
-</body>
+        <p>
+          Material changes will be reflected here with a new effective date.
+          This policy describes the current repository implementation and should
+          be reviewed when providers or data flows change.
+        </p>
+      </section>
+      <footer>
+        <a href="terms-of-service.html">Terms</a> ·
+        <a href="cookie-policy.html">Cookies</a> ·
+        <a href="kvkk-gdpr.html">KVKK / GDPR</a>
+      </footer>
+    </main>
+  </body>
 </html>

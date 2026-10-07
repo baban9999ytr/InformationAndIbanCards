@@ -126,8 +126,12 @@ function setupGoogleReviewMode(data) {
         feedbackStatus.innerText = "";
         
         if (data.google_review_url) {
+          let reviewUrl = data.google_review_url.trim();
+          if (!reviewUrl.startsWith("http://") && !reviewUrl.startsWith("https://")) {
+            reviewUrl = "https://" + reviewUrl;
+          }
           setTimeout(() => {
-            window.location.href = data.google_review_url;
+            window.location.href = reviewUrl;
           }, 350);
         } else {
           alert("Yorum bağlantısı işletme tarafından tanımlanmamış.");
@@ -211,8 +215,9 @@ function showFeedbackOptions(options, container, status) {
     if (el) el.classList.add("hidden");
   });
 
+  container.classList.remove("hidden");
+
   if (options.length === 0) {
-    container.classList.remove("hidden");
     status.innerText = "İşletme için uygun bir iletişim kanalı bulunmuyor.";
     return;
   }
@@ -227,10 +232,7 @@ function showFeedbackOptions(options, container, status) {
 
   if (options.length === 1) {
     window.location.href = options[0].href;
-    return;
   }
-
-  container.classList.remove("hidden");
 }
 
 function setupIbanCardMode(data) {

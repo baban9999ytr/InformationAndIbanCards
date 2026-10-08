@@ -419,6 +419,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .public-avatar { display: grid; place-items: center; width: 63px; height: 63px; margin: 0 auto 15px; border-radius: 50%; background: var(--purple-soft); color: var(--purple); font-size: 25px; font-weight: 700; }
 .public-card > .eyebrow { margin: 0 0 7px; color: var(--purple); font-size: 8px; }
 .public-card h1 { margin: 0; font-size: 24px; letter-spacing: -.7px; overflow-wrap: anywhere; user-select: text; }
+.public-name-heading { display: flex; justify-content: center; }
+.copyable-name { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; letter-spacing: inherit; text-align: center; overflow-wrap: anywhere; cursor: pointer; user-select: text; }
+.copyable-name svg, .iban-copy-value svg { flex: 0 0 auto; color: var(--muted); }
+.copyable-name:hover svg, .iban-copy-value:hover svg { color: var(--purple); }
 .public-card-title { display: flex; align-items: center; justify-content: center; gap: 8px; user-select: text; }
 .public-card-title > button { flex: 0 0 auto; }
 .landing-description { margin: 12px 0 22px; color: var(--muted-strong); font-size: 15px; line-height: 1.6; }
@@ -435,6 +439,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .iban-box .iban-label { color: var(--muted-strong); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
 .iban-bank-tag { max-width: 65%; overflow: hidden; padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--text); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .iban-box .iban-text { min-width: 0; flex: 1 1 170px; overflow-wrap: anywhere; color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: clamp(13px, 3.3vw, 16px); font-variant-numeric: tabular-nums; letter-spacing: .025em; line-height: 1.6; user-select: text; }
+.iban-copy-value { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 10px; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.iban-copy-value:focus-visible, .copyable-name:focus-visible { outline: 3px solid color-mix(in srgb, var(--purple) 45%, transparent); outline-offset: 3px; }
 .button-copy { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 11px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; transition: border-color .16s, background .16s, color .16s; }
 .button-copy:hover { border-color: var(--purple); color: var(--purple); }
 .button-copy:focus-visible, .copy-icon-button:focus-visible { outline: 3px solid color-mix(in srgb, var(--purple) 45%, transparent); outline-offset: 2px; }

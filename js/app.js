@@ -250,9 +250,9 @@ function setupIbanCardMode(data) {
   if (data.iban) {
     const bName = data.bank_name || "Banka Hesabı";
     document.getElementById("bank-name").innerText = bName;
-    document.getElementById("iban-text").innerText = formatIban(data.iban);
+    document.getElementById("iban-text").innerText = formatIban(cleanIban(data.iban));
     document.getElementById("btn-copy-iban").addEventListener("click", (e) => {
-      copyToClipboard(data.iban.replace(/\s+/g, "").toUpperCase(), e.currentTarget);
+      copyToClipboard(cleanIban(data.iban), e.currentTarget);
     });
   }
 
@@ -282,7 +282,11 @@ function setupIbanCardMode(data) {
 }
 
 function formatIban(value) {
-  return value.replace(/\s+/g, "").toUpperCase().match(/.{1,4}/g)?.join(" ") || "";
+  return cleanIban(value).match(/.{1,4}/g)?.join(" ") || "";
+}
+
+function cleanIban(value) {
+  return String(value || "").trim().split(":", 1)[0].replace(/[^a-z\d]/gi, "").toUpperCase();
 }
 
 function setupLink(elementId, url, defaultText) {

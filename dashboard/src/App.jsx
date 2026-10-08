@@ -149,6 +149,18 @@ function slugify(text) {
     .replace(/^-|-$/g, "");
 }
 
+function sanitizeIban(value) {
+  return String(value || "")
+    .trim()
+    .split(":", 1)[0]
+    .replace(/[^a-z\d]/gi, "")
+    .toUpperCase();
+}
+
+function formatIban(value) {
+  return sanitizeIban(value).match(/.{1,4}/g)?.join(" ") || "";
+}
+
 function newAccessToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes))
@@ -362,7 +374,8 @@ function EmailVerificationNotice({ email, onResend, busy }) {
 }
 
 function AuthScreen({ onAuthenticated, onReport, initialNotice = "" }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const legalLinks = legalLinksByLanguage[language] || legalLinksByLanguage.en;
   const [tab, setTab] = useState("email");
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -618,6 +631,8 @@ function PublicCard({ token, onReport }) {
   const [feedbackError, setFeedbackError] = useState("");
   const [pendingExternal, setPendingExternal] = useState(null);
   const [externalLinkError, setExternalLinkError] = useState("");
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const [copyTimeout, setCopyTimeout] = useState(null);
   const [cardId, setCardId] = useState(null);
   useEffect(() => {
     let alive = true;
@@ -641,6 +656,24 @@ function PublicCard({ token, onReport }) {
     resolve();
     return () => { alive = false; };
   }, [token, t]);
+
+  useEffect(() => () => {
+    if (copyTimeout) window.clearTimeout(copyTimeout);
+  }, [copyTimeout]);
+
+  async function copyCardValue(value, feedback) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyFeedback(t(feedback));
+      if (copyTimeout) window.clearTimeout(copyTimeout);
+      setCopyTimeout(window.setTimeout(() => setCopyFeedback(""), 2000));
+    } catch (copyError) {
+      console.error("Could not copy public card value:", copyError);
+      setCopyFeedback(t("Panoya kopyalanamadı."));
+      if (copyTimeout) window.clearTimeout(copyTimeout);
+      setCopyTimeout(window.setTimeout(() => setCopyFeedback(""), 2000));
+    }
+  }
 
   const links = useMemo(() => {
     if (!card) return [];
@@ -704,9 +737,21 @@ function PublicCard({ token, onReport }) {
           <>
             <div className="public-avatar">{(card.title || "B").slice(0, 1).toLocaleUpperCase("tr")}</div>
             <p className="eyebrow">{cardTypeLabel[card.type] ? t(cardTypeLabel[card.type]) : t("DİJİTAL KART")}</p>
-            <h1>{card.title}</h1>
+            <h1 className="public-name-heading">
+              <button type="button" className="copyable-name" aria-label={`${t("Adı kopyala")}: ${card.title}`} onClick={() => copyCardValue(card.title, "Ad kopyalandı.")}>
+                <span>{card.title}</span><Copy size={16} aria-hidden="true" />
+              </button>
+            </h1>
             {card.bank_name && <p className="public-subtitle">{card.bank_name}</p>}
-            {card.iban && <div className="iban-box"><span>{t("IBAN")}</span><strong>{card.iban}</strong></div>}
+            {card.iban && sanitizeIban(card.iban) && (
+              <div className="iban-box">
+                <span className="iban-label">{t("IBAN")}</span>
+                <button type="button" className="iban-copy-value" aria-label={t("IBAN'ı kopyala")} onClick={() => copyCardValue(sanitizeIban(card.iban), "IBAN kopyalandı.")}>
+                  <strong className="iban-text">{formatIban(sanitizeIban(card.iban))}</strong><Copy size={16} aria-hidden="true" />
+                </button>
+              </div>
+            )}
+            {copyFeedback && <p className="copy-feedback" role="status" aria-live="polite">{copyFeedback}</p>}
             {card.email && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "E-posta gönder", url: mailtoUrl(card.email) })}><UserRound size={16} /> {t("E-posta gönder")}</button>}
             {card.type === "google_review" && (
               <section className="rating-section">
@@ -1088,7 +1133,8 @@ function OnboardingModal({ busy, error, onChoose, onSkip }) {
 }
 
 function GoogleConsentModal({ status, error, onRetry, onConfirm }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const legalLinks = legalLinksByLanguage[language] || legalLinksByLanguage.en;
   const [accepted, setAccepted] = useState(false);
   const busy = status === "saving";
   return (

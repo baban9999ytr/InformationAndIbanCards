@@ -311,7 +311,7 @@ async function copyToClipboard(value, button) {
     button.innerText = "Kopyalanamadı";
   }
 
-  window.setTimeout(() => {
+  window.setTimeout(() => { 
     button.innerText = defaultText;
   }, 2000);
 }

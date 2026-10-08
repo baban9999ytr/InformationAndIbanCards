@@ -150,6 +150,17 @@ h1 {
   text-decoration: none;
 }
 
+.landing-link-secondary {
+  margin-top: 10px;
+  border: 1px solid #78350f;
+  background-color: #2a2215;
+  color: #f59e0b;
+}
+
+.landing-link-secondary:hover {
+  background-color: #3a2d19;
+}
+
 .iban-copy-row {
   display: flex;
   justify-content: space-between;

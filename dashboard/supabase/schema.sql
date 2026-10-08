@@ -276,7 +276,16 @@ create policy "Admins can view all profiles"
   on public.profiles for select to authenticated
   using (public.is_admin_or_reseller());
 
-grant select, update on public.profiles to authenticated;
+grant select on public.profiles to authenticated;
+revoke update on public.profiles from authenticated;
+grant update (
+  full_name,
+  phone,
+  marketing_opt_in,
+  account_type,
+  onboarding_completed,
+  updated_at
+) on public.profiles to authenticated;
 
 drop policy if exists "Users can view their own consent record" on public.consent_records;
 create policy "Users can view their own consent record"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -82,23 +82,21 @@ const legacyLegalRouteDocuments = {
   "/cookie-policy": ["cookies", "en"],
 };
 const getLegalRouteTarget = (document, language) =>
-  `${window.location.origin}/legal.html?document=${document}&lang=${language}`;
-const formatIban = (value) =>
-  value.replace(/\s+/g, "").toUpperCase().match(/.{1,4}/g)?.join(" ") || "";
+  `${appOrigin}/legal.html?document=${document}&lang=${language}`;
 const legalLinksByLanguage = {
   tr: [
-    { label: "Kullanım Koşulları", href: "/tr/kullanim-kosullari" },
-    { label: "Gizlilik Politikası", href: "/tr/gizlilik-politikasi" },
-    { label: "KVKK Aydınlatma Metni", href: "/tr/kvkk" },
-    { label: "Çerez Politikası", href: "/tr/cerez-politikasi" },
-    { label: "İletişim", href: "/tr/iletisim" },
+    { label: "Kullanım Koşulları", href: `${appOrigin}/tr/kullanim-kosullari` },
+    { label: "Gizlilik Politikası", href: `${appOrigin}/tr/gizlilik-politikasi` },
+    { label: "KVKK Aydınlatma Metni", href: `${appOrigin}/tr/kvkk` },
+    { label: "Çerez Politikası", href: `${appOrigin}/tr/cerez-politikasi` },
+    { label: "İletişim", href: `${appOrigin}/tr/iletisim` },
   ],
   en: [
-    { label: "Terms of Service", href: "/en/terms-of-service" },
-    { label: "Privacy Policy", href: "/en/privacy-policy" },
-    { label: "GDPR Notice", href: "/en/gdpr" },
-    { label: "Cookie Policy", href: "/en/cookie-policy" },
-    { label: "Contact", href: "/en/contact" },
+    { label: "Terms of Service", href: `${appOrigin}/en/terms-of-service` },
+    { label: "Privacy Policy", href: `${appOrigin}/en/privacy-policy` },
+    { label: "GDPR Notice", href: `${appOrigin}/en/gdpr` },
+    { label: "Cookie Policy", href: `${appOrigin}/en/cookie-policy` },
+    { label: "Contact", href: `${appOrigin}/en/contact` },
   ],
 };
 const reservedRoutes = new Set([
@@ -621,9 +619,6 @@ function PublicCard({ token, onReport }) {
   const [pendingExternal, setPendingExternal] = useState(null);
   const [externalLinkError, setExternalLinkError] = useState("");
   const [cardId, setCardId] = useState(null);
-  const [copyStatus, setCopyStatus] = useState(null);
-  const copyStatusTimer = useRef(null);
-  useEffect(() => () => window.clearTimeout(copyStatusTimer.current), []);
   useEffect(() => {
     let alive = true;
     async function resolve() {
@@ -655,17 +650,6 @@ function PublicCard({ token, onReport }) {
       ...(card.extra_links || []).map((item) => ({ label: item.label, url: item.url })),
     ].filter(Boolean);
   }, [card]);
-
-  async function copyToClipboard(value, field) {
-    window.clearTimeout(copyStatusTimer.current);
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopyStatus({ field, success: true });
-    } catch {
-      setCopyStatus({ field, success: false });
-    }
-    copyStatusTimer.current = window.setTimeout(() => setCopyStatus(null), 2000);
-  }
 
   async function submitFeedback(event) {
     event.preventDefault();
@@ -720,47 +704,9 @@ function PublicCard({ token, onReport }) {
           <>
             <div className="public-avatar">{(card.title || "B").slice(0, 1).toLocaleUpperCase("tr")}</div>
             <p className="eyebrow">{cardTypeLabel[card.type] ? t(cardTypeLabel[card.type]) : t("DİJİTAL KART")}</p>
-            <h1 className="public-card-title">
-              {card.title}
-              {card.iban && (
-                <button
-                  className={`copy-icon-button${copyStatus?.field === "name" && copyStatus.success ? " is-copied" : ""}`}
-                  type="button"
-                  aria-label={t(copyStatus?.field === "name" && copyStatus.success ? "Ad kopyalandı." : "Adı kopyala")}
-                  title={t(copyStatus?.field === "name" && copyStatus.success ? "Ad kopyalandı." : "Adı kopyala")}
-                  onClick={() => copyToClipboard(card.title, "name")}
-                >
-                  {copyStatus?.field === "name" && copyStatus.success ? <Check size={16} /> : <Copy size={16} />}
-                </button>
-              )}
-            </h1>
-            {card.bank_name && !card.iban && <p className="public-subtitle">{card.bank_name}</p>}
-            {card.iban && (
-              <section className="iban-box" aria-label={t("IBAN bilgileri")}>
-                <div className="iban-box-header">
-                  <span className="iban-label">{t("IBAN")}</span>
-                  {card.bank_name && <span className="iban-bank-tag">{card.bank_name}</span>}
-                </div>
-                <div className="iban-value-row">
-                  <strong className="iban-text">{formatIban(card.iban)}</strong>
-                  <button
-                    className={`button-copy${copyStatus?.field === "iban" && copyStatus.success ? " is-copied" : ""}`}
-                    type="button"
-                    onClick={() => copyToClipboard(card.iban.replace(/\s+/g, "").toUpperCase(), "iban")}
-                  >
-                    {copyStatus?.field === "iban" && copyStatus.success ? <Check size={15} /> : <Copy size={15} />}
-                    {copyStatus?.field === "iban" && copyStatus.success ? t("Kopyalandı") : t("IBAN'ı kopyala")}
-                  </button>
-                </div>
-              </section>
-            )}
-            {copyStatus && (
-              <p className={`copy-feedback${copyStatus.success ? "" : " is-error"}`} role="status" aria-live="polite">
-                {copyStatus.success
-                  ? t(copyStatus.field === "iban" ? "IBAN kopyalandı." : "Ad kopyalandı.")
-                  : t("Panoya kopyalanamadı.")}
-              </p>
-            )}
+            <h1>{card.title}</h1>
+            {card.bank_name && <p className="public-subtitle">{card.bank_name}</p>}
+            {card.iban && <div className="iban-box"><span>{t("IBAN")}</span><strong>{card.iban}</strong></div>}
             {card.email && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "E-posta gönder", url: mailtoUrl(card.email) })}><UserRound size={16} /> {t("E-posta gönder")}</button>}
             {card.type === "google_review" && (
               <section className="rating-section">
@@ -1232,7 +1178,7 @@ function App() {
   const [toast, setToast] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [dark, setDark] = useState(() => localStorage.getItem("bilgi-theme") === "dark");
+  const [dark, setDark] = useState(() => localStorage.getItem("bilgi-theme") !== "light");
   function openReport(context = {}) {
     setReportContext({
       ...context,

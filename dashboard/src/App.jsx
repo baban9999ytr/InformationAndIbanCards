@@ -901,6 +901,7 @@ function App() {
   const [dark, setDark] = useState(() => localStorage.getItem("bilgi-theme") === "dark");
   const pathname = window.location.pathname;
   const publicMatch = pathname.match(/^\/(c|p)\/([^/]+)\/?$/);
+  const createRoute = /^\/create\/?$/.test(pathname);
   const legacyCardRoute = /^\/informationpage\/?$/.test(pathname);
   const legacyCardKey = legacyCardRoute
     ? new URLSearchParams(window.location.search).get("id") ||
@@ -932,6 +933,13 @@ function App() {
     });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session && createRoute) {
+      setStartManagedCard(false);
+      setModalCard(null);
+    }
+  }, [session, createRoute]);
 
   useEffect(() => {
     if (!toast) return undefined;

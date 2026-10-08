@@ -203,7 +203,9 @@ cython_debug/
 .vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
-
+# Supabase geçici dosyaları
+dashboard/supabase/.temp/
+.temp/
 # Ruff stuff:
 .ruff_cache/
 
@@ -214,7 +216,11 @@ tempCodeRunnerFile.py
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-
+# Supabase CLI temp & internal files
+supabase/.temp/
+supabase/.branches/
+dsahboard/supabase/.temp/
+dashboard/supabase/.branches/
 # Streamlit
 .streamlit/secrets.toml
 # Operating System files

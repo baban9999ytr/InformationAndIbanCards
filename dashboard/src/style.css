@@ -396,7 +396,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .public-card { width: min(100%, 440px); margin: auto 0; padding: 29px; border: 1px solid var(--border); border-radius: 15px; background: var(--surface); box-shadow: 0 12px 42px #19233b0c; text-align: center; }
 .public-avatar { display: grid; place-items: center; width: 63px; height: 63px; margin: 0 auto 15px; border-radius: 50%; background: var(--purple-soft); color: var(--purple); font-size: 25px; font-weight: 700; }
 .public-card > .eyebrow { margin: 0 0 7px; color: var(--purple); font-size: 8px; }
-.public-card h1 { margin: 0; font-size: 24px; letter-spacing: -.7px; }
+.public-card h1 { margin: 0; font-size: 24px; letter-spacing: -.7px; overflow-wrap: anywhere; user-select: text; }
+.public-card-title { display: flex; align-items: center; justify-content: center; gap: 8px; user-select: text; }
+.public-card-title > button { flex: 0 0 auto; }
 .landing-description { margin: 12px 0 22px; color: var(--muted-strong); font-size: 15px; line-height: 1.6; }
 .landing-actions { display: grid; gap: 10px; }
 .not-found-card .empty-icon { margin-right: auto; margin-left: auto; }
@@ -405,8 +407,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .legal-redirect p { margin: 0; }
 .legal-redirect a { color: var(--purple-strong); text-decoration: underline; }
 .public-subtitle { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
-.iban-box { display: grid; gap: 6px; margin: 21px 0; padding: 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-soft); text-align: left; }
-.iban-box span { color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: .8px; }.iban-box strong { overflow-wrap: anywhere; font-family: ui-monospace, monospace; font-size: 11px; }
+.iban-box { display: grid; gap: 12px; margin: 21px 0; padding: 16px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface-soft); text-align: left; }
+.iban-box-header, .iban-value-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.iban-value-row { flex-wrap: wrap; }
+.iban-box .iban-label { color: var(--muted-strong); font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.iban-bank-tag { max-width: 65%; overflow: hidden; padding: 4px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--text); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.iban-box .iban-text { min-width: 0; flex: 1 1 170px; overflow-wrap: anywhere; color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: clamp(13px, 3.3vw, 16px); font-variant-numeric: tabular-nums; letter-spacing: .025em; line-height: 1.6; user-select: text; }
+.button-copy { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 11px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; transition: border-color .16s, background .16s, color .16s; }
+.button-copy:hover { border-color: var(--purple); color: var(--purple); }
+.button-copy:focus-visible, .copy-icon-button:focus-visible { outline: 3px solid color-mix(in srgb, var(--purple) 45%, transparent); outline-offset: 2px; }
+.button-copy.is-copied, .copy-icon-button.is-copied { color: var(--green); }
+.copy-icon-button { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted-strong); cursor: pointer; }
+.copy-icon-button:hover { border-color: var(--border); background: var(--surface-soft); color: var(--purple); }
+.copy-feedback { margin: -12px 0 12px; color: var(--green); font-size: 12px; font-weight: 600; }
+.copy-feedback.is-error { color: var(--danger); }
 .contact-link { display: inline-flex; align-items: center; gap: 7px; margin-top: 16px; color: var(--purple); font-size: 11px; font-weight: 600; }
 .public-links { display: grid; gap: 8px; margin-top: 20px; }
 .safe-notice { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin: 0 0 4px; color: var(--muted); font-size: 9px; line-height: 1.5; }

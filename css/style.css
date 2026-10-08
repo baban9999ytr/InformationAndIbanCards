@@ -95,8 +95,8 @@ h1 {
 }
 
 .info-box {
-  background-color: #172033;
-  border: 1px solid #222f47;
+  background-color: #111827;
+  border: 1px solid #344054;
   border-radius: 14px;
   padding: 20px;
   margin-bottom: 16px;
@@ -115,6 +115,7 @@ h1 {
   color: #e5e7eb;
   margin-top: 5px;
   font-weight: 500;
+  user-select: text;
 }
 
 .receiver-copy-row {
@@ -163,12 +164,28 @@ h1 {
 
 .iban-copy-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   background: #0d131f;
   border: 1px solid #1e293b;
   padding: 10px 14px;
   border-radius: 10px;
+}
+
+.iban-copy-row code {
+  min-width: 0;
+  flex: 1 1 180px;
+  color: #f3f4f6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  user-select: text;
+}
+
+h1 {
+  user-select: text;
 }
 
 code {

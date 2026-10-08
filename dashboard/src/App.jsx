@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { scanExternalUrl, validateHttpsUrl } from "./security.js";
+import { signInWithGoogle } from "./auth.js";
 import { supabase, supabaseConfigured } from "./supabaseClient.js";
 import { LanguageSwitcher, useTranslation } from "./i18n.jsx";
 
@@ -61,18 +62,44 @@ const workerBase = (
 ).replace(/\/$/, "");
 const mainSiteUrl =
   import.meta.env.VITE_MAIN_SITE_URL || "https://openstacktool.com";
-const legalLinks = [
-  { label: "Kullanım Koşulları", href: `${mainSiteUrl}/terms-of-service.html` },
-  { label: "Gizlilik Politikası", href: `${mainSiteUrl}/privacy-policy.html` },
-  { label: "KVKK Aydınlatma Metni", href: `${mainSiteUrl}/kvkk-gdpr.html` },
-  { label: "Çerez Politikası", href: `${mainSiteUrl}/cookie-policy.html` },
-];
-const legalRouteTargets = {
-  "/terms-of-service": legalLinks[0].href,
-  "/privacy-policy": legalLinks[1].href,
-  "/gdpr-kvkk": legalLinks[2].href,
-  "/privacy-notice": legalLinks[2].href,
-  "/cookie-policy": legalLinks[3].href,
+const legalRouteDocuments = {
+  "/tr/kullanim-kosullari": ["terms", "tr"],
+  "/en/terms-of-service": ["terms", "en"],
+  "/tr/gizlilik-politikasi": ["privacy", "tr"],
+  "/en/privacy-policy": ["privacy", "en"],
+  "/tr/kvkk": ["kvkk", "tr"],
+  "/en/gdpr": ["kvkk", "en"],
+  "/tr/cerez-politikasi": ["cookies", "tr"],
+  "/en/cookie-policy": ["cookies", "en"],
+  "/tr/iletisim": ["contact", "tr"],
+  "/en/contact": ["contact", "en"],
+};
+const legacyLegalRouteDocuments = {
+  "/terms-of-service": ["terms", "en"],
+  "/privacy-policy": ["privacy", "en"],
+  "/gdpr-kvkk": ["kvkk", "tr"],
+  "/privacy-notice": ["kvkk", "tr"],
+  "/cookie-policy": ["cookies", "en"],
+};
+const getLegalRouteTarget = (document, language) =>
+  `${window.location.origin}/legal.html?document=${document}&lang=${language}`;
+const formatIban = (value) =>
+  value.replace(/\s+/g, "").toUpperCase().match(/.{1,4}/g)?.join(" ") || "";
+const legalLinksByLanguage = {
+  tr: [
+    { label: "Kullanım Koşulları", href: "/tr/kullanim-kosullari" },
+    { label: "Gizlilik Politikası", href: "/tr/gizlilik-politikasi" },
+    { label: "KVKK Aydınlatma Metni", href: "/tr/kvkk" },
+    { label: "Çerez Politikası", href: "/tr/cerez-politikasi" },
+    { label: "İletişim", href: "/tr/iletisim" },
+  ],
+  en: [
+    { label: "Terms of Service", href: "/en/terms-of-service" },
+    { label: "Privacy Policy", href: "/en/privacy-policy" },
+    { label: "GDPR Notice", href: "/en/gdpr" },
+    { label: "Cookie Policy", href: "/en/cookie-policy" },
+    { label: "Contact", href: "/en/contact" },
+  ],
 };
 const reservedRoutes = new Set([
   "c", "p", "dashboard", "create", "settings", "login", "informationpage",
@@ -96,6 +123,21 @@ function isVerifiedAuthSession(session) {
     user.confirmed_at ||
     user.phone_confirmed_at ||
     (provider && provider !== "email"),
+  );
+}
+
+function isGoogleAuthSession(session) {
+  return session?.user?.app_metadata?.provider === "google";
+}
+
+function GoogleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 48 48" width="18" height="18">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.74 7.18l7.73 6C44.43 38.02 46.98 31.8 46.98 24.55Z" />
+      <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.54 2.56 10.78l7.97-6.19Z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.14 1.44-4.89 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z" />
+    </svg>
   );
 }
 
@@ -152,7 +194,8 @@ function IconButton({ label, children, onClick, className = "" }) {
 }
 
 function Footer({ onReport }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const legalLinks = legalLinksByLanguage[language] || legalLinksByLanguage.en;
   return (
     <footer className="footer">
       <span>© {new Date().getFullYear()} Bilgi · {t("Güvenli dijital bağlantılar.")}</span>
@@ -161,11 +204,11 @@ function Footer({ onReport }) {
           {t("Ana site")}
         </a>
         {legalLinks.map((link) => (
-          <a href={link.href} key={link.href}>
+          <a href={link.href} key={link.href} target="_blank" rel="noopener noreferrer">
             {t(link.label)}
           </a>
         ))}
-        <button className="footer-report" onClick={onReport}>{t("İletişim / Bildirim")}</button>
+        <button className="footer-report" onClick={onReport}>{t("Kötüye kullanım bildirimi")}</button>
       </nav>
     </footer>
   );
@@ -404,25 +447,10 @@ function AuthScreen({ onAuthenticated, onReport, initialNotice = "" }) {
     if (!supabase) return;
     setError("");
     setNotice("");
-    if (!terms) {
-      setError(t("Google ile devam etmek için yasal koşulları kabul edin."));
-      return;
-    }
-    try {
-      window.sessionStorage.setItem("bilgi-google-consent", String(Date.now()));
-    } catch (storageError) {
-      setError(storageError.message || t("Yasal onayınız kaydedilemedi."));
-      return;
-    }
     setOauthBusy(true);
     try {
-      const { error: authError } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${appOrigin}/dashboard` },
-      });
-      if (authError) throw authError;
+      await signInWithGoogle(supabase, `${window.location.origin}/dashboard`);
     } catch (authError) {
-      window.sessionStorage.removeItem("bilgi-google-consent");
       setError(authError.message || t("Google ile giriş yapılamadı."));
       setOauthBusy(false);
     }
@@ -544,13 +572,12 @@ function AuthScreen({ onAuthenticated, onReport, initialNotice = "" }) {
                   <label className="check-row"><input type="checkbox" checked={marketingOptIn} onChange={(event) => setMarketingOptIn(event.target.checked)} /><span>{t("Ürün güncellemelerini, ipuçlarını ve tanıtım haberlerini e-posta ile almak istiyorum.")}</span></label>
                 </div>
               )}
-              {mode === "login" && <label className="check-row oauth-consent-row"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} /><span>{t("Şunları kabul ediyorum:")} <a href={legalLinks[0].href} target="_blank" rel="noreferrer">{t("Kullanım Koşulları")}</a> {t("ve")} <a href={legalLinks[1].href} target="_blank" rel="noreferrer">{t("Gizlilik Politikası")}</a>. {t("En az 18 yaşında olduğumu veya ülkemdeki yasal asgari yaş şartını karşıladığımı onaylıyorum.")} <b>*</b></span></label>}
               <button className="button button-primary button-wide" disabled={busy || !supabaseConfigured || (mode === "register" && (!terms || !validPassword || !fullName.trim()))}>
                 {busy ? <LoaderCircle className="spin" size={17} /> : null}
                 {mode === "login" ? t("Giriş yap") : t("Hesabımı oluştur")}
               </button>
-              <button className="button google-auth-button button-wide" type="button" disabled={oauthBusy || !supabaseConfigured || (mode === "login" && !terms) || (mode === "register" && !terms)}>
-                {oauthBusy ? <LoaderCircle className="spin" size={17} /> : <Globe2 size={17} />}
+              <button className="button google-auth-button button-wide" type="button" disabled={oauthBusy || !supabaseConfigured} onClick={continueWithGoogle}>
+                {oauthBusy ? <LoaderCircle className="spin" size={17} /> : <GoogleIcon />}
                 {t("Google ile devam et")}
               </button>
             </form>
@@ -594,6 +621,9 @@ function PublicCard({ token, onReport }) {
   const [pendingExternal, setPendingExternal] = useState(null);
   const [externalLinkError, setExternalLinkError] = useState("");
   const [cardId, setCardId] = useState(null);
+  const [copyStatus, setCopyStatus] = useState(null);
+  const copyStatusTimer = useRef(null);
+  useEffect(() => () => window.clearTimeout(copyStatusTimer.current), []);
   useEffect(() => {
     let alive = true;
     async function resolve() {
@@ -625,6 +655,17 @@ function PublicCard({ token, onReport }) {
       ...(card.extra_links || []).map((item) => ({ label: item.label, url: item.url })),
     ].filter(Boolean);
   }, [card]);
+
+  async function copyToClipboard(value, field) {
+    window.clearTimeout(copyStatusTimer.current);
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopyStatus({ field, success: true });
+    } catch {
+      setCopyStatus({ field, success: false });
+    }
+    copyStatusTimer.current = window.setTimeout(() => setCopyStatus(null), 2000);
+  }
 
   async function submitFeedback(event) {
     event.preventDefault();
@@ -679,9 +720,47 @@ function PublicCard({ token, onReport }) {
           <>
             <div className="public-avatar">{(card.title || "B").slice(0, 1).toLocaleUpperCase("tr")}</div>
             <p className="eyebrow">{cardTypeLabel[card.type] ? t(cardTypeLabel[card.type]) : t("DİJİTAL KART")}</p>
-            <h1>{card.title}</h1>
-            {card.bank_name && <p className="public-subtitle">{card.bank_name}</p>}
-            {card.iban && <div className="iban-box"><span>{t("IBAN")}</span><strong>{card.iban}</strong></div>}
+            <h1 className="public-card-title">
+              {card.title}
+              {card.iban && (
+                <button
+                  className={`copy-icon-button${copyStatus?.field === "name" && copyStatus.success ? " is-copied" : ""}`}
+                  type="button"
+                  aria-label={t(copyStatus?.field === "name" && copyStatus.success ? "Ad kopyalandı." : "Adı kopyala")}
+                  title={t(copyStatus?.field === "name" && copyStatus.success ? "Ad kopyalandı." : "Adı kopyala")}
+                  onClick={() => copyToClipboard(card.title, "name")}
+                >
+                  {copyStatus?.field === "name" && copyStatus.success ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              )}
+            </h1>
+            {card.bank_name && !card.iban && <p className="public-subtitle">{card.bank_name}</p>}
+            {card.iban && (
+              <section className="iban-box" aria-label={t("IBAN bilgileri")}>
+                <div className="iban-box-header">
+                  <span className="iban-label">{t("IBAN")}</span>
+                  {card.bank_name && <span className="iban-bank-tag">{card.bank_name}</span>}
+                </div>
+                <div className="iban-value-row">
+                  <strong className="iban-text">{formatIban(card.iban)}</strong>
+                  <button
+                    className={`button-copy${copyStatus?.field === "iban" && copyStatus.success ? " is-copied" : ""}`}
+                    type="button"
+                    onClick={() => copyToClipboard(card.iban.replace(/\s+/g, "").toUpperCase(), "iban")}
+                  >
+                    {copyStatus?.field === "iban" && copyStatus.success ? <Check size={15} /> : <Copy size={15} />}
+                    {copyStatus?.field === "iban" && copyStatus.success ? t("Kopyalandı") : t("IBAN'ı kopyala")}
+                  </button>
+                </div>
+              </section>
+            )}
+            {copyStatus && (
+              <p className={`copy-feedback${copyStatus.success ? "" : " is-error"}`} role="status" aria-live="polite">
+                {copyStatus.success
+                  ? t(copyStatus.field === "iban" ? "IBAN kopyalandı." : "Ad kopyalandı.")
+                  : t("Panoya kopyalanamadı.")}
+              </p>
+            )}
             {card.email && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "E-posta gönder", url: mailtoUrl(card.email) })}><UserRound size={16} /> {t("E-posta gönder")}</button>}
             {card.type === "google_review" && (
               <section className="rating-section">
@@ -1062,6 +1141,42 @@ function OnboardingModal({ busy, error, onChoose, onSkip }) {
   );
 }
 
+function GoogleConsentModal({ status, error, onRetry, onConfirm }) {
+  const { t } = useTranslation();
+  const [accepted, setAccepted] = useState(false);
+  const busy = status === "saving";
+  return (
+    <div className="modal-backdrop onboarding-backdrop">
+      <section className="modal google-consent-modal" role="dialog" aria-modal="true" aria-labelledby="google-consent-title">
+        <div className="onboarding-heading">
+          <p className="eyebrow">{t("HESABINIZI HAZIRLAYIN")}</p>
+          <h2 id="google-consent-title">{t("Yasal koşulları onaylayın")}</h2>
+          <p>{t("Hesabınızı kullanmadan önce Kullanım Koşulları ve Gizlilik Politikası'nı inceleyip onaylamanız gerekir.")}</p>
+        </div>
+        {status === "checking" ? (
+          <p className="consent-checking"><LoaderCircle className="spin" size={18} /> {t("Onay durumunuz kontrol ediliyor…")}</p>
+        ) : status === "error" ? (
+          <>
+            <div className="inline-error" role="alert">{error}</div>
+            <button className="button button-primary button-wide" type="button" onClick={onRetry}>{t("Yeniden dene")}</button>
+          </>
+        ) : (
+          <>
+            <label className="check-row google-consent-check">
+              <input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} disabled={busy} />
+              <span>{t("Şunları kabul ediyorum:")} <a href={legalLinks[0].href} target="_blank" rel="noreferrer">{t("Kullanım Koşulları")}</a> {t("ve")} <a href={legalLinks[1].href} target="_blank" rel="noreferrer">{t("Gizlilik Politikası")}</a>. {t("En az 18 yaşında olduğumu veya ülkemdeki yasal asgari yaş şartını karşıladığımı onaylıyorum.")} <b>*</b></span>
+            </label>
+            {error && <div className="inline-error" role="alert">{error}</div>}
+            <button className="button button-primary button-wide" type="button" disabled={!accepted || busy} onClick={onConfirm}>
+              {busy ? <LoaderCircle className="spin" size={16} /> : null}{t("Kabul et ve devam et")}
+            </button>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function App() {
   const { t, language } = useTranslation();
   const pathname = window.location.pathname;
@@ -1077,7 +1192,10 @@ function App() {
   const publicSlug = slugMatch && !reservedRoutes.has(decodeRouteSegment(slugMatch[1]).toLowerCase())
     ? decodeRouteSegment(slugMatch[1])
     : null;
-  const legalRouteTarget = legalRouteTargets[normalizedPath];
+  const legalRoute = legalRouteDocuments[normalizedPath] || legacyLegalRouteDocuments[normalizedPath];
+  const legalRouteTarget = legalRoute
+    ? getLegalRouteTarget(legalRoute[0], legalRoute[1])
+    : null;
   const loginRoute = normalizedPath === "/login";
   const createRoute = normalizedPath === "/create";
   const dashboardRoute = /^\/dashboard(?:\/.*)?$/.test(normalizedPath);
@@ -1097,6 +1215,8 @@ function App() {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingBusy, setOnboardingBusy] = useState(false);
   const [onboardingError, setOnboardingError] = useState("");
+  const [googleConsentStatus, setGoogleConsentStatus] = useState("not-required");
+  const [googleConsentError, setGoogleConsentError] = useState("");
   const [clients, setClients] = useState([]);
   const [abuseReports, setAbuseReports] = useState([]);
   const [section, setSection] = useState(settingsRoute ? "settings" : "overview");
@@ -1113,7 +1233,6 @@ function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [dark, setDark] = useState(() => localStorage.getItem("bilgi-theme") === "dark");
-  const googleConsentAttempted = useRef(false);
   function openReport(context = {}) {
     setReportContext({
       ...context,
@@ -1132,10 +1251,12 @@ function App() {
       if (sessionError) setError(sessionError.message);
       if (data.session && !isVerifiedAuthSession(data.session)) {
         setSession(null);
+        setGoogleConsentStatus("not-required");
         setAuthNotice(t("E-posta adresinizi doğrulamanız gerekiyor. Lütfen etkinleştirme bağlantısını kullanın."));
         void supabase.auth.signOut();
       } else {
         setSession(data.session);
+        setGoogleConsentStatus(isGoogleAuthSession(data.session) ? "checking" : "not-required");
         if (data.session) setAuthNotice("");
       }
       setAuthReady(true);
@@ -1143,10 +1264,12 @@ function App() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (nextSession && !isVerifiedAuthSession(nextSession)) {
         setSession(null);
+        setGoogleConsentStatus("not-required");
         setAuthNotice(t("E-posta adresinizi doğrulamanız gerekiyor. Lütfen etkinleştirme bağlantısını kullanın."));
         window.queueMicrotask(() => { void supabase.auth.signOut(); });
       } else {
         setSession(nextSession);
+        setGoogleConsentStatus(isGoogleAuthSession(nextSession) ? "checking" : "not-required");
         if (nextSession) setAuthNotice("");
       }
       setAuthReady(true);
@@ -1169,44 +1292,30 @@ function App() {
   }, [session, loginRoute]);
 
   useEffect(() => {
-    if (!session || !supabase || session.user.app_metadata?.provider !== "google" || googleConsentAttempted.current) return;
-    let acceptedAt;
-    try {
-      const savedAt = Number(window.sessionStorage.getItem("bilgi-google-consent"));
-      if (!savedAt || Date.now() - savedAt > 15 * 60 * 1000) {
-        window.sessionStorage.removeItem("bilgi-google-consent");
+    if (!session || !supabase || !isGoogleAuthSession(session) || googleConsentStatus !== "checking") return undefined;
+    let cancelled = false;
+    async function checkGoogleConsent() {
+      setGoogleConsentError("");
+      const { data, error: consentError } = await supabase
+        .from("consent_records")
+        .select("user_id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (consentError) {
+        setGoogleConsentError(consentError.message);
+        setGoogleConsentStatus("error");
         return;
       }
-      acceptedAt = new Date(savedAt).toISOString();
-    } catch (storageError) {
-      setError(storageError.message || t("Yasal onayınız kaydedilemedi."));
-      return;
+      setGoogleConsentStatus(data ? "done" : "required");
     }
-    googleConsentAttempted.current = true;
-    async function persistGoogleConsent() {
-      const { error: metadataError } = await supabase.auth.updateUser({
-        data: {
-          terms_accepted: true,
-          kvkk_consent: true,
-          age_confirmed: true,
-          terms_accepted_at: acceptedAt,
-          kvkk_consent_at: acceptedAt,
-        },
-      });
-      if (metadataError) throw metadataError;
-      const { error: consentError } = await supabase.from("consent_records").upsert({
-        user_id: session.user.id,
-        terms_accepted_at: acceptedAt,
-        kvkk_consent_at: acceptedAt,
-        age_confirmed_at: acceptedAt,
-      }, { onConflict: "user_id" });
-      if (consentError) throw consentError;
-      window.sessionStorage.removeItem("bilgi-google-consent");
-    }
-    persistGoogleConsent().catch((consentError) => {
-      setError(t("Yasal onayınız kaydedilemedi: {error}", { error: consentError.message }));
+    checkGoogleConsent().catch((consentError) => {
+      if (cancelled) return;
+      setGoogleConsentError(consentError.message || t("Onay durumu kontrol edilemedi."));
+      setGoogleConsentStatus("error");
     });
-  }, [session, t]);
+    return () => { cancelled = true; };
+  }, [session, googleConsentStatus, t]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -1268,8 +1377,40 @@ function App() {
   }
 
   useEffect(() => {
-    if (protectedRoute) loadData();
-  }, [session, protectedRoute]);
+    if (protectedRoute && session && (!isGoogleAuthSession(session) || googleConsentStatus === "done")) {
+      loadData();
+    }
+  }, [session, protectedRoute, googleConsentStatus]);
+
+  async function acceptGoogleConsent() {
+    if (!supabase || !session || !isGoogleAuthSession(session)) return;
+    setGoogleConsentStatus("saving");
+    setGoogleConsentError("");
+    const acceptedAt = new Date().toISOString();
+    try {
+      const { error: consentError } = await supabase.from("consent_records").upsert({
+        user_id: session.user.id,
+        terms_accepted_at: acceptedAt,
+        kvkk_consent_at: acceptedAt,
+        age_confirmed_at: acceptedAt,
+      }, { onConflict: "user_id" });
+      if (consentError) throw consentError;
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: {
+          terms_accepted: true,
+          kvkk_consent: true,
+          age_confirmed: true,
+          terms_accepted_at: acceptedAt,
+          kvkk_consent_at: acceptedAt,
+        },
+      });
+      if (metadataError) throw metadataError;
+      setGoogleConsentStatus("done");
+    } catch (consentError) {
+      setGoogleConsentError(consentError.message || t("Yasal onayınız kaydedilemedi."));
+      setGoogleConsentStatus("required");
+    }
+  }
 
   async function completeOnboarding(accountType) {
     if (!supabase || !session) return;
@@ -1298,6 +1439,7 @@ function App() {
 
   function handleAuthenticated(nextSession) {
     setSession(nextSession);
+    setGoogleConsentStatus(isGoogleAuthSession(nextSession) ? "checking" : "not-required");
     setAuthNotice("");
     if (loginRoute) {
       window.history.replaceState({}, "", "/dashboard");
@@ -1444,6 +1586,17 @@ function App() {
     <AuthScreen onAuthenticated={handleAuthenticated} onReport={openReport} initialNotice={authNotice} />
     {reportContext && <AbuseReportModal context={reportContext} onClose={() => setReportContext(null)} />}
   </>;
+  if (isGoogleAuthSession(session) && googleConsentStatus !== "done") {
+    if (googleConsentStatus === "checking" || googleConsentStatus === "saving") {
+      return <div className="app-loading"><LoaderCircle className="spin" /></div>;
+    }
+    return <GoogleConsentModal
+      status={googleConsentStatus}
+      error={googleConsentError}
+      onRetry={() => setGoogleConsentStatus("checking")}
+      onConfirm={acceptGoogleConsent}
+    />;
+  }
 
   const user = session.user;
   const isAdmin = profile?.role === "admin" || profile?.role === "reseller";

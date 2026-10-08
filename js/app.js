@@ -250,9 +250,9 @@ function setupIbanCardMode(data) {
   if (data.iban) {
     const bName = data.bank_name || "Banka Hesabı";
     document.getElementById("bank-name").innerText = bName;
-    document.getElementById("iban-text").innerText = data.iban;
+    document.getElementById("iban-text").innerText = formatIban(data.iban);
     document.getElementById("btn-copy-iban").addEventListener("click", (e) => {
-      copyToClipboard(data.iban, e.currentTarget);
+      copyToClipboard(data.iban.replace(/\s+/g, "").toUpperCase(), e.currentTarget);
     });
   }
 
@@ -279,6 +279,10 @@ function setupIbanCardMode(data) {
   setupLink("link-alt-1", data.alt_link_1, "Bağlantı 1");
   setupLink("link-alt-2", data.alt_link_2, "Bağlantı 2");
   setupLink("link-alt-3", data.alt_link_3, "Bağlantı 3");
+}
+
+function formatIban(value) {
+  return value.replace(/\s+/g, "").toUpperCase().match(/.{1,4}/g)?.join(" ") || "";
 }
 
 function setupLink(elementId, url, defaultText) {

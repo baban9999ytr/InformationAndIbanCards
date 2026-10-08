@@ -1,9 +1,5 @@
-# Cookie Policy
+# Cookie and Browser Storage Policy draft
 
-Effective date: 4 October 2026
+The current bilingual draft is served at [Bilgi Cookie Policy](https://bilgi.openstacktool.com/en/cookie-policy). It is generated from [dashboard/public/legal.html](./dashboard/public/legal.html).
 
-The current InformationAndIbanCards front-end code does not set cookies, use local storage, or include an analytics or advertising tracker. No preference or tracking cookies are required for the card lookup and display features implemented in this repository.
-
-The card page loads Google Fonts from Google's font services. The static hosting provider, Google Fonts, and Supabase may process technical request data under their own policies; this repository does not configure those provider-side practices. Following a Google, Instagram, or other external link takes the visitor to a third-party site that may use its own cookies or similar technologies.
-
-If the application later adds cookies, analytics, advertising, or other non-essential storage, this policy and any required consent controls must be updated before that feature is enabled.
+**Publication status:** Not approved for production. Verify cookie and browser-storage behavior against production configuration and provider scripts before publication.

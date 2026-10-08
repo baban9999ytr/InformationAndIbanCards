@@ -32,14 +32,21 @@ jobs:
           cache-dependency-path: dashboard/package-lock.json
 
       - name: Install Dependencies & Build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_APP_ORIGIN: ${{ secrets.VITE_APP_ORIGIN }}
+          VITE_MAIN_SITE_URL: ${{ secrets.VITE_MAIN_SITE_URL }}
+          VITE_WORKER_URL: ${{ secrets.VITE_WORKER_URL }}
         run: |
           cd dashboard
           npm ci
           npm run build
 
-      - name: SPA Routing Fix for GitHub Pages
+      - name: SPA Routing & Custom Domain Fix
         run: |
           cp dashboard/dist/index.html dashboard/dist/404.html
+          echo "bilgi.openstacktool.com" > dashboard/dist/CNAME
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

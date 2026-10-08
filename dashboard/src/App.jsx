@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -53,12 +53,6 @@ const initialCard = {
   managed_by_admin: false,
   client_notes: "",
 };
-const legalLinks = [
-  { label: "Kullanım Koşulları", href: "/terms-of-service/" },
-  { label: "Gizlilik Politikası", href: "/privacy-policy/" },
-  { label: "KVKK Aydınlatma Metni", href: "/gdpr-kvkk/" },
-  { label: "Çerez Politikası", href: "/cookie-policy/" },
-];
 const appOrigin = (
   import.meta.env.VITE_APP_ORIGIN || "https://bilgi.openstacktool.com"
 ).replace(/\/$/, "");
@@ -67,6 +61,43 @@ const workerBase = (
 ).replace(/\/$/, "");
 const mainSiteUrl =
   import.meta.env.VITE_MAIN_SITE_URL || "https://openstacktool.com";
+const legalLinks = [
+  { label: "Kullanım Koşulları", href: `${mainSiteUrl}/terms-of-service.html` },
+  { label: "Gizlilik Politikası", href: `${mainSiteUrl}/privacy-policy.html` },
+  { label: "KVKK Aydınlatma Metni", href: `${mainSiteUrl}/kvkk-gdpr.html` },
+  { label: "Çerez Politikası", href: `${mainSiteUrl}/cookie-policy.html` },
+];
+const legalRouteTargets = {
+  "/terms-of-service": legalLinks[0].href,
+  "/privacy-policy": legalLinks[1].href,
+  "/gdpr-kvkk": legalLinks[2].href,
+  "/privacy-notice": legalLinks[2].href,
+  "/cookie-policy": legalLinks[3].href,
+};
+const reservedRoutes = new Set([
+  "c", "p", "dashboard", "create", "settings", "login", "informationpage",
+  "terms-of-service", "privacy-policy", "gdpr-kvkk", "privacy-notice", "cookie-policy",
+]);
+
+function decodeRouteSegment(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function isVerifiedAuthSession(session) {
+  const user = session?.user;
+  if (!user) return false;
+  const provider = user.app_metadata?.provider;
+  return Boolean(
+    user.email_confirmed_at ||
+    user.confirmed_at ||
+    user.phone_confirmed_at ||
+    (provider && provider !== "email"),
+  );
+}
 
 function slugify(text) {
   return text
@@ -220,7 +251,76 @@ function AbuseReportModal({ context, onClose }) {
   );
 }
 
-function AuthScreen({ onAuthenticated, onReport }) {
+function PublicLanding({ onReport }) {
+  const { t } = useTranslation();
+  return (
+    <main className="public-page">
+      <header className="public-header">
+        <a className="brand public-brand" href="/"><span className="brand-symbol">b.</span><span>bilgi</span></a>
+        <LanguageSwitcher />
+      </header>
+      <article className="public-card landing-public-card">
+        <p className="eyebrow">{t("Güvenli dijital bağlantılar.")}</p>
+        <h1>InformationAndIbanCards</h1>
+        <p className="landing-description">{t("Share account details or collect customer feedback through a simple NFC or web link.")}</p>
+        <div className="landing-actions">
+          <a className="button button-primary button-wide" href="/login">{t("Giriş Yap / Dashboard")}</a>
+          <a className="button button-secondary button-wide" href="/create">{t("NFC Kart Oluştur")}</a>
+        </div>
+      </article>
+      <Footer onReport={onReport} />
+    </main>
+  );
+}
+
+function PublicNotFound({ onReport, message }) {
+  const { t } = useTranslation();
+  return (
+    <main className="public-page">
+      <header className="public-header">
+        <a className="brand public-brand" href="/"><span className="brand-symbol">b.</span><span>bilgi</span></a>
+        <LanguageSwitcher />
+      </header>
+      <article className="public-card not-found-card">
+        <div className="empty-icon"><Link2 /></div>
+        <h1>{t("Kart bulunamadı")}</h1>
+        <p>{message || t("Bu bağlantı geçersiz veya artık erişilebilir değil.")}</p>
+        <a className="button button-primary" href="/">{t("Ana sayfaya dön")}</a>
+      </article>
+      <Footer onReport={onReport} />
+    </main>
+  );
+}
+
+function LegalRouteRedirect({ target }) {
+  const { t } = useTranslation();
+  useEffect(() => {
+    window.location.replace(target);
+  }, [target]);
+  return (
+    <main className="public-page legal-redirect">
+      <p>{t("Yasal bilgilendirme sayfasına yönlendiriliyorsunuz.")}</p>
+      <a href={target}>{t("Devam et")}</a>
+    </main>
+  );
+}
+
+function EmailVerificationNotice({ email, onResend, busy }) {
+  const { t } = useTranslation();
+  return (
+    <section className="email-verification-notice" role="status">
+      <div className="empty-icon"><FileText size={21} /></div>
+      <h2>{t("E-postanızı doğrulayın")}</h2>
+      <p>{t("Etkinleştirme bağlantısını e-posta adresinize gönderdik:")} <strong>{email}</strong></p>
+      <p>{t("Hesabınıza erişmek için e-postanızdaki bağlantıyı açın.")}</p>
+      <button className="text-button" type="button" disabled={busy} onClick={onResend}>
+        {busy ? <LoaderCircle className="spin" size={15} /> : null}{t("Doğrulama e-postasını yeniden gönder")}
+      </button>
+    </section>
+  );
+}
+
+function AuthScreen({ onAuthenticated, onReport, initialNotice = "" }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState("email");
   const [mode, setMode] = useState("login");
@@ -231,49 +331,66 @@ function AuthScreen({ onAuthenticated, onReport }) {
   const [otpSent, setOtpSent] = useState(false);
   const [fullName, setFullName] = useState("");
   const [terms, setTerms] = useState(false);
-  const [privacy, setPrivacy] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [oauthBusy, setOauthBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const validPassword = password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password);
 
   async function submitEmail(event) {
     event.preventDefault();
     setError("");
     setNotice("");
     if (!supabase) return;
-    if (mode === "register" && (!terms || !privacy)) {
-      setError(t("Devam etmek için tüm zorunlu onayları vermelisiniz."));
+    const normalizedEmail = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError(t("Geçerli bir e-posta adresi girin."));
+      return;
+    }
+    if (mode === "register" && (!terms || !validPassword || !fullName.trim())) {
+      setError(t("Kayıt için adınızı, güçlü bir şifreyi ve zorunlu onayı tamamlayın."));
       return;
     }
     setBusy(true);
     try {
       if (mode === "register") {
         const { data, error: authError } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: {
+            emailRedirectTo: `${appOrigin}/dashboard`,
             data: {
-              full_name: fullName,
+              full_name: fullName.trim(),
               signup_channel: "email",
               terms_accepted: true,
               kvkk_consent: true,
+              age_confirmed: true,
+              marketing_opt_in: marketingOptIn,
               terms_accepted_at: new Date().toISOString(),
               kvkk_consent_at: new Date().toISOString(),
             },
           },
         });
         if (authError) throw authError;
-        if (!data.session) {
-          setNotice(t("E-posta adresinize doğrulama bağlantısı gönderdik. Giriş yapmadan önce e-postanızı doğrulayın."));
-        } else {
-          onAuthenticated(data.session);
+        setVerificationEmail(normalizedEmail);
+        if (data.session) {
+          const { error: signOutError } = await supabase.auth.signOut();
+          if (signOutError) setError(signOutError.message);
         }
       } else {
         const { data, error: authError } = await supabase.auth.signInWithPassword({
-          email,
+          email: normalizedEmail,
           password,
         });
         if (authError) throw authError;
+        if (!isVerifiedAuthSession(data.session)) {
+          await supabase.auth.signOut();
+          setVerificationEmail(normalizedEmail);
+          return;
+        }
         onAuthenticated(data.session);
       }
     } catch (authError) {
@@ -283,15 +400,58 @@ function AuthScreen({ onAuthenticated, onReport }) {
     }
   }
 
+  async function continueWithGoogle() {
+    if (!supabase) return;
+    setError("");
+    setNotice("");
+    if (!terms) {
+      setError(t("Google ile devam etmek için yasal koşulları kabul edin."));
+      return;
+    }
+    try {
+      window.sessionStorage.setItem("bilgi-google-consent", String(Date.now()));
+    } catch (storageError) {
+      setError(storageError.message || t("Yasal onayınız kaydedilemedi."));
+      return;
+    }
+    setOauthBusy(true);
+    try {
+      const { error: authError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${appOrigin}/dashboard` },
+      });
+      if (authError) throw authError;
+    } catch (authError) {
+      window.sessionStorage.removeItem("bilgi-google-consent");
+      setError(authError.message || t("Google ile giriş yapılamadı."));
+      setOauthBusy(false);
+    }
+  }
+
+  async function resendVerification() {
+    if (!supabase || !verificationEmail) return;
+    setError("");
+    setResendingVerification(true);
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: "signup",
+        email: verificationEmail,
+        options: { emailRedirectTo: `${appOrigin}/dashboard` },
+      });
+      if (resendError) throw resendError;
+      setNotice(t("Doğrulama e-postasını yeniden gönderdik."));
+    } catch (resendError) {
+      setError(resendError.message || t("Doğrulama e-postası gönderilemedi."));
+    } finally {
+      setResendingVerification(false);
+    }
+  }
+
   async function requestOtp(event) {
     event.preventDefault();
     setError("");
     setNotice("");
     if (!supabase) return;
-    if (!terms || !privacy) {
-      setError(t("SMS kodu istemeden önce tüm zorunlu onayları vermelisiniz."));
-      return;
-    }
     setBusy(true);
     try {
       if (!otpSent) {
@@ -309,17 +469,6 @@ function AuthScreen({ onAuthenticated, onReport }) {
           type: "sms",
         });
         if (authError) throw authError;
-        const consentTimestamp = new Date().toISOString();
-        const { error: consentError } = await supabase.from("consent_records").upsert({
-          user_id: data.user.id,
-          terms_accepted_at: consentTimestamp,
-          kvkk_consent_at: consentTimestamp,
-          created_at: consentTimestamp,
-        });
-        if (consentError) {
-          await supabase.auth.signOut();
-          throw consentError;
-        }
         onAuthenticated(data.session);
       }
     } catch (authError) {
@@ -359,7 +508,7 @@ function AuthScreen({ onAuthenticated, onReport }) {
         <div className="auth-side-top">
           <LanguageSwitcher />
           <span>{t("Yeni misiniz?")}</span>
-          <button className="text-button" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+          <button className="text-button" type="button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setTab("email"); setVerificationEmail(""); setError(""); setNotice(""); setTerms(false); setMarketingOptIn(false); }}>
             {mode === "login" ? t("Hesap oluştur") : t("Giriş yap")}
           </button>
         </div>
@@ -370,43 +519,47 @@ function AuthScreen({ onAuthenticated, onReport }) {
             <h2>{mode === "login" ? t("Tekrar hoş geldiniz") : t("Aramıza katılın")}</h2>
             <p>{t("Devam etmek için bilgilerinizi girin.")}</p>
           </div>
-          <div className="auth-tabs" role="tablist" aria-label="Giriş yöntemi">
-            <button className={tab === "email" ? "active" : ""} onClick={() => { setTab("email"); setTerms(false); setPrivacy(false); setOtpSent(false); }} role="tab">{t("E-posta")}</button>
-            <button className={tab === "phone" ? "active" : ""} onClick={() => { setTab("phone"); setTerms(false); setPrivacy(false); setOtpSent(false); }} role="tab">{t("Telefon ile giriş")}</button>
-          </div>
+          {mode === "login" && <div className="auth-tabs" role="tablist" aria-label="Giriş yöntemi">
+            <button className={tab === "email" ? "active" : ""} type="button" onClick={() => { setTab("email"); setTerms(false); setOtpSent(false); }} role="tab">{t("E-posta")}</button>
+            <button className={tab === "phone" ? "active" : ""} type="button" onClick={() => { setTab("phone"); setTerms(false); setOtpSent(false); }} role="tab">{t("Telefon ile giriş")}</button>
+          </div>}
           {!supabaseConfigured && (
             <div className="inline-warning">{t("Supabase ayarları bulunamadı. Uygulamayı başlatmak için ortam değişkenlerini yapılandırın.")}</div>
           )}
           {error && <div className="inline-error" role="alert">{error}</div>}
           {notice && <div className="inline-success" role="status">{notice}</div>}
-          {tab === "email" ? (
+          {verificationEmail ? (
+            <EmailVerificationNotice email={verificationEmail} onResend={resendVerification} busy={resendingVerification} />
+          ) : tab === "email" ? (
             <form className="stack-form" onSubmit={submitEmail}>
               {mode === "register" && (
                 <label>{t("Ad soyad")}<input autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} required placeholder={t("Adınız Soyadınız")} /></label>
               )}
-              <label>{t("E-posta adresi")}<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="name@business.com" /></label>
-              <label>{t("Şifre")}<input type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required placeholder={t("En az 8 karakter")} /></label>
+              <label>{t("E-posta adresi")}<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} onBlur={(event) => setEmail(event.target.value.trim())} required placeholder="name@business.com" /></label>
+              <label>{t("Şifre")}<input type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required placeholder={t(mode === "login" ? "Şifreniz" : "En az 8 karakter, harf ve rakam")} /></label>
+              {mode === "register" && <p className="helper-copy">{t("Şifreniz en az 8 karakter olmalı ve en az bir harf ile bir rakam içermelidir.")}</p>}
               {mode === "register" && (
                 <div className="consent-fields">
-                  <label className="check-row"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} /><span><a href="/terms-of-service/" target="_blank" rel="noreferrer">{t("Kullanım Koşulları")}</a> {t("ve")} <a href="/privacy-policy/" target="_blank" rel="noreferrer">{t("Gizlilik Politikası")}</a> {t("metnini okudum ve kabul ediyorum.")} <b>*</b></span></label>
-                  <label className="check-row"><input type="checkbox" checked={privacy} onChange={(event) => setPrivacy(event.target.checked)} /><span><a href="/gdpr-kvkk/" target="_blank" rel="noreferrer">{t("KVKK Aydınlatma Metni")}</a> {t("kapsamında kişisel verilerimin işlenmesine açık rıza veriyorum.")} <b>*</b></span></label>
+                  <label className="check-row"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} /><span>{t("Şunları kabul ediyorum:")} <a href={legalLinks[0].href} target="_blank" rel="noreferrer">{t("Kullanım Koşulları")}</a> {t("ve")} <a href={legalLinks[1].href} target="_blank" rel="noreferrer">{t("Gizlilik Politikası")}</a>. {t("En az 18 yaşında olduğumu veya ülkemdeki yasal asgari yaş şartını karşıladığımı onaylıyorum.")} <b>*</b></span></label>
+                  <label className="check-row"><input type="checkbox" checked={marketingOptIn} onChange={(event) => setMarketingOptIn(event.target.checked)} /><span>{t("Ürün güncellemelerini, ipuçlarını ve tanıtım haberlerini e-posta ile almak istiyorum.")}</span></label>
                 </div>
               )}
-              <button className="button button-primary button-wide" disabled={busy || !supabaseConfigured || (mode === "register" && (!terms || !privacy))}>
+              {mode === "login" && <label className="check-row oauth-consent-row"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} /><span>{t("Şunları kabul ediyorum:")} <a href={legalLinks[0].href} target="_blank" rel="noreferrer">{t("Kullanım Koşulları")}</a> {t("ve")} <a href={legalLinks[1].href} target="_blank" rel="noreferrer">{t("Gizlilik Politikası")}</a>. {t("En az 18 yaşında olduğumu veya ülkemdeki yasal asgari yaş şartını karşıladığımı onaylıyorum.")} <b>*</b></span></label>}
+              <button className="button button-primary button-wide" disabled={busy || !supabaseConfigured || (mode === "register" && (!terms || !validPassword || !fullName.trim()))}>
                 {busy ? <LoaderCircle className="spin" size={17} /> : null}
                 {mode === "login" ? t("Giriş yap") : t("Hesabımı oluştur")}
+              </button>
+              <button className="button google-auth-button button-wide" type="button" disabled={oauthBusy || !supabaseConfigured || (mode === "login" && !terms) || (mode === "register" && !terms)}>
+                {oauthBusy ? <LoaderCircle className="spin" size={17} /> : <Globe2 size={17} />}
+                {t("Google ile devam et")}
               </button>
             </form>
           ) : (
             <form className="stack-form" onSubmit={requestOtp}>
               <label>{t("Telefon numarası")}<input type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(normalizePhone(event.target.value))} required placeholder="905551234567" /></label>
               {otpSent && <label>{t("SMS doğrulama kodu")}<input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value)} required placeholder={t("6 haneli kod")} /></label>}
-              <div className="consent-fields">
-                <label className="check-row"><input type="checkbox" checked={terms} onChange={(event) => setTerms(event.target.checked)} /><span><a href="/terms-of-service/" target="_blank" rel="noreferrer">{t("Kullanım Koşulları")}</a> {t("ve")} <a href="/privacy-policy/" target="_blank" rel="noreferrer">{t("Gizlilik Politikası")}</a> {t("metnini okudum ve kabul ediyorum.")} <b>*</b></span></label>
-                <label className="check-row"><input type="checkbox" checked={privacy} onChange={(event) => setPrivacy(event.target.checked)} /><span><a href="/gdpr-kvkk/" target="_blank" rel="noreferrer">{t("KVKK Aydınlatma Metni")}</a> {t("kapsamında kişisel verilerimin işlenmesine onay veriyorum.")} <b>*</b></span></label>
-              </div>
               <p className="helper-copy">{t("SMS ile giriş için numaranızı ülke koduyla birlikte yazın.")}</p>
-              <button className="button button-primary button-wide" disabled={busy || !supabaseConfigured || !terms || !privacy}>
+              <button className="button button-primary button-wide" disabled={busy || !supabaseConfigured}>
                 {busy ? <LoaderCircle className="spin" size={17} /> : null}
                 {otpSent ? t("Kodu doğrula") : t("SMS kodu gönder")}
               </button>
@@ -414,11 +567,12 @@ function AuthScreen({ onAuthenticated, onReport }) {
           )}
           <p className="auth-switch">
             {mode === "login" ? t("Henüz hesabınız yok mu?") : t("Zaten hesabınız var mı?")}
-            <button className="text-button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); setNotice(""); setTerms(false); setPrivacy(false); }}>
+            <button className="text-button" type="button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setTab("email"); setError(""); setNotice(""); setTerms(false); setMarketingOptIn(false); setVerificationEmail(""); }}>
               {mode === "login" ? t("Kayıt olun") : t("Giriş yapın")}
             </button>
           </p>
-          <p className="auth-terms">{t("Devam ederek yasal metinlerimizi kabul etmiş olursunuz. Kayıt sırasında zorunlu onaylar ayrıca alınır.")}</p>
+          {initialNotice && !notice && <div className="inline-warning">{initialNotice}</div>}
+          {mode === "register" && <p className="auth-terms">{t("Kayıt olmak için e-posta adresinizi doğrulamanız gerekir.")}</p>}
         </div>
         <Footer onReport={onReport} />
       </section>
@@ -502,6 +656,10 @@ function PublicCard({ token, onReport }) {
       return;
     }
     setPendingExternal(destination);
+  }
+
+  if (!loading && error) {
+    return <PublicNotFound onReport={onReport} message={t(error)} />;
   }
 
   return (
@@ -875,17 +1033,73 @@ function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = f
   );
 }
 
+function OnboardingModal({ busy, error, onChoose, onSkip }) {
+  const { t } = useTranslation();
+  return (
+    <div className="modal-backdrop onboarding-backdrop">
+      <section className="modal onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+        <div className="onboarding-heading">
+          <p className="eyebrow">{t("HESABINIZI HAZIRLAYIN")}</p>
+          <h2 id="onboarding-title">{t("Bilgi NFC'yi en çok nasıl kullanacaksınız?")}</h2>
+          <p>{t("Bu, deneyiminizi kişiselleştirmemize yardımcı olur. İsterseniz daha sonra da yanıtlayabilirsiniz.")}</p>
+        </div>
+        <div className="onboarding-options">
+          <button type="button" className="onboarding-option" disabled={busy} onClick={() => onChoose("personal_freelancer")}>
+            <span className="choice-icon"><UserRound size={18} /></span>
+            <strong>{t("Kişisel / Serbest çalışan")}</strong>
+          </button>
+          <button type="button" className="onboarding-option" disabled={busy} onClick={() => onChoose("business_enterprise")}>
+            <span className="choice-icon"><Globe2 size={18} /></span>
+            <strong>{t("İşletme / Kurumsal")}</strong>
+          </button>
+        </div>
+        {error && <div className="inline-error" role="alert">{error}</div>}
+        <button type="button" className="button button-secondary onboarding-skip" disabled={busy} onClick={onSkip}>
+          {busy ? <LoaderCircle className="spin" size={16} /> : null}{t("Şimdilik geç")}
+        </button>
+      </section>
+    </div>
+  );
+}
+
 function App() {
   const { t, language } = useTranslation();
+  const pathname = window.location.pathname;
+  const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+  const publicMatch = normalizedPath.match(/^\/(c|p)\/([^/]+)$/);
+  const legacyCardRoute = normalizedPath === "/informationpage";
+  const legacyCardKey = legacyCardRoute
+    ? new URLSearchParams(window.location.search).get("id") ||
+      new URLSearchParams(window.location.search).get("token") ||
+      new URLSearchParams(window.location.search).get("slug")
+    : null;
+  const slugMatch = normalizedPath.match(/^\/([^/]+)$/);
+  const publicSlug = slugMatch && !reservedRoutes.has(decodeRouteSegment(slugMatch[1]).toLowerCase())
+    ? decodeRouteSegment(slugMatch[1])
+    : null;
+  const legalRouteTarget = legalRouteTargets[normalizedPath];
+  const loginRoute = normalizedPath === "/login";
+  const createRoute = normalizedPath === "/create";
+  const dashboardRoute = /^\/dashboard(?:\/.*)?$/.test(normalizedPath);
+  const settingsRoute = /^\/settings(?:\/.*)?$/.test(normalizedPath);
+  const protectedRoute = createRoute || dashboardRoute || settingsRoute;
+  const authRoute = protectedRoute || loginRoute;
+  const cardKey = publicMatch
+    ? decodeRouteSegment(publicMatch[2])
+    : legacyCardKey || publicSlug;
   const [session, setSession] = useState(null);
-  const [authReady, setAuthReady] = useState(!supabaseConfigured);
+  const [authReady, setAuthReady] = useState(!authRoute || !supabaseConfigured);
+  const [authNotice, setAuthNotice] = useState("");
   const [cards, setCards] = useState([]);
   const [feedback, setFeedback] = useState([]);
   const [feedbackTotal, setFeedbackTotal] = useState(0);
   const [profile, setProfile] = useState(null);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
+  const [onboardingError, setOnboardingError] = useState("");
   const [clients, setClients] = useState([]);
   const [abuseReports, setAbuseReports] = useState([]);
-  const [section, setSection] = useState("overview");
+  const [section, setSection] = useState(settingsRoute ? "settings" : "overview");
   const [cardScope, setCardScope] = useState("all");
   const [feedbackCardId, setFeedbackCardId] = useState("");
   const [modalCard, setModalCard] = useState(undefined);
@@ -899,17 +1113,7 @@ function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [dark, setDark] = useState(() => localStorage.getItem("bilgi-theme") === "dark");
-  const pathname = window.location.pathname;
-  const publicMatch = pathname.match(/^\/(c|p)\/([^/]+)\/?$/);
-
-
-  const createRoute = /^\/create\/?$/.test(pathname);
-  const legacyCardRoute = /^\/informationpage\/?$/.test(pathname);
-  const legacyCardKey = legacyCardRoute
-    ? new URLSearchParams(window.location.search).get("id") ||
-      new URLSearchParams(window.location.search).get("token") ||
-      new URLSearchParams(window.location.search).get("slug")
-    : null;
+  const googleConsentAttempted = useRef(false);
   function openReport(context = {}) {
     setReportContext({
       ...context,
@@ -923,18 +1127,32 @@ function App() {
   }, [dark]);
 
   useEffect(() => {
-    if (!supabase) return undefined;
+    if (!authRoute || !supabase) return undefined;
     supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (sessionError) setError(sessionError.message);
-      setSession(data.session);
+      if (data.session && !isVerifiedAuthSession(data.session)) {
+        setSession(null);
+        setAuthNotice(t("E-posta adresinizi doğrulamanız gerekiyor. Lütfen etkinleştirme bağlantısını kullanın."));
+        void supabase.auth.signOut();
+      } else {
+        setSession(data.session);
+        if (data.session) setAuthNotice("");
+      }
       setAuthReady(true);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
+      if (nextSession && !isVerifiedAuthSession(nextSession)) {
+        setSession(null);
+        setAuthNotice(t("E-posta adresinizi doğrulamanız gerekiyor. Lütfen etkinleştirme bağlantısını kullanın."));
+        window.queueMicrotask(() => { void supabase.auth.signOut(); });
+      } else {
+        setSession(nextSession);
+        if (nextSession) setAuthNotice("");
+      }
       setAuthReady(true);
     });
     return () => listener.subscription.unsubscribe();
-  }, []);
+  }, [authRoute, t]);
 
   useEffect(() => {
     if (session && createRoute) {
@@ -942,6 +1160,53 @@ function App() {
       setModalCard(null);
     }
   }, [session, createRoute]);
+
+  useEffect(() => {
+    if (session && loginRoute) {
+      window.history.replaceState({}, "", "/dashboard");
+      setSection("overview");
+    }
+  }, [session, loginRoute]);
+
+  useEffect(() => {
+    if (!session || !supabase || session.user.app_metadata?.provider !== "google" || googleConsentAttempted.current) return;
+    let acceptedAt;
+    try {
+      const savedAt = Number(window.sessionStorage.getItem("bilgi-google-consent"));
+      if (!savedAt || Date.now() - savedAt > 15 * 60 * 1000) {
+        window.sessionStorage.removeItem("bilgi-google-consent");
+        return;
+      }
+      acceptedAt = new Date(savedAt).toISOString();
+    } catch (storageError) {
+      setError(storageError.message || t("Yasal onayınız kaydedilemedi."));
+      return;
+    }
+    googleConsentAttempted.current = true;
+    async function persistGoogleConsent() {
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: {
+          terms_accepted: true,
+          kvkk_consent: true,
+          age_confirmed: true,
+          terms_accepted_at: acceptedAt,
+          kvkk_consent_at: acceptedAt,
+        },
+      });
+      if (metadataError) throw metadataError;
+      const { error: consentError } = await supabase.from("consent_records").upsert({
+        user_id: session.user.id,
+        terms_accepted_at: acceptedAt,
+        kvkk_consent_at: acceptedAt,
+        age_confirmed_at: acceptedAt,
+      }, { onConflict: "user_id" });
+      if (consentError) throw consentError;
+      window.sessionStorage.removeItem("bilgi-google-consent");
+    }
+    persistGoogleConsent().catch((consentError) => {
+      setError(t("Yasal onayınız kaydedilemedi: {error}", { error: consentError.message }));
+    });
+  }, [session, t]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -955,10 +1220,13 @@ function App() {
     setError("");
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id,role,full_name,email,phone")
+      .select("id,role,full_name,email,phone,marketing_opt_in,account_type,onboarding_completed")
       .eq("id", session.user.id)
       .maybeSingle();
     setProfile(profileData || null);
+    if (!profileError && profileData) {
+      setOnboardingOpen(!profileData.onboarding_completed);
+    }
     const role = profileData?.role || "user";
     const isAdmin = role === "admin" || role === "reseller";
     const [cardsResult, feedbackResult, feedbackCountResult, clientsResult, reportsResult] = await Promise.all([
@@ -999,7 +1267,43 @@ function App() {
     setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, [session]);
+  useEffect(() => {
+    if (protectedRoute) loadData();
+  }, [session, protectedRoute]);
+
+  async function completeOnboarding(accountType) {
+    if (!supabase || !session) return;
+    setOnboardingBusy(true);
+    setOnboardingError("");
+    try {
+      const metadata = { onboarding_completed: true };
+      if (accountType) metadata.account_type = accountType;
+      const { error: updateError } = await supabase.auth.updateUser({ data: metadata });
+      if (updateError) throw updateError;
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id,role,full_name,email,phone,marketing_opt_in,account_type,onboarding_completed")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      if (!updatedProfile) throw new Error(t("Onboarding tercihiniz kaydedilemedi."));
+      setProfile(updatedProfile);
+      setOnboardingOpen(false);
+    } catch (onboardingSaveError) {
+      setOnboardingError(onboardingSaveError.message || t("Onboarding tercihiniz kaydedilemedi."));
+    } finally {
+      setOnboardingBusy(false);
+    }
+  }
+
+  function handleAuthenticated(nextSession) {
+    setSession(nextSession);
+    setAuthNotice("");
+    if (loginRoute) {
+      window.history.replaceState({}, "", "/dashboard");
+      setSection("overview");
+    }
+  }
 
   async function signOut() {
     const { error: signOutError } = await supabase.auth.signOut();
@@ -1122,17 +1426,22 @@ function App() {
     setError("");
   }
 
-  if (publicMatch) return <>
-    <PublicCard token={decodeURIComponent(publicMatch[2])} onReport={openReport} />
+  if (legalRouteTarget) return <LegalRouteRedirect target={legalRouteTarget} />;
+  if (normalizedPath === "/") return <>
+    <PublicLanding onReport={openReport} />
     {reportContext && <AbuseReportModal context={reportContext} onClose={() => setReportContext(null)} />}
   </>;
-  if (legacyCardKey) return <>
-    <PublicCard token={legacyCardKey} onReport={openReport} />
+  if (cardKey) return <>
+    <PublicCard token={cardKey} onReport={openReport} />
+    {reportContext && <AbuseReportModal context={reportContext} onClose={() => setReportContext(null)} />}
+  </>;
+  if (!authRoute) return <>
+    <PublicNotFound onReport={openReport} />
     {reportContext && <AbuseReportModal context={reportContext} onClose={() => setReportContext(null)} />}
   </>;
   if (!authReady) return <div className="app-loading"><LoaderCircle className="spin" /></div>;
   if (!session) return <>
-    <AuthScreen onAuthenticated={(nextSession) => setSession(nextSession)} onReport={openReport} />
+    <AuthScreen onAuthenticated={handleAuthenticated} onReport={openReport} initialNotice={authNotice} />
     {reportContext && <AbuseReportModal context={reportContext} onClose={() => setReportContext(null)} />}
   </>;
 
@@ -1268,6 +1577,12 @@ function App() {
           <div className="modal-actions"><button type="button" className="button button-secondary" disabled={deletingCard} onClick={() => setDeleteCardTarget(null)}>{t("Vazgeç")}</button><button type="button" className="button button-danger" disabled={deletingCard} onClick={deleteCard}>{deletingCard ? <LoaderCircle className="spin" size={16} /> : <Trash2 size={15} />} {t("Kartı sil")}</button></div>
         </section>
       </div>}
+      {onboardingOpen && <OnboardingModal
+        busy={onboardingBusy}
+        error={onboardingError}
+        onChoose={(accountType) => completeOnboarding(accountType)}
+        onSkip={() => completeOnboarding(null)}
+      />}
       {reportContext && <AbuseReportModal context={reportContext} onClose={() => setReportContext(null)} />}
       {toast && <div className={`toast ${toast.bad ? "toast-bad" : ""}`} role="status">{toast.bad ? <X size={17} /> : <Check size={17} />}{t(toast.message)}<button onClick={() => setToast(null)} aria-label={t("Bildirimi kapat")}><X size={15} /></button></div>}
     </div>

@@ -16,12 +16,19 @@
 
       if (legalRoutes[routePath]) {
         window.location.replace(legalRoutes[routePath]);
-      } else if (lastSegment && lastSegment !== "informationpage") {
+      } else if (pathSegments[0] === "c" && pathSegments.length === 2) {
         window.location.replace(
-          `/informationpage/index.html?slug=${lastSegment}`,
+          `/informationpage/index.html?slug=${encodeURIComponent(lastSegment)}`,
         );
       } else {
-        window.location.replace(`/informationpage/index.html`);
+        document.title = "Sayfa Bulunamadı";
+        document.body.innerHTML = `
+          <main>
+            <h1>Sayfa bulunamadı</h1>
+            <p>İstediğiniz sayfa mevcut değil.</p>
+            <a href="/">Ana sayfaya dön</a>
+          </main>
+        `;
       }
     </script>
   </head>

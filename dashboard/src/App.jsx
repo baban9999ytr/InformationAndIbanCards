@@ -901,6 +901,8 @@ function App() {
   const [dark, setDark] = useState(() => localStorage.getItem("bilgi-theme") === "dark");
   const pathname = window.location.pathname;
   const publicMatch = pathname.match(/^\/(c|p)\/([^/]+)\/?$/);
+
+
   const createRoute = /^\/create\/?$/.test(pathname);
   const legacyCardRoute = /^\/informationpage\/?$/.test(pathname);
   const legacyCardKey = legacyCardRoute

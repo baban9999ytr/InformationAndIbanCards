@@ -72,7 +72,7 @@ alter table public.consent_records add column if not exists age_confirmed_at tim
 create table if not exists public.nfc_cards (
   id uuid primary key default gen_random_uuid(),
   user_id uuid default auth.uid() references auth.users(id) on delete cascade,
-  type text not null check (type in ('google_review', 'iban_card')),
+  type text not null default 'digital_card',
   access_mode text not null check (access_mode in ('public', 'private')),
   slug text,
   access_token text,
@@ -85,10 +85,10 @@ create table if not exists public.nfc_cards (
   iban text,
   bank_name text,
   extra_links jsonb not null default '[]'::jsonb check (jsonb_typeof(extra_links) = 'array' and jsonb_array_length(extra_links) <= 3),
-  nfc_active boolean not null default true,
+  nfc_active boolean not null default false,
   client_notes text,
   is_active boolean not null default true,
-  status text not null default 'active' check (status in ('active', 'pending_approval', 'rejected', 'suspended', 'deleted')),
+  status text not null default 'active' check (status in ('draft', 'active', 'pending_approval', 'rejected', 'suspended', 'deleted')),
   blocks jsonb not null default '[]'::jsonb check (jsonb_typeof(blocks) = 'array'),
   rejection_reason text,
   managed_by_admin boolean not null default false,
@@ -106,6 +106,9 @@ alter table public.nfc_cards add column if not exists status text not null defau
 alter table public.nfc_cards add column if not exists managed_by_admin boolean not null default false;
 alter table public.nfc_cards add column if not exists blocks jsonb not null default '[]'::jsonb;
 alter table public.nfc_cards add column if not exists rejection_reason text;
+alter table public.nfc_cards alter column type set default 'digital_card';
+alter table public.nfc_cards drop constraint if exists nfc_cards_type_check;
+alter table public.nfc_cards alter column nfc_active set default false;
 alter table public.nfc_cards alter column user_id drop not null;
 alter table public.nfc_cards drop constraint if exists nfc_cards_status_check;
 alter table public.nfc_cards
@@ -114,12 +117,7 @@ alter table public.nfc_cards
 alter table public.nfc_cards drop constraint if exists nfc_cards_blocks_array_check;
 alter table public.nfc_cards
   add constraint nfc_cards_blocks_array_check
-  check (
-    case
-      when jsonb_typeof(blocks) = 'array' then jsonb_array_length(blocks) <= 8
-      else false
-    end
-  );
+  check (jsonb_typeof(blocks) = 'array');
 alter table public.nfc_cards drop constraint if exists nfc_cards_user_id_fkey;
 alter table public.nfc_cards
   add constraint nfc_cards_user_id_fkey
@@ -216,7 +214,7 @@ create index if not exists nfc_tags_user_id_idx on public.nfc_tags (user_id);
 create index if not exists card_feedbacks_card_id_idx on public.card_feedbacks (card_id);
 create index if not exists card_feedbacks_user_id_idx on public.card_feedbacks (user_id);
 
--- 6. FUNCTIONS & TRIGGERS
+
 create or replace function public.is_admin_or_reseller()
 returns boolean
 language sql
@@ -269,6 +267,30 @@ $$;
 
 revoke all on function public.is_admin_or_super_user() from public, anon;
 grant execute on function public.is_admin_or_super_user() to authenticated;
+
+create or replace function public.enforce_nfc_active_privilege()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.nfc_active and not public.is_admin_or_super_user() then
+      new.nfc_active := false;
+    end if;
+  elsif new.nfc_active is distinct from old.nfc_active
+    and not public.is_admin_or_super_user() then
+    raise exception 'Only administrators may change NFC activation';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.enforce_nfc_active_privilege() from public;
+drop trigger if exists enforce_nfc_active_privilege on public.nfc_cards;
+create trigger enforce_nfc_active_privilege
+  before insert or update on public.nfc_cards
+  for each row execute function public.enforce_nfc_active_privilege();
 
 create or replace function public.enforce_card_approval_status()
 returns trigger
@@ -360,12 +382,13 @@ create trigger audit_card_admin_change
   after insert or update on public.nfc_cards
   for each row execute function public.audit_card_admin_change();
 
-create or replace function public.get_card_feedback(p_card_id uuid default null)
+drop function if exists public.get_card_feedback(uuid);
+create function public.get_card_feedback(p_card_id uuid default null)
 returns table (
   id uuid,
   card_id uuid,
   rating smallint,
-  customer_message text,
+  message text,
   display_name text,
   display_email text,
   is_name_hidden boolean,
@@ -379,12 +402,14 @@ set search_path = ''
 as $$
 declare
   caller uuid := auth.uid();
-  privileged boolean := public.is_admin_or_super_user();
 begin
   if caller is null or not public.is_account_active() then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
-  if not privileged and not exists (
+  if public.is_admin_or_super_user() then
+    raise exception 'Use the administrator feedback function' using errcode = '42501';
+  end if;
+  if not exists (
     select 1 from public.nfc_cards c
     where c.user_id = caller and (p_card_id is null or c.id = p_card_id)
   ) then
@@ -392,26 +417,68 @@ begin
   end if;
   return query
   select f.id, f.card_id, f.rating, f.customer_message,
-    case when privileged then coalesce(f.name, 'Anonymous user')
-      when f.is_name_hidden then 'Anonim Kullanıcı'
-      else coalesce(f.name, 'Anonim Kullanıcı') end,
-    case when privileged then coalesce(f.email, f.customer_contact)
+    case
+      when f.is_name_hidden then 'Anonim Kullanıcı'::text
+      else coalesce(nullif(f.name, ''), 'Anonim Kullanıcı')::text
+    end,
+    case
+      when coalesce(f.email, f.customer_contact) is null then null::text
       when f.is_email_hidden then
-        case when coalesce(f.email, f.customer_contact) is null then null
-          else left(split_part(coalesce(f.email, f.customer_contact), '@', 1), 1)
-            || '***@' || split_part(coalesce(f.email, f.customer_contact), '@', 2)
-        end
-      else coalesce(f.email, f.customer_contact) end,
+        left(split_part(coalesce(f.email, f.customer_contact), '@', 1), 1)
+        || '***@' || split_part(coalesce(f.email, f.customer_contact), '@', 2)
+      else coalesce(f.email, f.customer_contact)::text
+    end,
     f.is_name_hidden, f.is_email_hidden, f.created_at
   from public.card_feedbacks f
   join public.nfc_cards c on c.id = f.card_id
   where (p_card_id is null or f.card_id = p_card_id)
-    and (privileged or c.user_id = caller)
+    and c.user_id = caller
   order by f.created_at desc;
 end;
 $$;
 revoke all on function public.get_card_feedback(uuid) from public, anon;
 grant execute on function public.get_card_feedback(uuid) to authenticated;
+
+drop function if exists public.get_admin_card_feedback(uuid);
+create function public.get_admin_card_feedback(p_card_id uuid default null)
+returns table (
+  id uuid,
+  card_id uuid,
+  rating smallint,
+  message text,
+  display_name text,
+  display_email text,
+  is_name_hidden boolean,
+  is_email_hidden boolean,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null or not public.is_account_active() or not public.is_admin_or_super_user() then
+    raise exception 'Administrator access required' using errcode = '42501';
+  end if;
+  return query
+  select
+    f.id,
+    f.card_id,
+    f.rating::smallint,
+    f.customer_message::text,
+    coalesce(nullif(f.name, ''), 'Anonymous user')::text,
+    coalesce(f.email, f.customer_contact)::text,
+    f.is_name_hidden,
+    f.is_email_hidden,
+    f.created_at::timestamptz
+  from public.card_feedbacks f
+  where p_card_id is null or f.card_id = p_card_id
+  order by f.created_at desc;
+end;
+$$;
+revoke all on function public.get_admin_card_feedback(uuid) from public, anon;
+grant execute on function public.get_admin_card_feedback(uuid) to authenticated;
 
 create or replace function public.sync_auth_user_profile()
 returns trigger

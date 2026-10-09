@@ -455,7 +455,6 @@ export function LanguageProvider({ children }) {
       const saved = localStorage.getItem("bilgi-language");
       if (saved === "tr" || saved === "en") return saved;
     } catch {
-      // Browser storage may be unavailable; use the browser's language preference.
     }
     return navigator.language?.toLowerCase().startsWith("tr") ? "tr" : "en";
   });

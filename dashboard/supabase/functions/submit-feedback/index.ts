@@ -75,10 +75,9 @@ Deno.serve(async (request: Request) => {
   }
   let { data: card, error: cardError } = await admin
     .from("nfc_cards")
-    .select("id,user_id")
+    .select("id,user_id,blocks,google_review_url")
     .eq("access_mode", "public")
     .eq("slug", key)
-    .eq("type", "google_review")
     .eq("status", "active")
     .eq("is_active", true)
     .not("user_id", "is", null)
@@ -86,10 +85,9 @@ Deno.serve(async (request: Request) => {
   if (!card && !cardError) {
     ({ data: card, error: cardError } = await admin
       .from("nfc_cards")
-      .select("id,user_id")
+      .select("id,user_id,blocks,google_review_url")
       .eq("access_mode", "private")
       .eq("access_token", key)
-      .eq("type", "google_review")
       .eq("status", "active")
       .eq("is_active", true)
       .not("user_id", "is", null)
@@ -100,6 +98,13 @@ Deno.serve(async (request: Request) => {
     return new Response(JSON.stringify({ error: "Unable to verify card" }), { status: 500, headers });
   }
   if (!card) return new Response(JSON.stringify({ error: "Card not found" }), { status: 404, headers });
+  const reviewBlocks = Array.isArray(card.blocks)
+    ? card.blocks.filter((block: { type?: unknown }) => block.type === "google_review")
+    : [];
+  const hasReviewBlock = reviewBlocks.length
+    ? reviewBlocks.some((block: { visible?: unknown }) => block.visible !== false)
+    : Boolean(card.google_review_url);
+  if (!hasReviewBlock) return new Response(JSON.stringify({ error: "Feedback is not enabled for this card" }), { status: 404, headers });
   const { data: ownerProfile, error: ownerError } = await admin
     .from("profiles")
     .select("is_suspended")

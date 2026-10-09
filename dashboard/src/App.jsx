@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -32,14 +32,19 @@ import { scanExternalUrl, validateHttpsUrl } from "./security.js";
 import { signInWithGoogle } from "./auth.js";
 import { supabase, supabaseConfigured } from "./supabaseClient.js";
 import { LanguageSwitcher, useTranslation } from "./i18n.jsx";
+import { invalidateCachedQueries, queryCached } from "./queryCache.js";
+import {
+  CARD_BLOCK_TYPES,
+  createCardBlock,
+  hydrateCardFromBlocks,
+  isValidIban,
+  makeCardBlocks,
+  normalizeBlockType,
+  toLegacyCardFields,
+} from "./cardBlocks.js";
 
-const cardTypeLabel = {
-  google_review: "Google yorum kartı",
-  iban_card: "Dijital profil kartı",
-};
 const initialCard = {
   title: "",
-  type: "google_review",
   access_mode: "public",
   slug: "",
   google_review_url: "",
@@ -50,54 +55,46 @@ const initialCard = {
   iban: "",
   bank_name: "",
   extra_links: [],
-  nfc_active: true,
+  nfc_active: false,
   is_active: true,
   managed_by_admin: false,
   client_notes: "",
 };
-const cardBlockTypes = ["profile", "payment", "google_review", "contact", "social", "custom"];
 const cardBlockLabels = {
   profile: "Profil",
-  payment: "IBAN / ödeme",
+  payment_or_iban: "IBAN / ödeme",
   google_review: "Google yorum",
   contact: "İletişim",
   social: "Sosyal bağlantılar",
-  custom: "Ek bağlantılar",
+  custom_button: "Özel buton",
+  custom_links: "Ek bağlantılar",
+  text_or_note: "Metin / not",
 };
-function makeCardBlocks(type, existing = []) {
-  const relevant = cardBlockTypes.filter((blockType) => (
-    blockType === "profile" ||
-    blockType === "contact" ||
-    blockType === "social" ||
-    blockType === "custom" ||
-    (type === "iban_card" && blockType === "payment") ||
-    (type === "google_review" && blockType === "google_review")
-  ));
-  const orderedTypes = [
-    ...existing
-      .filter((block) => relevant.includes(block?.type))
-      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
-      .map((block) => block.type),
-    ...relevant,
-  ].filter((blockType, index, all) => all.indexOf(blockType) === index);
-  return orderedTypes.map((blockType, index) => {
-    const previous = existing.find((block) => block?.type === blockType);
-    return {
-      id: previous?.id || `block-${blockType}`,
-      type: blockType,
-      order: index,
-      visible: previous?.visible !== false,
-      data: previous?.data || {},
-    };
-  });
-}
+const isAdminProfile = (profile) =>
+  profile?.role === "admin" || profile?.role === "reseller" || profile?.is_super_user === true;
+const isSuperAdminProfile = (profile) =>
+  profile?.role === "admin" || profile?.is_super_user === true;
 function cardBlockVisibility(card, type) {
-  const block = card?.blocks?.find((item) => item?.type === type);
+  const block = card?.blocks?.find((item) => normalizeBlockType(item?.type) === normalizeBlockType(type));
   return !block || block.visible !== false;
 }
 function cardBlockOrder(card, type, fallback) {
-  const block = card?.blocks?.find((item) => item?.type === type);
+  const block = card?.blocks?.find((item) => normalizeBlockType(item?.type) === normalizeBlockType(type));
   return Number.isFinite(block?.order) ? block.order : fallback;
+}
+function cardBlockPreviewText(block) {
+  const data = block.data || {};
+  switch (block.type) {
+    case "profile": return [data.name, data.title, data.company].filter(Boolean).join(" · ");
+    case "google_review": return data.business_name || data.url || "";
+    case "payment_or_iban": return [data.bank_name, data.iban].filter(Boolean).join(" · ");
+    case "contact": return [data.phone, data.email, data.whatsapp].filter(Boolean).join(" · ");
+    case "social":
+    case "custom_links": return (data.links || []).map((link) => link.label).filter(Boolean).join(", ");
+    case "custom_button": return data.button_text || data.title || data.url || "";
+    case "text_or_note": return data.text || data.title || "";
+    default: return "";
+  }
 }
 const appOrigin = (
   import.meta.env.VITE_APP_ORIGIN || "https://bilgi.openstacktool.com"
@@ -696,7 +693,7 @@ function PublicCard({ token, onReport }) {
       if (!alive) return;
       if (functionError || !data?.card) setError(t("Kart bulunamadı veya artık erişilebilir değil."));
       else {
-        setCard(data.card);
+        setCard(hydrateCardFromBlocks(data.card));
         setCardId(data.card.id);
       }
       setLoading(false);
@@ -724,13 +721,33 @@ function PublicCard({ token, onReport }) {
   }
 
   const links = useMemo(() => {
-    if (!card) return { google: [], social: [], custom: [] };
+    if (!card) return { google: [], social: [], custom: [], contact: {}, payment: {}, profile: {} };
+    const blocks = card.blocks || [];
+    const blockOf = (type) => blocks.find((block) => normalizeBlockType(block.type) === type && block.visible !== false)?.data || {};
+    const google = blockOf("google_review");
+    const social = blockOf("social").links || [];
+    const customLinks = blockOf("custom_links").links || [];
+    const customButton = blockOf("custom_button");
+    const contact = blockOf("contact");
+    const channels = contact.channels || {};
     return {
-      google: card.type !== "google_review" && card.google_review_url
-        ? [{ label: "Google'da değerlendirin", url: card.google_review_url }]
+      google: google.url || card.google_review_url
+        ? [{ label: google.button_text || google.business_name || "Google'da değerlendirin", url: google.url || card.google_review_url }]
         : [],
-      social: card.instagram_url ? [{ label: "Instagram profili", url: card.instagram_url }] : [],
-      custom: (card.extra_links || []).map((item) => ({ label: item.label, url: item.url })),
+      social: social.length ? social : (card.instagram_url ? [{ label: "Instagram profili", url: card.instagram_url }] : []),
+      custom: [...customLinks, ...(card.extra_links || [])].filter((item, index, all) => all.findIndex((value) => value.url === item.url) === index),
+      customButton: customButton.url ? customButton : null,
+      note: blockOf("text_or_note"),
+      profile: blockOf("profile"),
+      payment: blockOf("payment_or_iban"),
+      contact: {
+        phone: channels.phone === false ? "" : contact.phone || "",
+        sms: channels.sms === false ? "" : contact.sms || card.sms || "",
+        whatsapp: channels.whatsapp === false ? "" : contact.whatsapp || card.whatsapp || "",
+        email: channels.email === false ? "" : contact.email || card.email || "",
+        maps_url: channels.maps_url === false ? "" : contact.maps_url || "",
+        address: channels.address === false ? "" : contact.address || "",
+      },
     };
   }, [card]);
 
@@ -766,7 +783,8 @@ function PublicCard({ token, onReport }) {
       const safeHttps = target.protocol === "https:" && Boolean(target.hostname) && !target.username && !target.password;
       const safeMailto = target.protocol === "mailto:" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target.pathname);
       const safeSms = target.protocol === "sms:" && /^\+?\d{7,15}$/.test(target.pathname);
-      if (!safeHttps && !safeMailto && !safeSms) throw new Error();
+      const safeTel = target.protocol === "tel:" && /^\+?\d{7,15}$/.test(target.pathname);
+      if (!safeHttps && !safeMailto && !safeSms && !safeTel) throw new Error();
     } catch {
       setExternalLinkError(t("Bu bağlantı güvenli değil veya desteklenmiyor."));
       return;
@@ -796,28 +814,38 @@ function PublicCard({ token, onReport }) {
         ) : (
           <>
             {cardBlockVisibility(card, "profile") && <section className="public-card-block" style={{ order: blockOrder("profile", 0) }}>
-              <div className="public-avatar">{(card.title || "B").slice(0, 1).toLocaleUpperCase("tr")}</div>
-              <p className="eyebrow">{cardTypeLabel[card.type] ? t(cardTypeLabel[card.type]) : t("DİJİTAL KART")}</p>
+              <div className="public-avatar">{card.blocks?.find((block) => block.type === "profile")?.data?.avatar_url ? <img src={card.blocks.find((block) => block.type === "profile").data.avatar_url} alt="" /> : (card.title || "B").slice(0, 1).toLocaleUpperCase("tr")}</div>
+              <p className="eyebrow">{links.profile.title || t("DİJİTAL KART")}</p>
               <h1 className="public-name-heading">
                 <button type="button" className="copyable-name" aria-label={`${t("Adı kopyala")}: ${card.title}`} onClick={() => copyCardValue(card.title, "Ad kopyalandı.")}>
                   <span>{card.title}</span><Copy size={16} aria-hidden="true" />
                 </button>
               </h1>
+              {links.profile.company && <p className="public-subtitle">{links.profile.company}</p>}
+              {links.profile.bio && <p className="public-profile-bio">{links.profile.bio}</p>}
             </section>}
-            {cardBlockVisibility(card, "payment") && (card.bank_name || card.iban) && <section className="public-card-block" style={{ order: blockOrder("payment", 1) }}>
-              {card.bank_name && <p className="public-subtitle">{card.bank_name}</p>}
-              {card.iban && sanitizeIban(card.iban) && (
+            {cardBlockVisibility(card, "payment") && (links.payment.bank_name || card.bank_name || links.payment.iban || card.iban) && <section className="public-card-block" style={{ order: blockOrder("payment", 1) }}>
+              {(links.payment.recipient_name || links.payment.bank_name || card.bank_name) && <p className="public-subtitle">{links.payment.recipient_name || links.payment.bank_name || card.bank_name}</p>}
+              {(links.payment.iban || card.iban) && sanitizeIban(links.payment.iban || card.iban) && (
                 <div className="iban-box">
                   <span className="iban-label">{t("IBAN")}</span>
-                  <button type="button" className="iban-copy-value" aria-label={t("IBAN'ı kopyala")} onClick={() => copyCardValue(sanitizeIban(card.iban), "IBAN kopyalandı.")}>
-                    <strong className="iban-text">{formatIban(sanitizeIban(card.iban))}</strong><Copy size={16} aria-hidden="true" />
+                  <button type="button" className="iban-copy-value" aria-label={t("IBAN'ı kopyala")} onClick={() => copyCardValue(sanitizeIban(links.payment.iban || card.iban), "IBAN kopyalandı.")}>
+                    <strong className="iban-text">{formatIban(sanitizeIban(links.payment.iban || card.iban))}</strong><Copy size={16} aria-hidden="true" />
                   </button>
                 </div>
               )}
+              {links.payment.description && <p className="public-profile-bio">{links.payment.description}</p>}
             </section>}
             {copyFeedback && <p className="copy-feedback" role="status" aria-live="polite" style={{ order: 20 }}>{copyFeedback}</p>}
-            {cardBlockVisibility(card, "contact") && card.email && <section className="public-card-block" style={{ order: blockOrder("contact", 3) }}><button className="contact-link contact-button" onClick={() => requestExternal({ label: "E-posta gönder", url: mailtoUrl(card.email) })}><UserRound size={16} /> {t("E-posta gönder")}</button></section>}
-            {card.type === "google_review" && cardBlockVisibility(card, "google_review") && (
+            {cardBlockVisibility(card, "contact") && Object.values(links.contact).some(Boolean) && <section className="public-card-block public-contact-block" style={{ order: blockOrder("contact", 3) }}>
+              {links.contact.phone && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "Telefon", url: `tel:${links.contact.phone.replace(/\D/g, "")}` })}><UserRound size={16} /> {links.contact.phone}</button>}
+              {links.contact.email && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "E-posta gönder", url: mailtoUrl(links.contact.email) })}><UserRound size={16} /> {t("E-posta gönder")}</button>}
+              {links.contact.whatsapp && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "WhatsApp", url: `https://wa.me/${links.contact.whatsapp.replace(/\D/g, "")}` })}>{t("WhatsApp")} <ExternalLink size={13} /></button>}
+              {links.contact.sms && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "SMS", url: `sms:+${links.contact.sms.replace(/\D/g, "")}` })}>{t("SMS")} <ExternalLink size={13} /></button>}
+              {links.contact.maps_url && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "Harita konumu", url: links.contact.maps_url })}>{t("Harita konumu")} <ExternalLink size={13} /></button>}
+              {links.contact.address && <p className="public-profile-bio">{links.contact.address}</p>}
+            </section>}
+            {card.blocks?.some((block) => block.type === "google_review" && block.visible !== false) && (
               <section className="rating-section public-card-block" style={{ order: blockOrder("google_review", 2) }}>
                 <h2>{t("Deneyiminiz nasıldı?")}</h2>
                 <p>{t("Geri bildiriminiz işletmenin hizmetini geliştirmesine yardımcı olur.")}</p>
@@ -888,6 +916,20 @@ function PublicCard({ token, onReport }) {
                 ))}
               </div>
             )}
+            {links.customButton && cardBlockVisibility(card, "custom_button") && (
+              <section className="public-card-block custom-button-block" style={{ order: blockOrder("custom_button", 6) }}>
+                {links.customButton.title && <h2>{links.customButton.title}</h2>}
+                {links.customButton.description && <p>{links.customButton.description}</p>}
+                <button className="public-link" onClick={() => requestExternal({ label: links.customButton.button_text || links.customButton.title || t("Bağlantıyı aç"), url: links.customButton.url })}>
+                  <span>{links.customButton.button_text || t("Bağlantıyı aç")}</span><ExternalLink size={16} />
+                </button>
+              </section>
+            )}
+            {links.note.text && cardBlockVisibility(card, "text_or_note") && (
+              <section className="public-card-block text-note-block" style={{ order: blockOrder("text_or_note", 7) }}>
+                {links.note.title && <h2>{links.note.title}</h2>}<p>{links.note.text}</p>
+              </section>
+            )}
             {pendingExternal && (
               <section className="external-confirmation" role="status" aria-live="polite">
                 <div className="external-confirmation-title"><ShieldCheck size={16} /><strong>{t("Harici bağlantı")}</strong></div>
@@ -945,6 +987,94 @@ function serializableCardDraft(form) {
   return draftForm;
 }
 
+function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
+  const { t } = useTranslation();
+  const fields = {
+    profile: [
+      ["avatar_url", "Profil fotoğrafı veya logo URL'si", "url"],
+      ["name", "İsim"],
+      ["title", "Unvan"],
+      ["bio", "Kısa biyografi"],
+      ["company", "Şirket adı"],
+    ],
+    google_review: [
+      ["business_name", "İşletme adı"],
+      ["url", "Google yorum URL'si", "url"],
+      ["rating", "Yıldız reytingi", "number"],
+      ["review_count", "Yorum sayısı", "number"],
+      ["title", "Blok başlığı"],
+      ["button_text", "Buton metni"],
+    ],
+    payment_or_iban: [
+      ["bank_name", "Banka adı"],
+      ["recipient_name", "Alıcı adı"],
+      ["iban", "IBAN"],
+      ["description", "Açıklama"],
+      ["button_text", "Buton metni"],
+    ],
+    contact: [
+      ["phone", "Telefon"],
+      ["sms", "SMS telefonu"],
+      ["whatsapp", "WhatsApp telefonu"],
+      ["email", "E-posta", "email"],
+      ["maps_url", "Google Maps konum bağlantısı", "url"],
+      ["address", "Adres"],
+    ],
+    custom_button: [
+      ["title", "Başlık"],
+      ["description", "Açıklama"],
+      ["url", "URL", "url"],
+      ["icon", "İkon"],
+      ["button_text", "Buton metni"],
+    ],
+    custom_links: [],
+    social: [],
+    text_or_note: [["title", "Başlık"], ["text", "Metin / not", "textarea"]],
+  }[block.type] || [];
+  const links = block.data.links || [];
+  const updateField = (key, value) => onChange({ ...block.data, [key]: value });
+  const updateLink = (index, key, value) => onChange({
+    ...block.data,
+    links: links.map((link, linkIndex) => linkIndex === index ? { ...link, [key]: value } : link),
+  });
+  const linkLimit = block.type === "custom_links" ? 3 : 12;
+  const linkLabel = block.type === "social" ? "Sosyal bağlantı" : "Bağlantı";
+
+  return (
+    <div className="block-edit-fields">
+      {fields.map(([key, label, type]) => type === "textarea" ? (
+        <label className="field" key={key}><span>{t(label)}</span><textarea value={block.data[key] || ""} onChange={(event) => updateField(key, event.target.value)} /></label>
+      ) : (
+        <TextField key={key} label={t(label)} type={type || "text"} value={block.data[key] || ""} onChange={(event) => updateField(key, event.target.value)} />
+      ))}
+      {(block.type === "social" || block.type === "custom_links") && (
+        <div className="block-link-editor">
+          <div className="section-heading-row"><strong>{t(linkLabel)}</strong><button type="button" className="text-button" disabled={links.length >= linkLimit} onClick={() => onAddLink()}><Plus size={14} />{t("Bağlantı ekle")}</button></div>
+          {links.map((link, index) => (
+            <div className="block-link-row" key={link.id || index}>
+              <TextField label={t("Başlık")} value={link.label} onChange={(event) => updateLink(index, "label", event.target.value)} />
+              <TextField label={t("URL")} type="url" value={link.url} onChange={(event) => updateLink(index, "url", event.target.value)} />
+              <TextField label={t("Açıklama")} value={link.description} onChange={(event) => updateLink(index, "description", event.target.value)} />
+              <TextField label={t("İkon")} value={link.icon} onChange={(event) => updateLink(index, "icon", event.target.value)} />
+              <IconButton label={t("Bağlantıyı kaldır")} className="danger-icon" onClick={() => onRemoveLink(index)}><Trash2 size={15} /></IconButton>
+            </div>
+          ))}
+        </div>
+      )}
+      {block.type === "contact" && (
+        <div className="block-contact-toggles">
+          {["phone", "sms", "whatsapp", "email", "maps_url", "address"].map((key) => (
+            <label className="check-row" key={key}>
+              <input type="checkbox" checked={block.data.channels?.[key] !== false} onChange={(event) => updateField("channels", { ...block.data.channels, [key]: event.target.checked })} />
+              <span>{t(`Kanal: ${key}`)}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, user, clients, startManaged = false }) {
   const { t } = useTranslation();
   const [savedDraft] = useState(() => readCardDraft(user.id, card?.id));
@@ -959,9 +1089,10 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
     return savedDraft ? { ...initial, ...savedDraft.form, extra_links: Array.isArray(savedDraft.form.extra_links) ? savedDraft.form.extra_links : initial.extra_links } : initial;
   });
   const [blocks, setBlocks] = useState(() => makeCardBlocks(
-    savedDraft?.form?.type || card?.type || initialCard.type,
     savedDraft?.blocks?.length ? savedDraft.blocks : card?.blocks || [],
+    card || {},
   ));
+  const [draggedBlockId, setDraggedBlockId] = useState(null);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(() => savedDraft?.slugManuallyEdited ?? Boolean(card?.slug));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -989,10 +1120,6 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
     const timer = window.setTimeout(persistDraft, 400);
     return () => window.clearTimeout(timer);
   }, [blocks, busy, card?.id, form, isDirty, slugManuallyEdited, user.id]);
-
-  useEffect(() => {
-    setBlocks((current) => makeCardBlocks(form.type, current));
-  }, [form.type]);
 
   useEffect(() => {
     if (!isDirty) return undefined;
@@ -1031,17 +1158,58 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
     });
   }
 
-  function setBlockVisible(type, visible) {
+  function updateBlock(id, data) {
     setIsDirty(true);
-    setBlocks((current) => current.map((block) => block.type === type ? { ...block, visible } : block));
+    setBlocks((current) => current.map((block) => block.id === id ? { ...block, data } : block));
+    const profile = blocks.find((block) => block.id === id && block.type === "profile");
+    if (profile && data.name !== undefined) update("title", data.name);
   }
 
-  function updateExtra(index, key, value) {
+  function addBlock(type) {
     setIsDirty(true);
-    setForm((previous) => ({
-      ...previous,
-      extra_links: previous.extra_links.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item),
-    }));
+    setBlocks((current) => [...current, createCardBlock(type, current.length)]);
+  }
+
+  function duplicateBlock(block) {
+    setIsDirty(true);
+    setBlocks((current) => {
+      const index = current.findIndex((item) => item.id === block.id);
+      const copy = createCardBlock(block.type, index + 1, structuredClone(block.data || {}));
+      const ordered = [...current];
+      ordered.splice(index + 1, 0, copy);
+      return ordered.map((item, order) => ({ ...item, order }));
+    });
+  }
+
+  function removeBlock(id) {
+    setIsDirty(true);
+    setBlocks((current) => current.filter((block) => block.id !== id).map((block, order) => ({ ...block, order })));
+  }
+
+  function reorderBlocks(sourceId, targetId) {
+    if (!sourceId || sourceId === targetId) return;
+    setIsDirty(true);
+    setBlocks((current) => {
+      const ordered = [...current].sort((left, right) => left.order - right.order);
+      const sourceIndex = ordered.findIndex((block) => block.id === sourceId);
+      const targetIndex = ordered.findIndex((block) => block.id === targetId);
+      if (sourceIndex < 0 || targetIndex < 0) return current;
+      const [moving] = ordered.splice(sourceIndex, 1);
+      ordered.splice(targetIndex, 0, moving);
+      return ordered.map((block, order) => ({ ...block, order }));
+    });
+  }
+
+  function setBlockVisible(id, visible) {
+    setIsDirty(true);
+    setBlocks((current) => current.map((block) => block.id === id ? { ...block, visible } : block));
+  }
+
+  function addBlockLink(block) {
+    const links = block.data.links || [];
+    const limit = block.type === "custom_links" ? 3 : 12;
+    if (links.length >= limit) return;
+    updateBlock(block.id, { ...block.data, links: [...links, { id: crypto.randomUUID(), label: "", url: "", description: "", icon: "" }] });
   }
 
   async function save(event) {
@@ -1053,10 +1221,18 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
       if (form.access_mode === "public" && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug)) {
         throw new Error(t("Herkese açık kart için geçerli bir kısa bağlantı yazın."));
       }
-      if (form.type === "google_review" && !form.google_review_url) {
-        throw new Error(t("Google yorum bağlantısı zorunludur."));
+      const normalizedBlocks = blocks
+        .map((block, order) => ({ ...block, type: normalizeBlockType(block.type), order }))
+        .map((block) => block.type === "profile"
+          ? { ...block, data: { ...block.data, name: block.data.name?.trim() || form.title.trim() } }
+          : block);
+      if (!normalizedBlocks.some((block) => block.type === "profile" || block.type === "header")) {
+        throw new Error(t("En az bir profil veya başlık bloğu ekleyin."));
       }
-      if (form.type === "iban_card" && !form.iban.trim()) throw new Error(t("IBAN alanı zorunludur."));
+      const reviewBlock = normalizedBlocks.find((block) => block.type === "google_review");
+      if (reviewBlock && !reviewBlock.data.url?.trim()) throw new Error(t("Google yorum bloğunda URL zorunludur."));
+      const paymentBlock = normalizedBlocks.find((block) => block.type === "payment_or_iban");
+      if (paymentBlock?.data.iban && !isValidIban(paymentBlock.data.iban)) throw new Error(t("IBAN biçimi geçersiz."));
       if ([form.whatsapp, form.sms].some((phone) => phone && !/^\d{7,15}$/.test(normalizePhone(phone)))) {
         throw new Error(t("Telefon numaralarını ülke koduyla birlikte, yalnızca rakam olarak girin."));
       }
@@ -1067,56 +1243,45 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
         if (result.reviewRequired) setScanNotice(t("Güvenlik servisine şu an ulaşılamadı. Kartınız incelemeye alınmak üzere kaydedilecektir."));
         return result.url;
       };
-      const fieldsToScan = [
-        "google_review_url",
-        "instagram_url",
-      ].filter((key) => (form.type === "google_review" ? key === "google_review_url" || Boolean(form[key]) : key === "instagram_url" && Boolean(form[key])));
-      const scanned = {};
-      for (const key of fieldsToScan) {
-        if (form[key]) scanned[key] = await checkUrl(form[key]);
-      }
-      const extraLinks = [];
-      for (const item of form.extra_links) {
-        if (!item.label.trim() || !item.url.trim()) throw new Error(t("Ek bağlantılarda etiket ve URL alanlarını birlikte doldurun."));
-        extraLinks.push({ label: item.label.trim(), url: await checkUrl(item.url) });
+      const scannedBlocks = [];
+      for (const block of normalizedBlocks) {
+        const data = { ...block.data };
+        if (["google_review", "custom_button"].includes(block.type) && data.url?.trim()) {
+          data.url = await checkUrl(data.url);
+        }
+        if (["social", "custom_links"].includes(block.type)) {
+          const links = [];
+          for (const item of data.links || []) {
+            if (!item.label?.trim() || !item.url?.trim()) throw new Error(t("Ek bağlantılarda etiket ve URL alanlarını birlikte doldurun."));
+            links.push({ ...item, label: item.label.trim(), url: await checkUrl(item.url) });
+          }
+          data.links = links;
+        }
+        if (block.type === "contact" && data.maps_url?.trim()) data.maps_url = await checkUrl(data.maps_url);
+        scannedBlocks.push({ ...block, data });
       }
       setScanning(false);
+      const legacyFields = toLegacyCardFields(scannedBlocks);
+      const profile = scannedBlocks.find((block) => block.type === "profile");
+      if (profile?.data.avatar_url?.trim()) profile.data.avatar_url = validateHttpsUrl(profile.data.avatar_url);
       const values = {
         title: form.title.trim(),
-        type: form.type,
+        type: "digital_card",
         access_mode: form.access_mode,
         slug: form.access_mode === "public" ? form.slug : null,
         access_token: form.access_mode === "private" ? (card?.access_token || newAccessToken()) : null,
-        google_review_url: form.type === "google_review" ? (scanned.google_review_url || null) : null,
-        whatsapp: form.type === "google_review" ? normalizePhone(form.whatsapp) || null : null,
-        sms: form.type === "google_review" ? normalizePhone(form.sms) || null : null,
-        instagram_url: scanned.instagram_url || null,
-        email: form.email.trim() || null,
-        iban: form.type === "iban_card" ? form.iban.replace(/\s/g, "").toUpperCase() : null,
-        bank_name: form.type === "iban_card" ? form.bank_name.trim() || null : null,
-        extra_links: extraLinks,
-        blocks: makeCardBlocks(form.type, blocks).map((block) => ({
-          ...block,
-          data: block.type === "profile"
-            ? { name: form.title.trim() }
-            : block.type === "payment"
-              ? { iban: form.iban.replace(/\s/g, "").toUpperCase(), bank_name: form.bank_name.trim() }
-              : block.type === "google_review"
-                ? { url: scanned.google_review_url || null }
-                : block.type === "contact"
-                  ? { email: form.email.trim() || null, whatsapp: normalizePhone(form.whatsapp) || null, sms: normalizePhone(form.sms) || null }
-                  : block.type === "social"
-                    ? { instagram_url: scanned.instagram_url || null }
-                    : { links: extraLinks },
-        })),
+        ...legacyFields,
+        blocks: scannedBlocks,
         nfc_active: form.nfc_active,
         user_id: isAdmin ? (form.user_id || user.id) : user.id,
         managed_by_admin: isAdmin && form.managed_by_admin,
         client_notes: isAdmin && form.managed_by_admin ? form.client_notes.trim() || null : null,
       };
+      const safeValues = { ...values };
+      if (!canSkipScan) delete safeValues.nfc_active;
       const query = card
-        ? supabase.from("nfc_cards").update(values).eq("id", card.id).select().single()
-        : supabase.from("nfc_cards").insert(values).select().single();
+        ? supabase.from("nfc_cards").update(safeValues).eq("id", card.id).select().single()
+        : supabase.from("nfc_cards").insert(safeValues).select().single();
       const { data, error: saveError } = await query;
       if (saveError) throw saveError;
       try {
@@ -1146,22 +1311,8 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
           {error && <div className="inline-error" role="alert">{error}</div>}
           {scanNotice && <div className="inline-warning" role="status">{scanNotice}</div>}
           <div className="form-section">
-            <h3>01 <span>{t("Kart türü")}</span></h3>
-            <div className="choice-grid">
-              {[
-                ["google_review", "Google yorum kartı", "Müşteri yorumlarını güvenli şekilde toplayın"],
-                ["iban_card", "Dijital profil kartı", "İletişim ve IBAN bilgilerinizi paylaşın"],
-              ].map(([value, label, description]) => (
-                <button type="button" className={`choice-card ${form.type === value ? "selected" : ""}`} key={value} onClick={() => update("type", value)}>
-                  <span className="choice-icon">{value === "google_review" ? <Globe2 size={18} /> : <UserRound size={18} />}</span>
-                  <strong>{t(label)}</strong><small>{t(description)}</small>
-                  {form.type === value && <Check className="choice-check" size={16} />}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="form-section">
-            <h3>02 <span>{t("Görünürlük ve bağlantı")}</span></h3>
+            <h3>01 <span>{t("Temel bilgiler")}</span></h3>
+            <TextField label={t("Kart / işletme adı")} value={form.title} onChange={(event) => update("title", event.target.value)} placeholder={t("Örn. Mavi Kahve")} required />
             <div className="segmented">
               <button type="button" className={form.access_mode === "public" ? "active" : ""} onClick={() => update("access_mode", "public")}><Globe2 size={15} /> {t("Herkese açık")}</button>
               <button type="button" className={form.access_mode === "private" ? "active" : ""} onClick={() => update("access_mode", "private")}><ShieldCheck size={15} /> {t("Gizli bağlantı")}</button>
@@ -1172,69 +1323,33 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
               <p className="field-hint">{t("Kaydedildiğinde yalnızca bağlantıya sahip kişilerin erişebileceği güçlü, rastgele bir bağlantı oluşturulur.")}</p>
             )}
           </div>
-          <div className="form-section">
-            <h3>03 <span>{t("Kart bilgileri")}</span></h3>
-            <TextField label={t("Kart / işletme adı")} value={form.title} onChange={(event) => update("title", event.target.value)} placeholder={t("Örn. Mavi Kahve")} required />
-            {form.type === "google_review" ? (
-              <div className="field-grid">
-                <TextField label={t("Google yorum bağlantısı")} type="url" value={form.google_review_url} onChange={(event) => update("google_review_url", event.target.value)} placeholder="https://g.page/r/..." required />
-                <TextField label={t("Instagram URL (isteğe bağlı)")} type="url" value={form.instagram_url} onChange={(event) => update("instagram_url", event.target.value)} placeholder="https://instagram.com/..." />
-                <TextField label={t("WhatsApp telefonu")} type="tel" value={form.whatsapp} onChange={(event) => update("whatsapp", normalizePhone(event.target.value))} placeholder="905551234567" />
-                <TextField label={t("SMS telefonu")} type="tel" value={form.sms} onChange={(event) => update("sms", normalizePhone(event.target.value))} placeholder="905551234567" />
-                <TextField label={t("Geri bildirim e-postası")} type="email" value={form.email} onChange={(event) => update("email", event.target.value)} placeholder="hello@business.com" />
-              </div>
-            ) : (
-              <div className="field-grid">
-                <TextField label={t("IBAN")} value={form.iban} onChange={(event) => update("iban", event.target.value)} placeholder={t("TR00 0000 0000 0000 0000 0000 00")} required />
-                <TextField label={t("Banka adı")} value={form.bank_name} onChange={(event) => update("bank_name", event.target.value)} placeholder={t("Banka adı")} />
-                <TextField label={t("Instagram URL (isteğe bağlı)")} type="url" value={form.instagram_url} onChange={(event) => update("instagram_url", event.target.value)} placeholder="https://instagram.com/..." />
-                <TextField label={t("E-posta")} type="email" value={form.email} onChange={(event) => update("email", event.target.value)} placeholder="hello@business.com" />
-              </div>
-            )}
-          </div>
           <div className="form-section card-builder-section">
-            <h3>04 <span>{t("Kart blokları")}</span></h3>
-            <p className="field-hint">{t("Blokların görünürlüğünü ve sırasını belirleyin. İçerikleri yukarıdaki kart alanlarından düzenleyebilirsiniz.")}</p>
-            <label className="field block-template-field">
-              <span>{t("Şablon")}</span>
-              <select value="" onChange={(event) => {
-                const order = event.target.value.split(",");
-                setIsDirty(true);
-                setBlocks((current) => {
-                  const byType = new Map(current.map((block) => [block.type, block]));
-                  return order.filter((type) => byType.has(type)).map((type, index) => ({ ...byType.get(type), order: index }));
-                });
-              }}>
-                <option value="">{t("Sıralama şablonu seçin")}</option>
-                <option value="profile,payment,contact,social,custom">{t("Dijital profil")}</option>
-                <option value="profile,google_review,contact,social,custom">{t("Google yorum")}</option>
-                <option value="profile,contact,payment,custom,social">{t("İşletme iletişim")}</option>
-              </select>
-            </label>
+            <div className="section-heading-row"><h3>02 <span>{t("Kart blokları")}</span></h3><label className="field add-block-field"><span>{t("Blok ekle")}</span><select value="" onChange={(event) => { if (event.target.value) addBlock(event.target.value); event.target.value = ""; }}><option value="">{t("Blok türü seçin")}</option>{CARD_BLOCK_TYPES.filter((type) => type !== "profile" || !blocks.some((block) => block.type === "profile")).map((type) => <option key={type} value={type}>{t(cardBlockLabels[type])}</option>)}</select></label></div>
+            <p className="field-hint">{t("Blokları ekleyip içeriklerini düzenleyin; sürükleyerek sıralayabilir veya yukarı/aşağı kontrollerini kullanabilirsiniz.")}</p>
             <div className="card-builder-layout">
               <div className="card-builder-list" aria-label={t("Kart blokları")}>
                 {[...blocks].sort((a, b) => a.order - b.order).map((block, index) => (
-                  <div className={`card-builder-item ${block.visible ? "" : "is-hidden"}`} key={block.id}>
-                    <label className="check-row">
-                      <input type="checkbox" checked={block.visible} onChange={(event) => setBlockVisible(block.type, event.target.checked)} />
-                      <span>{t(cardBlockLabels[block.type])}</span>
-                    </label>
+                  <div className={`card-builder-item ${block.visible ? "" : "is-hidden"}`} key={block.id} draggable onDragStart={() => setDraggedBlockId(block.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => { reorderBlocks(draggedBlockId, block.id); setDraggedBlockId(null); }}>
+                    <div className="block-item-heading"><strong>{t(cardBlockLabels[block.type] || block.type)}</strong><label className="check-row"><input type="checkbox" checked={block.visible} onChange={(event) => setBlockVisible(block.id, event.target.checked)} /><span>{t("Görünür")}</span></label></div>
                     <div className="block-reorder-actions">
                       <button type="button" className="text-button" disabled={index === 0} aria-label={`${t("Yukarı taşı")}: ${t(cardBlockLabels[block.type])}`} onClick={() => moveBlock(index, -1)}>{t("Yukarı")}</button>
                       <button type="button" className="text-button" disabled={index === blocks.length - 1} aria-label={`${t("Aşağı taşı")}: ${t(cardBlockLabels[block.type])}`} onClick={() => moveBlock(index, 1)}>{t("Aşağı")}</button>
+                      <button type="button" className="text-button" onClick={() => duplicateBlock(block)}>{t("Kopyala")}</button>
+                      <button type="button" className="text-button danger-text" disabled={block.type === "profile"} onClick={() => removeBlock(block.id)}>{t("Sil")}</button>
                     </div>
+                    <BlockEditor block={block} onChange={(data) => updateBlock(block.id, data)} onAddLink={() => addBlockLink(block)} onRemoveLink={(linkIndex) => updateBlock(block.id, { ...block.data, links: (block.data.links || []).filter((_, index) => index !== linkIndex) })} />
                   </div>
                 ))}
-                {blocks.length > 8 && <div className="inline-warning" role="status">{t("Bu kartta sekizden fazla blok var. Daha iyi bir mobil deneyim için bazı blokları kaldırmayı düşünün.")}</div>}
+                {blocks.length > 8 && <div className="inline-warning" role="status">{t("Kartınızda 8’ten fazla blok bulunuyor. En kritik profil, iletişim ve aksiyon bloklarını üst bölümde tutmanız önerilir.")}</div>}
               </div>
               <div className="card-builder-preview" aria-label={t("Canlı önizleme")}>
                 <div className="phone-preview">
                   <span className="phone-speaker" />
                   <strong>{form.title || t("Kart / işletme adı")}</strong>
-                  <span className="phone-height-marker">{t("İlk ekran sınırı")}</span>
+                  <span className="phone-height-marker">{t("Tipik telefon ekranı sınırı (700 px)")}</span>
                   <div className="phone-preview-blocks">
                     {[...blocks].sort((a, b) => a.order - b.order).filter((block) => block.visible).map((block) => (
-                      <span key={block.id}>{t(cardBlockLabels[block.type])}</span>
+                      <span key={block.id}><strong>{t(cardBlockLabels[block.type])}</strong><small>{cardBlockPreviewText(block)}</small></span>
                     ))}
                   </div>
                 </div>
@@ -1244,7 +1359,7 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
           </div>
           {isAdmin && (
             <div className="form-section admin-card-fields">
-              <h3><ShieldCheck size={15} /> <span>{t("Yönetici / bayi yönetimi")}</span></h3>
+              <h3><ShieldCheck size={15} /> <span>{t("03 Yönetici / bayi yönetimi")}</span></h3>
               <label className="check-row">
                 <input
                   type="checkbox"
@@ -1279,17 +1394,10 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
             </div>
           )}
           <div className="form-section">
-            <div className="section-heading-row"><h3>04 <span>{t("Ek bağlantılar")}</span></h3><button type="button" className="button button-secondary button-small" disabled={form.extra_links.length >= 3} onClick={() => update("extra_links", [...form.extra_links, { label: "", url: "" }])}><Plus size={15} /> {t("Bağlantı ekle")}</button></div>
-            <p className="field-hint">{t("HTTPS adresleri güvenlik taramasından geçirilir. En fazla 3 bağlantı ekleyebilirsiniz.")}</p>
-            {form.extra_links.map((item, index) => (
-              <div className="extra-link-row" key={index}>
-                <TextField label={t("Bağlantı etiketi")} value={item.label} onChange={(event) => updateExtra(index, "label", event.target.value)} placeholder={t("Örn. Menümüz")} />
-                <TextField label={t("HTTPS adresi")} type="url" value={item.url} onChange={(event) => updateExtra(index, "url", event.target.value)} placeholder="https://..." />
-                <IconButton label={t("Bağlantıyı kaldır")} className="danger-icon" onClick={() => update("extra_links", form.extra_links.filter((_, itemIndex) => itemIndex !== index))}><Trash2 size={17} /></IconButton>
-              </div>
-            ))}
+            <h3>04 <span>{t("NFC")}</span></h3>
+            <label className="check-row nfc-check"><input type="checkbox" checked={Boolean(form.nfc_active)} disabled={!canSkipScan} onChange={(event) => update("nfc_active", event.target.checked)} /><span>{t("NFC etiketi aktif")}</span></label>
+            {!canSkipScan && <p className="field-hint">{t("NFC durumunu yalnızca yönetici değiştirebilir.")}</p>}
           </div>
-          <label className="check-row nfc-check"><input type="checkbox" checked={form.nfc_active} onChange={(event) => update("nfc_active", event.target.checked)} /><span>{t("NFC etiketi aktif")}</span></label>
           <div className="scan-status">{scanning ? <><LoaderCircle className="spin" size={15} /> {t("Bağlantılar güvenlik kontrolünden geçiriliyor…")}</> : <><ShieldCheck size={15} /> {t("Harici bağlantılar güvenlik ve onay kurallarına tabidir.")}</>}</div>
           <div className="modal-actions"><button type="button" className="button button-secondary" onClick={requestClose}>{t("Vazgeç")}</button><button className="button button-primary" disabled={busy || !supabaseConfigured}>{busy ? <LoaderCircle className="spin" size={16} /> : null}{card ? t("Değişiklikleri kaydet") : t("Kartı oluştur")}</button></div>
         </form>
@@ -1350,7 +1458,7 @@ function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = f
       <div className={`card-type-icon ${card.type === "iban_card" ? "type-iban" : ""}`}><Smartphone size={18} /></div>
       <div className="card-main">
       <div className="card-name-row"><h3>{card.title}</h3><span className={`status-badge ${card.status === "pending_approval" ? "status-pending" : card.status === "rejected" ? "status-rejected" : card.status === "suspended" ? "status-suspended" : card.status === "deleted" ? "status-deleted" : card.access_mode === "public" ? "status-public" : "status-private"}`}><i />{card.status === "pending_approval" ? t("Onay bekliyor") : card.status === "rejected" ? t("Kart reddedildi") : card.status === "suspended" ? t("Askıya alındı") : card.status === "deleted" ? t("Arşivlendi") : card.access_mode === "public" ? t("Herkese açık") : t("Gizli")}</span></div>
-        <p>{t(cardTypeLabel[card.type] || "Dijital kart")} <span>·</span> {card.nfc_active ? t("NFC aktif") : t("NFC kapalı")}
+        <p>{t("Dijital kart")} <span>·</span> {card.nfc_active ? t("NFC aktif") : t("NFC kapalı")}
           {isAdmin && card.managed_by_admin && <> <span>·</span> {t("Yönetilen müşteri kartı")}</>}
           {!card.is_active && <> <span>·</span> <strong className="inactive-label">{t("Donduruldu")}</strong></>}
         </p>
@@ -1476,6 +1584,7 @@ function App() {
     ? decodeRouteSegment(publicMatch[2])
     : legacyCardKey || publicSlug;
   const [session, setSession] = useState(null);
+  const activeOwnerId = useRef(null);
   const [authReady, setAuthReady] = useState(!authRoute || !supabaseConfigured);
   const [authNotice, setAuthNotice] = useState("");
   const [cards, setCards] = useState([]);
@@ -1519,6 +1628,26 @@ function App() {
       reportedUrl: context.reportedUrl || window.location.href,
     });
   }
+
+  function updateCardsState(updater) {
+    invalidateCachedQueries(["cards", "list"]);
+    setCards(updater);
+  }
+
+  useEffect(() => {
+    const nextOwnerId = session?.user?.id || null;
+    if (activeOwnerId.current !== nextOwnerId) {
+      setCards([]);
+      setFeedback([]);
+      setFeedbackTotal(0);
+      setProfile(null);
+      setClients([]);
+      setAbuseReports([]);
+      setLoading(Boolean(nextOwnerId));
+      setError("");
+    }
+    activeOwnerId.current = nextOwnerId;
+  }, [session]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -1603,31 +1732,45 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  async function loadData() {
+  async function loadData({ force = false } = {}) {
     if (!supabase || !session) return;
     setLoading(true);
     setError("");
-    const { data: profileData, error: profileError } = await supabase
+    const ownerId = session.user.id;
+    const profileKey = ["profile", ownerId];
+    const cardsKey = ["cards", "list", { userId: ownerId }];
+    const clientsKey = ["clients", ownerId];
+    const reportsKey = ["reports", ownerId];
+    const cachedRequest = (key, staleTime, request) => queryCached(key, staleTime, async () => {
+      const result = await request();
+      if (result.error) console.error("Dashboard query failed", result.error);
+      return result;
+    }, { force });
+    const profileResult = await cachedRequest(profileKey, 60_000, () => supabase
       .from("profiles")
-      .select("id,role,is_super_user,full_name,email,phone,marketing_opt_in,account_type,onboarding_completed")
-      .eq("id", session.user.id)
-      .maybeSingle();
+      .select("id,role,is_super_user,is_suspended,full_name,email,phone,marketing_opt_in,account_type,onboarding_completed")
+      .eq("id", ownerId)
+      .maybeSingle());
+    const { data: profileData, error: profileError } = profileResult;
     setProfile(profileData || null);
-    if (!profileError && profileData) {
-      setOnboardingOpen(!profileData.onboarding_completed);
-    }
-    const role = profileData?.role || "user";
-    const isAdmin = role === "admin" || role === "reseller" || profileData?.is_super_user === true;
+    if (!profileError && profileData) setOnboardingOpen(!profileData.onboarding_completed);
+    const hasAdminAccess = isAdminProfile(profileData);
+    const privilegedFeedbackAccess = isSuperAdminProfile(profileData);
+    const feedbackKey = ["feedbacks", privilegedFeedbackAccess ? "admin" : "owner", { userId: ownerId }];
     const [cardsResult, feedbackResult, clientsResult, reportsResult] = await Promise.all([
-      supabase.from("nfc_cards").select("*").order("created_at", { ascending: false }),
-      supabase.rpc("get_card_feedback"),
-      isAdmin
-        ? supabase.from("profiles").select("id,full_name,email,phone").eq("role", "user").order("full_name")
+      cachedRequest(cardsKey, 60_000, () => supabase
+        .from("nfc_cards")
+        .select("id,user_id,type,access_mode,slug,access_token,title,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,extra_links,blocks,nfc_active,is_active,status,managed_by_admin,client_notes,rejection_reason,created_at,updated_at")
+        .order("created_at", { ascending: false })),
+      cachedRequest(feedbackKey, 60_000, () => supabase.rpc(privilegedFeedbackAccess ? "get_admin_card_feedback" : "get_card_feedback")),
+      hasAdminAccess
+        ? cachedRequest(clientsKey, 60_000, () => supabase.from("profiles").select("id,full_name,email,phone").eq("role", "user").order("full_name"))
         : Promise.resolve({ data: [], error: null }),
-      isAdmin
-        ? supabase.from("abuse_reports").select("id,card_id,reported_url,reporter_email,reason_category,details,status,created_at").order("created_at", { ascending: false }).limit(250)
+      hasAdminAccess
+        ? cachedRequest(reportsKey, 30_000, () => supabase.from("abuse_reports").select("id,card_id,reported_url,reporter_email,reason_category,details,status,created_at").order("created_at", { ascending: false }).limit(250))
         : Promise.resolve({ data: [], error: null }),
     ]);
+    if (activeOwnerId.current !== ownerId) return;
     if (profileError || !profileData) {
       setError(profileError
         ? `${t("Profil yüklenemedi: {error}", { error: profileError.message })}`
@@ -1642,8 +1785,12 @@ function App() {
       setFeedback([]);
       setFeedbackTotal(0);
     } else {
-      setFeedback(feedbackResult.data || []);
-      setFeedbackTotal(feedbackResult.data?.length || 0);
+      const feedbackRows = (feedbackResult.data || []).map((item) => ({
+        ...item,
+        customer_message: item.message,
+      }));
+      setFeedback(feedbackRows);
+      setFeedbackTotal(feedbackRows.length);
     }
     if (clientsResult.error) {
       setError((previous) => [previous, t("Müşteri profilleri yüklenemedi: {error}", { error: clientsResult.error.message })].filter(Boolean).join(" "));
@@ -1658,7 +1805,11 @@ function App() {
 
   useEffect(() => {
     if (protectedRoute && session && (!isGoogleAuthSession(session) || googleConsentStatus === "done")) {
-      loadData();
+      loadData().catch((loadError) => {
+        console.error("Dashboard data load failed", loadError);
+        setError(t("Dashboard verileri geçici olarak yüklenemedi."));
+        setLoading(false);
+      });
     }
   }, [session, protectedRoute, googleConsentStatus]);
 
@@ -1856,14 +2007,21 @@ function App() {
     if (!deleteCardTarget) return;
     setDeletingCard(true);
     const card = deleteCardTarget;
-    const { error: deleteError } = await supabase.from("nfc_cards").delete().eq("id", card.id);
-    if (deleteError)     setToast({ message: t("Kart silinemedi: {error}", { error: deleteError.message }), bad: true });
-    else {
+    try {
+      const { error: deleteError } = await supabase.from("nfc_cards").delete().eq("id", card.id);
+      if (deleteError) throw deleteError;
+      updateCardsState((current) => current.filter((item) => item.id !== card.id));
+      invalidateCachedQueries(["feedbacks"]);
+      setFeedback((current) => current.filter((item) => item.card_id !== card.id));
+      setFeedbackTotal((current) => Math.max(0, current - feedback.filter((item) => item.card_id === card.id).length));
       setDeleteCardTarget(null);
       setToast({ message: t("Kart silindi.") });
-      await loadData();
+    } catch (deleteError) {
+      console.error("Card deletion failed", deleteError);
+      setToast({ message: t("Kart silinemedi. Lütfen tekrar deneyin."), bad: true });
+    } finally {
+      setDeletingCard(false);
     }
-    setDeletingCard(false);
   }
 
   async function toggleCardActive(card) {
@@ -1877,7 +2035,7 @@ function App() {
       return;
     }
 
-    setCards((current) => current.map((item) => item.id === card.id ? { ...item, is_active: nextActive } : item));
+    updateCardsState((current) => current.map((item) => item.id === card.id ? { ...item, is_active: nextActive } : item));
     setToast({ message: nextActive ? t("Kart yeniden etkinleştirildi.") : t("Kart geçici olarak donduruldu.") });
   }
 
@@ -1893,7 +2051,7 @@ function App() {
       setToast({ message: approvalError.message, bad: true });
       return;
     }
-    setCards((current) => current.map((item) => item.id === data.id ? data : item));
+    updateCardsState((current) => current.map((item) => item.id === data.id ? data : item));
     setToast({ message: t("Kart onaylandı ve yayınlandı.") });
   }
 
@@ -1913,7 +2071,7 @@ function App() {
       setToast({ message: moderationError.message, bad: true });
       return;
     }
-    setCards((current) => current.map((item) => item.id === data.id ? data : item));
+    updateCardsState((current) => current.map((item) => item.id === data.id ? data : item));
     setToast({ message: t(status === "rejected" ? "Kart reddedildi." : status === "suspended" ? "Kart askıya alındı." : status === "deleted" ? "Kart arşivlendi." : "Kart yeniden etkinleştirildi.") });
   }
 
@@ -2042,7 +2200,7 @@ function App() {
   const visibleCards = cards.filter((card) => !isAdmin ||
     cardScope === "all" ||
     (cardScope === "managed" ? card.managed_by_admin : card.user_id === user.id && !card.managed_by_admin));
-  const filteredCards = visibleCards.filter((card) => `${card.title} ${t(cardTypeLabel[card.type] || "Dijital kart")}`.toLocaleLowerCase(language).includes(query.toLocaleLowerCase(language)));
+  const filteredCards = visibleCards.filter((card) => `${card.title} ${t("Dijital kart")}`.toLocaleLowerCase(language).includes(query.toLocaleLowerCase(language)));
   const heading = {
     overview: [t("Genel Bakış"), t("Dijital varlıklarınızın bugünkü özeti.")],
     cards: [t("Kartlarım"), t("Dijital kartlarınızı ve NFC bağlantılarınızı yönetin.")],
@@ -2221,7 +2379,7 @@ function App() {
         <Footer onReport={openReport} />
       </main>
       {modalCard !== undefined && <CardModal card={modalCard} isAdmin={isAdmin} canSkipScan={profile?.role === "admin" || profile?.is_super_user === true} accessToken={session?.access_token} user={user} clients={clients} startManaged={startManagedCard} onClose={() => setModalCard(undefined)} onSaved={(saved) => {
-        setCards((items) => modalCard ? items.map((item) => item.id === saved.id ? saved : item) : [saved, ...items]);
+        updateCardsState((items) => modalCard ? items.map((item) => item.id === saved.id ? saved : item) : [saved, ...items]);
         setModalCard(undefined);
         setStartManagedCard(false);
         setToast({ message: saved.status === "pending_approval" ? t("Kartınız onay için kuyruğa alındı.") : t(modalCard ? "Kart bilgileriniz güncellendi." : "Yeni kartınız oluşturuldu.") });

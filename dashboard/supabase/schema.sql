@@ -1,6 +1,8 @@
 create extension if not exists pgcrypto;
 
+-- -----------------------------------------------------------------------------
 -- 1. PROFILES TABLE
+-- -----------------------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   role text not null default 'user' check (role in ('user', 'admin', 'reseller')),
@@ -57,7 +59,9 @@ begin
 end;
 $$;
 
+-- -----------------------------------------------------------------------------
 -- 2. CONSENT RECORDS TABLE
+-- -----------------------------------------------------------------------------
 create table if not exists public.consent_records (
   user_id uuid primary key references auth.users(id) on delete cascade,
   terms_accepted_at timestamptz not null,
@@ -68,11 +72,13 @@ create table if not exists public.consent_records (
 
 alter table public.consent_records add column if not exists age_confirmed_at timestamptz;
 
+-- -----------------------------------------------------------------------------
 -- 3. NFC CARDS TABLE
+-- -----------------------------------------------------------------------------
 create table if not exists public.nfc_cards (
   id uuid primary key default gen_random_uuid(),
   user_id uuid default auth.uid() references auth.users(id) on delete cascade,
-  type text not null default 'digital_card',
+  type card_type not null default 'digital_card'::card_type,
   access_mode text not null check (access_mode in ('public', 'private')),
   slug text,
   access_token text,
@@ -100,30 +106,53 @@ create table if not exists public.nfc_cards (
   )
 );
 
+-- Safely ensure all columns exist before modifying defaults/constraints
+alter table public.nfc_cards add column if not exists type card_type default 'digital_card'::card_type;
+alter table public.nfc_cards add column if not exists access_mode text default 'public';
+alter table public.nfc_cards add column if not exists slug text;
+alter table public.nfc_cards add column if not exists access_token text;
+alter table public.nfc_cards add column if not exists title text default 'Kart';
+alter table public.nfc_cards add column if not exists google_review_url text;
+alter table public.nfc_cards add column if not exists whatsapp text;
+alter table public.nfc_cards add column if not exists sms text;
+alter table public.nfc_cards add column if not exists instagram_url text;
+alter table public.nfc_cards add column if not exists email text;
+alter table public.nfc_cards add column if not exists iban text;
+alter table public.nfc_cards add column if not exists bank_name text;
+alter table public.nfc_cards add column if not exists extra_links jsonb not null default '[]'::jsonb;
+alter table public.nfc_cards add column if not exists nfc_active boolean not null default false;
 alter table public.nfc_cards add column if not exists client_notes text;
 alter table public.nfc_cards add column if not exists is_active boolean not null default true;
 alter table public.nfc_cards add column if not exists status text not null default 'active';
 alter table public.nfc_cards add column if not exists managed_by_admin boolean not null default false;
 alter table public.nfc_cards add column if not exists blocks jsonb not null default '[]'::jsonb;
 alter table public.nfc_cards add column if not exists rejection_reason text;
-alter table public.nfc_cards alter column type set default 'digital_card';
-alter table public.nfc_cards drop constraint if exists nfc_cards_type_check;
+
+-- Alter column defaults safely
+alter table public.nfc_cards alter column type set default 'digital_card'::card_type;
 alter table public.nfc_cards alter column nfc_active set default false;
 alter table public.nfc_cards alter column user_id drop not null;
+
+-- Update constraints
+alter table public.nfc_cards drop constraint if exists nfc_cards_type_check;
 alter table public.nfc_cards drop constraint if exists nfc_cards_status_check;
 alter table public.nfc_cards
   add constraint nfc_cards_status_check
   check (status in ('active', 'pending_approval', 'rejected', 'suspended', 'deleted'));
+
 alter table public.nfc_cards drop constraint if exists nfc_cards_blocks_array_check;
 alter table public.nfc_cards
   add constraint nfc_cards_blocks_array_check
   check (jsonb_typeof(blocks) = 'array');
+
 alter table public.nfc_cards drop constraint if exists nfc_cards_user_id_fkey;
 alter table public.nfc_cards
   add constraint nfc_cards_user_id_fkey
   foreign key (user_id) references auth.users(id) on delete cascade;
 
+-- -----------------------------------------------------------------------------
 -- 4. DEPENDENT TABLES
+-- -----------------------------------------------------------------------------
 create table if not exists public.nfc_tags (
   id uuid primary key default gen_random_uuid(),
   card_id uuid not null references public.nfc_cards(id) on delete cascade,
@@ -180,7 +209,6 @@ create table if not exists public.url_scan_allowlist (
   created_at timestamptz not null default now()
 );
 
--- Dynamic migration block to add card_id and its index safely
 do $$
 begin
   alter table public.abuse_reports
@@ -198,7 +226,9 @@ begin
 end;
 $$;
 
+-- -----------------------------------------------------------------------------
 -- 5. INDEXES
+-- -----------------------------------------------------------------------------
 create unique index if not exists nfc_cards_public_slug_unique
   on public.nfc_cards (slug) where access_mode = 'public';
 
@@ -214,7 +244,9 @@ create index if not exists nfc_tags_user_id_idx on public.nfc_tags (user_id);
 create index if not exists card_feedbacks_card_id_idx on public.card_feedbacks (card_id);
 create index if not exists card_feedbacks_user_id_idx on public.card_feedbacks (user_id);
 
-
+-- -----------------------------------------------------------------------------
+-- 6. FUNCTIONS & TRIGGERS
+-- -----------------------------------------------------------------------------
 create or replace function public.is_admin_or_reseller()
 returns boolean
 language sql
@@ -553,7 +585,9 @@ create trigger record_required_signup_consents
   after insert on auth.users
   for each row execute function public.record_required_signup_consents();
 
+-- -----------------------------------------------------------------------------
 -- 7. ROW LEVEL SECURITY (RLS) & POLICIES
+-- -----------------------------------------------------------------------------
 alter table public.consent_records enable row level security;
 alter table public.profiles enable row level security;
 alter table public.nfc_cards enable row level security;

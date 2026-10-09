@@ -57,6 +57,7 @@ Deno.serve(async (request: Request) => {
     .eq("access_mode", "public")
     .eq("slug", key)
     .eq("type", "google_review")
+    .eq("status", "active")
     .eq("is_active", true)
     .maybeSingle();
   if (!card && !cardError) {
@@ -66,6 +67,7 @@ Deno.serve(async (request: Request) => {
       .eq("access_mode", "private")
       .eq("access_token", key)
       .eq("type", "google_review")
+      .eq("status", "active")
       .eq("is_active", true)
       .maybeSingle());
   }

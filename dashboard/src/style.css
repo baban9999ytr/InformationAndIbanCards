@@ -192,6 +192,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .status-badge i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .status-public { background: var(--green-soft); color: var(--green); }
 .status-private { background: var(--surface-soft); color: var(--muted-strong); }
+.status-pending { background: var(--danger-soft); color: var(--orange); }
+.status-rejected { background: var(--danger-soft); color: var(--danger); }
 .card-main > p { margin: 5px 0 3px; color: var(--muted); font-size: 9px; }
 .card-main > p span { margin: 0 3px; }
 .inactive-label { color: var(--danger); font-weight: 650; }

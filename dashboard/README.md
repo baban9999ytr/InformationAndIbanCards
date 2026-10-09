@@ -25,7 +25,7 @@ Build and locally preview the production bundle with `npm run build` and `npm ru
 
 ## Supabase setup
 
-1. For a new project, apply `supabase/schema.sql`. For an existing installation, apply the ordered SQL files under `supabase/migrations/`, including `20261008193000_auth_onboarding.sql` and `20261008210000_protect_profile_roles.sql`. The schema creates `profiles`, `nfc_cards`, `nfc_tags`, `card_feedbacks`, and consent tables, plus cascade deletion and required-consent enforcement for email registration. The latest migration restricts user profile updates so a user cannot grant themselves an administrator/reseller role.
+1. For a new project, apply `supabase/schema.sql`. For an existing installation, apply the ordered SQL files under `supabase/migrations/`, including `20261008193000_auth_onboarding.sql`, `20261008210000_protect_profile_roles.sql`, and `20261009120000_card_approval_and_super_users.sql`. The latest migration adds the protected `profiles.is_super_user` flag and `nfc_cards.status` approval workflow. Standard-user inserts and updates are forced into `pending_approval`; only admins/super users may publish or approve cards. The database resolver serves active-status cards only.
 2. In Supabase Auth, enable email/password and **Confirm email** (double opt-in). Set the Site URL and redirect URL allow-list to include `https://bilgi.openstacktool.com/dashboard` (and the local dashboard URL used during development). Email sign-up sends its activation redirect there, and unconfirmed email sessions are denied access to protected routes.
 3. To enable Google sign-in, configure the Google OAuth client in Google Cloud, enable the Google provider in Supabase Auth with that client ID/secret, and allow the Supabase Auth callback URL in Google. The profile trigger creates a `profiles` record for first-time OAuth users and syncs their display name.
 4. Configure an SMS provider and enable phone sign-in only if existing users need phone OTP login. OTP login intentionally does not create an account.
@@ -52,10 +52,11 @@ Deploy `cloudflare/url-scan-worker.js` as a Cloudflare Worker and route `/api/*`
 
 - `APP_ORIGINS` as a comma-separated Worker variable containing `https://bilgi.openstacktool.com,https://openstacktool.com`. For compatibility, `APP_ORIGIN` is accepted as a single-origin fallback.
 - `VIRUSTOTAL_API_KEY` as a Worker secret (never expose it to Vite or commit it).
+- Optional fallback secrets `GOOGLE_SAFE_BROWSING_API_KEY` and `PHISHTANK_API_KEY`. VirusTotal is checked first; configured fallback providers are tried after service errors, timeouts, or incomplete scans. Selected trusted domains bypass external scanning.
 - `SUPABASE_URL` and `SUPABASE_ANON_KEY` as Worker variables.
 - `SUPABASE_SERVICE_ROLE_KEY` as a Worker secret (never expose it to Vite or commit it).
 
-The scan endpoint accepts `POST /api/check-url {"url":"https://..."}` and returns `{"safe":true}` only after VirusTotal reports a completed scan with no malicious or suspicious detections. Pending, incomplete, unavailable, and flagged scans are blocked. The deletion endpoint accepts `DELETE /api/user/delete` with the current Supabase access token in `Authorization: Bearer <token>`; the Worker validates that token with Supabase before deleting the corresponding user through the Admin API. VirusTotal receives submitted URLs and may retain scan submissions under its service terms; do not submit confidential or access-token URLs to this scanner.
+The scan endpoint requires the current user's Supabase access token and validates admin/super-user scan-bypass permissions against `profiles` on the server. VirusTotal is attempted first, followed by configured Google Safe Browsing and PhishTank fallbacks when a provider fails, times out, or returns an incomplete result. Confirmed unsafe URLs are rejected. If every provider is unavailable, saving is non-blocking and standard-user cards remain in `pending_approval` until authorized approval. The deletion endpoint continues to validate the current Supabase access token before deleting the account. Submitted URLs may be shared with configured scanning providers and retained under their service terms; do not submit confidential or access-token URLs.
 
 ## Deploy the dashboard
 

@@ -20,7 +20,7 @@ export function validateHttpsUrl(value) {
   return parsed.href;
 }
 
-export async function scanExternalUrl(value) {
+export async function scanExternalUrl(value, { accessToken, skipScan = false } = {}) {
   const url = validateHttpsUrl(value);
   const workerBase = (
     import.meta.env.VITE_WORKER_URL ||
@@ -29,31 +29,40 @@ export async function scanExternalUrl(value) {
   ).replace(/\/$/, "");
   const endpoint =
     import.meta.env.VITE_URL_SCAN_ENDPOINT || `${workerBase}/api/check-url`;
-  if (!endpoint) {
-    throw new Error("URL güvenlik kontrolü yapılandırılmamış. Lütfen daha sonra tekrar deneyin.");
-  }
-
   let response;
   try {
     response = await fetch(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url }),
+      headers: {
+        "content-type": "application/json",
+        ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({ url, skipScan }),
     });
   } catch {
-    throw new Error("URL güvenlik kontrolüne şu anda ulaşılamıyor. Lütfen tekrar deneyin.");
+    return { url, reviewRequired: true };
   }
 
-  if (!response.ok) {
-    throw new Error("URL güvenlik kontrolü tamamlanamadı. Lütfen tekrar deneyin.");
+  if (response.status >= 500 || response.status === 429 || response.status === 404) {
+    return { url, reviewRequired: true };
+  }
+
+  if (response.status === 401 || response.status === 403 || response.status === 400) {
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      throw new Error("URL güvenlik kontrolü için yetkilendirme yapılamadı.");
+    }
+    throw new Error(errorData.error || "URL güvenlik kontrolü için yetkilendirme yapılamadı.");
   }
 
   let result;
   try {
     result = await response.json();
   } catch {
-    throw new Error("URL güvenlik kontrolünden geçerli bir yanıt alınamadı.");
+    return { url, reviewRequired: true };
   }
   if (result?.safe !== true) throw new Error(unsafeUrlMessage);
-  return url;
+  return { url, reviewRequired: result.reviewRequired === true };
 }

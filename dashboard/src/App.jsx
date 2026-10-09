@@ -826,21 +826,88 @@ function TextField({ label, value, onChange, type = "text", placeholder, require
   );
 }
 
-function CardModal({ card, onClose, onSaved, isAdmin, user, clients, startManaged = false }) {
+function readCardDraft(userId, cardId) {
+  try {
+    const draft = JSON.parse(localStorage.getItem("card_form_draft") || "null");
+    if (draft?.userId !== userId || draft?.cardId !== (cardId || null) || !draft.form || typeof draft.form !== "object") {
+      return null;
+    }
+    return { ...draft, form: serializableCardDraft(draft.form) };
+  } catch (error) {
+    console.error("Could not read saved card draft:", error);
+    return null;
+  }
+}
+
+function serializableCardDraft(form) {
+  const draftForm = { ...form };
+  delete draftForm.id;
+  delete draftForm.access_token;
+  delete draftForm.created_at;
+  delete draftForm.updated_at;
+  delete draftForm.status;
+  return draftForm;
+}
+
+function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, user, clients, startManaged = false }) {
   const { t } = useTranslation();
-  const [form, setForm] = useState(() => card
-    ? { ...initialCard, ...card, extra_links: card.extra_links || [] }
-    : {
+  const [savedDraft] = useState(() => readCardDraft(user.id, card?.id));
+  const [form, setForm] = useState(() => {
+    const initial = card
+      ? { ...initialCard, ...card, extra_links: card.extra_links || [] }
+      : {
       ...initialCard,
       managed_by_admin: startManaged,
       user_id: startManaged && clients.length ? clients[0].id : user.id,
-    });
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(card?.slug));
+      };
+    return savedDraft ? { ...initial, ...savedDraft.form, extra_links: Array.isArray(savedDraft.form.extra_links) ? savedDraft.form.extra_links : initial.extra_links } : initial;
+  });
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(() => savedDraft?.slugManuallyEdited ?? Boolean(card?.slug));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [scanNotice, setScanNotice] = useState("");
+  const [isDirty, setIsDirty] = useState(Boolean(savedDraft));
+
+  function persistDraft() {
+    try {
+      localStorage.setItem("card_form_draft", JSON.stringify({
+        userId: user.id,
+        cardId: card?.id || null,
+        form: serializableCardDraft(form),
+        slugManuallyEdited,
+        savedAt: new Date().toISOString(),
+      }));
+    } catch (draftError) {
+      console.error("Could not save card draft:", draftError);
+    }
+  }
+
+  useEffect(() => {
+    if (!isDirty || busy) return undefined;
+    const timer = window.setTimeout(persistDraft, 400);
+    return () => window.clearTimeout(timer);
+  }, [busy, card?.id, form, isDirty, slugManuallyEdited, user.id]);
+
+  useEffect(() => {
+    if (!isDirty) return undefined;
+    const warnBeforeUnload = (event) => {
+      persistDraft();
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [card?.id, form, isDirty, slugManuallyEdited, user.id]);
+
+  function requestClose() {
+    if (isDirty && !window.confirm(t("Kaydedilmemiş değişiklikleriniz var. Çıkmak istediğinize emin misiniz?"))) return;
+    if (isDirty) persistDraft();
+    onClose();
+  }
 
   function update(key, value) {
+    setIsDirty(true);
     setForm((previous) => ({
       ...previous,
       [key]: value,
@@ -849,6 +916,7 @@ function CardModal({ card, onClose, onSaved, isAdmin, user, clients, startManage
   }
 
   function updateExtra(index, key, value) {
+    setIsDirty(true);
     setForm((previous) => ({
       ...previous,
       extra_links: previous.extra_links.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item),
@@ -871,19 +939,25 @@ function CardModal({ card, onClose, onSaved, isAdmin, user, clients, startManage
       if ([form.whatsapp, form.sms].some((phone) => phone && !/^\d{7,15}$/.test(normalizePhone(phone)))) {
         throw new Error(t("Telefon numaralarını ülke koduyla birlikte, yalnızca rakam olarak girin."));
       }
+      setScanNotice("");
       setScanning(true);
+      const checkUrl = async (value) => {
+        const result = await scanExternalUrl(value, { accessToken, skipScan: canSkipScan });
+        if (result.reviewRequired) setScanNotice(t("Güvenlik servisine şu an ulaşılamadı. Kartınız incelemeye alınmak üzere kaydedilecektir."));
+        return result.url;
+      };
       const fieldsToScan = [
         "google_review_url",
         "instagram_url",
       ].filter((key) => (form.type === "google_review" ? key === "google_review_url" || Boolean(form[key]) : key === "instagram_url" && Boolean(form[key])));
       const scanned = {};
       for (const key of fieldsToScan) {
-        if (form[key]) scanned[key] = await scanExternalUrl(form[key]);
+        if (form[key]) scanned[key] = await checkUrl(form[key]);
       }
       const extraLinks = [];
       for (const item of form.extra_links) {
         if (!item.label.trim() || !item.url.trim()) throw new Error(t("Ek bağlantılarda etiket ve URL alanlarını birlikte doldurun."));
-        extraLinks.push({ label: item.label.trim(), url: await scanExternalUrl(item.url) });
+        extraLinks.push({ label: item.label.trim(), url: await checkUrl(item.url) });
       }
       setScanning(false);
       const values = {
@@ -910,6 +984,12 @@ function CardModal({ card, onClose, onSaved, isAdmin, user, clients, startManage
         : supabase.from("nfc_cards").insert(values).select().single();
       const { data, error: saveError } = await query;
       if (saveError) throw saveError;
+      try {
+        localStorage.removeItem("card_form_draft");
+      } catch (draftError) {
+        console.error("Could not remove saved card draft:", draftError);
+      }
+      setIsDirty(false);
       onSaved(data);
     } catch (saveError) {
       setScanning(false);
@@ -920,14 +1000,15 @@ function CardModal({ card, onClose, onSaved, isAdmin, user, clients, startManage
   }
 
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}>
       <section className="modal card-modal" role="dialog" aria-modal="true" aria-labelledby="card-modal-title">
         <header className="modal-header">
           <div><p className="eyebrow">{card ? t("KART AYARLARI") : t("YENİ KART")}</p><h2 id="card-modal-title">{card ? t("Kartı düzenle") : t("Yeni dijital kart oluştur")}</h2></div>
-          <IconButton label={t("Pencereyi kapat")} onClick={onClose}><X size={19} /></IconButton>
+          <IconButton label={t("Pencereyi kapat")} onClick={requestClose}><X size={19} /></IconButton>
         </header>
         <form className="modal-body" onSubmit={save}>
           {error && <div className="inline-error" role="alert">{error}</div>}
+          {scanNotice && <div className="inline-warning" role="status">{scanNotice}</div>}
           <div className="form-section">
             <h3>01 <span>{t("Kart türü")}</span></h3>
             <div className="choice-grid">
@@ -1023,8 +1104,8 @@ function CardModal({ card, onClose, onSaved, isAdmin, user, clients, startManage
             ))}
           </div>
           <label className="check-row nfc-check"><input type="checkbox" checked={form.nfc_active} onChange={(event) => update("nfc_active", event.target.checked)} /><span>{t("NFC etiketi aktif")}</span></label>
-          <div className="scan-status">{scanning ? <><LoaderCircle className="spin" size={15} /> {t("Bağlantılar güvenlik kontrolünden geçiriliyor…")}</> : <><ShieldCheck size={15} /> {t("Harici bağlantılar kaydetmeden önce güvenlik taramasından geçirilir.")}</>}</div>
-          <div className="modal-actions"><button type="button" className="button button-secondary" onClick={onClose}>{t("Vazgeç")}</button><button className="button button-primary" disabled={busy || !supabaseConfigured}>{busy ? <LoaderCircle className="spin" size={16} /> : null}{card ? t("Değişiklikleri kaydet") : t("Kartı oluştur")}</button></div>
+          <div className="scan-status">{scanning ? <><LoaderCircle className="spin" size={15} /> {t("Bağlantılar güvenlik kontrolünden geçiriliyor…")}</> : <><ShieldCheck size={15} /> {t("Harici bağlantılar güvenlik ve onay kurallarına tabidir.")}</>}</div>
+          <div className="modal-actions"><button type="button" className="button button-secondary" onClick={requestClose}>{t("Vazgeç")}</button><button className="button button-primary" disabled={busy || !supabaseConfigured}>{busy ? <LoaderCircle className="spin" size={16} /> : null}{card ? t("Değişiklikleri kaydet") : t("Kartı oluştur")}</button></div>
         </form>
       </section>
     </div>
@@ -1033,7 +1114,9 @@ function CardModal({ card, onClose, onSaved, isAdmin, user, clients, startManage
 
 function Sidebar({ section, onSection, onSignOut, user, mobileOpen, onClose, dark, onToggleTheme, isAdmin, pendingReports }) {
   const { t } = useTranslation();
-  const roleLabel = isAdmin ? (user.role === "admin" ? t("Yönetici") : t("Bayi")) : t("Doğrulanmış kullanıcı");
+  const roleLabel = user.is_super_user
+    ? t("Süper yönetici")
+    : isAdmin ? (user.role === "admin" ? t("Yönetici") : t("Bayi")) : t("Doğrulanmış kullanıcı");
   return (
     <>
       {mobileOpen && <button className="sidebar-scrim" aria-label="Menüyü kapat" onClick={onClose} />}
@@ -1061,7 +1144,7 @@ function Sidebar({ section, onSection, onSignOut, user, mobileOpen, onClose, dar
   );
 }
 
-function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = false, onToggleActive }) {
+function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = false, canApprove = false, onApprove, onToggleActive }) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const url = cardUrl(card);
@@ -1077,7 +1160,7 @@ function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = f
     <article className="card-row">
       <div className={`card-type-icon ${card.type === "iban_card" ? "type-iban" : ""}`}><Smartphone size={18} /></div>
       <div className="card-main">
-        <div className="card-name-row"><h3>{card.title}</h3><span className={`status-badge ${card.access_mode === "public" ? "status-public" : "status-private"}`}><i />{card.access_mode === "public" ? t("Herkese açık") : t("Gizli")}</span></div>
+      <div className="card-name-row"><h3>{card.title}</h3><span className={`status-badge ${card.status === "pending_approval" ? "status-pending" : card.status === "rejected" ? "status-rejected" : card.access_mode === "public" ? "status-public" : "status-private"}`}><i />{card.status === "pending_approval" ? t("Onay bekliyor") : card.status === "rejected" ? t("Kart reddedildi") : card.access_mode === "public" ? t("Herkese açık") : t("Gizli")}</span></div>
         <p>{t(cardTypeLabel[card.type] || "Dijital kart")} <span>·</span> {card.nfc_active ? t("NFC aktif") : t("NFC kapalı")}
           {isAdmin && card.managed_by_admin && <> <span>·</span> {t("Yönetilen müşteri kartı")}</>}
           {!card.is_active && <> <span>·</span> <strong className="inactive-label">{t("Donduruldu")}</strong></>}
@@ -1086,8 +1169,9 @@ function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = f
         <span className="card-url">{url.replace(/^https?:\/\//, "")}</span>
       </div>
       <div className="card-actions">
-        <a className="button button-quiet" href={url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> {t("Görüntüle")}</a>
-        <button className="button button-quiet copy-action" onClick={copyUrl}><Copy size={14} /> {t("Bağlantıyı kopyala")}</button>
+        {canApprove && card.status === "pending_approval" && <button className="button button-primary" onClick={() => onApprove(card)}><Check size={14} /> {t("Kartı onayla")}</button>}
+        {card.status === "active" && <><a className="button button-quiet" href={url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> {t("Görüntüle")}</a>
+        <button className="button button-quiet copy-action" onClick={copyUrl}><Copy size={14} /> {t("Bağlantıyı kopyala")}</button></>}
         <button className="button button-quiet edit-action" onClick={() => onEdit(card)}>{t("Düzenle")}</button>
         {isAdmin && <IconButton label={t(card.is_active ? "Kartı dondur" : "Kartı etkinleştir")} className={`active-toggle ${card.is_active ? "" : "is-frozen"}`} onClick={() => onToggleActive(card)}><ShieldCheck size={16} /></IconButton>}
         <div className="menu-wrap">
@@ -1321,7 +1405,7 @@ function App() {
     setError("");
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id,role,full_name,email,phone,marketing_opt_in,account_type,onboarding_completed")
+      .select("id,role,is_super_user,full_name,email,phone,marketing_opt_in,account_type,onboarding_completed")
       .eq("id", session.user.id)
       .maybeSingle();
     setProfile(profileData || null);
@@ -1329,7 +1413,7 @@ function App() {
       setOnboardingOpen(!profileData.onboarding_completed);
     }
     const role = profileData?.role || "user";
-    const isAdmin = role === "admin" || role === "reseller";
+    const isAdmin = role === "admin" || role === "reseller" || profileData?.is_super_user === true;
     const [cardsResult, feedbackResult, feedbackCountResult, clientsResult, reportsResult] = await Promise.all([
       supabase.from("nfc_cards").select("*").order("created_at", { ascending: false }),
       supabase.from("card_feedbacks").select("id,card_id,customer_message,rating,created_at,customer_contact").order("created_at", { ascending: false }).limit(1000),
@@ -1415,7 +1499,7 @@ function App() {
       if (updateError) throw updateError;
       const { data: updatedProfile, error: profileError } = await supabase
         .from("profiles")
-        .select("id,role,full_name,email,phone,marketing_opt_in,account_type,onboarding_completed")
+        .select("id,role,is_super_user,full_name,email,phone,marketing_opt_in,account_type,onboarding_completed")
         .eq("id", session.user.id)
         .maybeSingle();
       if (profileError) throw profileError;
@@ -1468,8 +1552,25 @@ function App() {
       setToast({ message: t("Kart durumu güncellenemedi: {error}", { error: updateError.message }), bad: true });
       return;
     }
+
     setCards((current) => current.map((item) => item.id === card.id ? { ...item, is_active: nextActive } : item));
     setToast({ message: nextActive ? t("Kart yeniden etkinleştirildi.") : t("Kart geçici olarak donduruldu.") });
+  }
+
+  async function approveCard(card) {
+    if (!supabase || !(profile?.role === "admin" || profile?.is_super_user)) return;
+    const { data, error: approvalError } = await supabase
+      .from("nfc_cards")
+      .update({ status: "active" })
+      .eq("id", card.id)
+      .select()
+      .single();
+    if (approvalError) {
+      setToast({ message: approvalError.message, bad: true });
+      return;
+    }
+    setCards((current) => current.map((item) => item.id === data.id ? data : item));
+    setToast({ message: t("Kart onaylandı ve yayınlandı.") });
   }
 
   async function updateReportStatus(report, status) {
@@ -1591,7 +1692,7 @@ function App() {
   }
 
   const user = session.user;
-  const isAdmin = profile?.role === "admin" || profile?.role === "reseller";
+  const isAdmin = profile?.role === "admin" || profile?.role === "reseller" || profile?.is_super_user === true;
   const pendingReports = abuseReports.filter((report) => report.status === "pending").length;
   const visibleCards = cards.filter((card) => !isAdmin ||
     cardScope === "all" ||
@@ -1607,7 +1708,7 @@ function App() {
 
   return (
     <div className="dashboard-shell">
-      <Sidebar section={section} onSection={goTo} onSignOut={signOut} user={{ ...user, role: profile?.role }} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} dark={dark} onToggleTheme={() => setDark(!dark)} isAdmin={isAdmin} pendingReports={pendingReports} />
+      <Sidebar section={section} onSection={goTo} onSignOut={signOut} user={{ ...user, role: profile?.role, is_super_user: profile?.is_super_user }} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} dark={dark} onToggleTheme={() => setDark(!dark)} isAdmin={isAdmin} pendingReports={pendingReports} />
       <main className="main-area">
         <header className="topbar">
           <button className="mobile-menu-button icon-button" aria-label={t("Menüyü aç")} onClick={() => setMobileOpen(true)}><Menu size={19} /></button>
@@ -1641,7 +1742,7 @@ function App() {
                   </section>
                   <section className="panel cards-panel">
                     <div className="panel-heading"><div><h2>{t("Son kartlarınız")}</h2><p>{t("Tüm dijital kartlarınızı tek yerden yönetin.")}</p></div><button className="text-button" onClick={() => goTo("cards")}>{t("Tümünü gör")} <ArrowUpRight size={14} /></button></div>
-                    {cards.length ? cards.slice(0, 4).map((card) => <CardRow key={card.id} card={card} onEdit={setModalCard} onDelete={setDeleteCardTarget} onViewFeedback={(selectedCard) => { setFeedbackCardId(selectedCard.id); goTo("feedback"); }} onNotify={(message, bad) => setToast({ message, bad })} isAdmin={isAdmin} onToggleActive={toggleCardActive} />) : <EmptyCards onCreate={() => { setStartManagedCard(false); setModalCard(null); }} />}
+                    {cards.length ? cards.slice(0, 4).map((card) => <CardRow key={card.id} card={card} onEdit={setModalCard} onDelete={setDeleteCardTarget} onViewFeedback={(selectedCard) => { setFeedbackCardId(selectedCard.id); goTo("feedback"); }} onNotify={(message, bad) => setToast({ message, bad })} isAdmin={isAdmin} canApprove={profile?.role === "admin" || profile?.is_super_user} onApprove={approveCard} onToggleActive={toggleCardActive} />) : <EmptyCards onCreate={() => { setStartManagedCard(false); setModalCard(null); }} />}
                   </section>
                   <section className="trust-banner"><span className="trust-icon"><ShieldCheck size={21} /></span><div><strong>{t("Paylaştığınız her bağlantı kontrol altında")}</strong><p>{t("Harici bağlantılar kartınıza eklenmeden önce güvenlik kontrolünden geçirilir.")}</p></div><span className="trust-check"><Check size={16} /></span></section>
                 </>
@@ -1659,7 +1760,7 @@ function App() {
                       <label className="search-field"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Kartlarda ara...")} /></label>
                     </div>
                   </div>
-                  {filteredCards.length ? filteredCards.map((card) => <CardRow key={card.id} card={card} onEdit={setModalCard} onDelete={setDeleteCardTarget} onViewFeedback={(selectedCard) => { setFeedbackCardId(selectedCard.id); goTo("feedback"); }} onNotify={(message, bad) => setToast({ message, bad })} isAdmin={isAdmin} onToggleActive={toggleCardActive} />) : <EmptyCards onCreate={() => { setStartManagedCard(false); setModalCard(null); }} />}
+                  {filteredCards.length ? filteredCards.map((card) => <CardRow key={card.id} card={card} onEdit={setModalCard} onDelete={setDeleteCardTarget} onViewFeedback={(selectedCard) => { setFeedbackCardId(selectedCard.id); goTo("feedback"); }} onNotify={(message, bad) => setToast({ message, bad })} isAdmin={isAdmin} canApprove={profile?.role === "admin" || profile?.is_super_user} onApprove={approveCard} onToggleActive={toggleCardActive} />) : <EmptyCards onCreate={() => { setStartManagedCard(false); setModalCard(null); }} />}
                 </section>
               )}
               {section === "feedback" && (
@@ -1698,7 +1799,7 @@ function App() {
               )}
               {section === "settings" && (
                 <div className="settings-grid">
-                  <section className="panel settings-panel"><div className="settings-title"><span className="settings-icon"><UserRound size={18} /></span><div><h2>{t("Profil bilgileri")}</h2><p>{t("Hesabınızla ilişkili bilgiler.")}</p></div></div><div className="settings-detail"><span>{t("Ad soyad")}</span><strong>{user.user_metadata?.full_name || t("Belirtilmedi")}</strong></div><div className="settings-detail"><span>{t("E-posta")}</span><strong>{user.email || t("Belirtilmedi")}</strong></div><div className="settings-detail"><span>{t("Telefon")}</span><strong>{user.phone || t("Belirtilmedi")}</strong></div><div className="settings-detail"><span>{t("Rol")}</span><strong>{isAdmin ? t(profile.role === "admin" ? "Yönetici" : "Bayi") : t("Doğrulanmış kullanıcı")}</strong></div><div className="settings-detail"><span>{t("Hesap oluşturma")}</span><strong>{new Date(user.created_at).toLocaleDateString(language === "tr" ? "tr-TR" : "en-US")}</strong></div></section>
+                  <section className="panel settings-panel"><div className="settings-title"><span className="settings-icon"><UserRound size={18} /></span><div><h2>{t("Profil bilgileri")}</h2><p>{t("Hesabınızla ilişkili bilgiler.")}</p></div></div><div className="settings-detail"><span>{t("Ad soyad")}</span><strong>{user.user_metadata?.full_name || t("Belirtilmedi")}</strong></div><div className="settings-detail"><span>{t("E-posta")}</span><strong>{user.email || t("Belirtilmedi")}</strong></div><div className="settings-detail"><span>{t("Telefon")}</span><strong>{user.phone || t("Belirtilmedi")}</strong></div><div className="settings-detail"><span>{t("Rol")}</span><strong>{profile?.is_super_user ? t("Süper yönetici") : profile?.role === "admin" ? t("Yönetici") : profile?.role === "reseller" ? t("Bayi") : t("Doğrulanmış kullanıcı")}</strong></div><div className="settings-detail"><span>{t("Hesap oluşturma")}</span><strong>{new Date(user.created_at).toLocaleDateString(language === "tr" ? "tr-TR" : "en-US")}</strong></div></section>
                   <section className="panel settings-panel"><div className="settings-title"><span className="settings-icon"><ArrowDownToLine size={18} /></span><div><h2>{t("Verileriniz")}</h2><p>{t("KVKK ve GDPR kapsamındaki veri haklarınız.")}</p></div></div><p className="settings-description">{t("Profilinizi, kartlarınızı ve geri bildirimlerinizi makine tarafından okunabilir JSON biçiminde indirin.")}</p><button className="button button-secondary" onClick={() => exportData().catch((exportError) => setToast({ message: exportError.message, bad: true }))}><ArrowDownToLine size={16} /> {t("Verilerimi dışa aktar")}</button></section>
                   <section className="panel settings-panel danger-panel"><div className="settings-title"><span className="settings-icon danger-settings-icon"><Trash2 size={18} /></span><div><h2>{t("Kullanıcı Hesabını Sil")}</h2><p>{t("Bu işlem kalıcıdır ve geri alınamaz.")}</p></div></div><p className="settings-description">{t("Hesabınızı sildiğinizde profiliniz, dijital kartlarınız, NFC bağlantılarınız ve ilişkili geri bildirim kayıtlarınız da silinir.")}</p><button className="button button-danger" onClick={deleteAccount}><Trash2 size={15} /> {t("Kullanıcı Hesabını Sil")}</button></section>
                 </div>
@@ -1708,11 +1809,11 @@ function App() {
         </div>
         <Footer onReport={openReport} />
       </main>
-      {modalCard !== undefined && <CardModal card={modalCard} isAdmin={isAdmin} user={user} clients={clients} startManaged={startManagedCard} onClose={() => setModalCard(undefined)} onSaved={(saved) => {
+      {modalCard !== undefined && <CardModal card={modalCard} isAdmin={isAdmin} canSkipScan={profile?.role === "admin" || profile?.is_super_user === true} accessToken={session?.access_token} user={user} clients={clients} startManaged={startManagedCard} onClose={() => setModalCard(undefined)} onSaved={(saved) => {
         setCards((items) => modalCard ? items.map((item) => item.id === saved.id ? saved : item) : [saved, ...items]);
         setModalCard(undefined);
         setStartManagedCard(false);
-        setToast({ message: t(modalCard ? "Kart bilgileriniz güncellendi." : "Yeni kartınız oluşturuldu.") });
+        setToast({ message: saved.status === "pending_approval" ? t("Kartınız onay için kuyruğa alındı.") : t(modalCard ? "Kart bilgileriniz güncellendi." : "Yeni kartınız oluşturuldu.") });
       }} />}
       {deleteCardTarget && <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !deletingCard) setDeleteCardTarget(null); }}>
         <section className="modal delete-modal" role="alertdialog" aria-modal="true" aria-labelledby="delete-card-title">

@@ -97,6 +97,11 @@
         },
       };
       const validDocument = Object.hasOwn(titles, requestedDocument) ? requestedDocument : "privacy";
+      const scannerDisclosure = ["privacy", "kvkk"].includes(validDocument)
+        ? `<h2>${lang === "tr" ? "URL güvenlik kontrolü" : "URL safety checks"}</h2><p>${lang === "tr"
+          ? "URL güvenlik kontrolü için gönderdiğiniz bağlantılar, yapılandırmaya bağlı olarak VirusTotal, Google Safe Browsing ve/veya PhishTank ile paylaşılabilir. Gizli, erişim anahtarı içeren veya kişisel bilgi barındıran bağlantıları taratmayın; kullanılan sağlayıcıları ve aktarım koşullarını operatör doğrulamalıdır. Kart formu taslakları, kaydetme veya tarayıcıdan çıkış öncesi kurtarma için tarayıcınızın localStorage alanında tutulabilir ve kart başarıyla kaydedildiğinde temizlenir."
+          : "URLs submitted for safety checks may be shared with VirusTotal, Google Safe Browsing, and/or PhishTank depending on configuration. Do not submit confidential, capability-token, or personally identifying URLs; the operator must verify the providers in use and their transfer terms. Card-form drafts may be stored in your browser's localStorage for recovery before saving or leaving the page and are cleared after a successful save."}</p>`
+        : "";
       const legalLinks = Object.entries(paths)
         .filter(([key]) => key !== "contact" && key !== validDocument)
         .map(([key, path]) => `<a href="${path}" target="_blank" rel="noopener noreferrer">${titles[key]}</a>`)
@@ -104,7 +109,7 @@
       const content = document.getElementById("content");
       document.documentElement.lang = lang;
       document.title = `${titles[validDocument]} — Bilgi`;
-      content.innerHTML = `<p class="meta">Bilgi · ${lang === "tr" ? "Taslak bilgilendirme" : "Draft notice"} · <a href="${otherLanguagePaths[validDocument]}">${lang === "tr" ? "English" : "Türkçe"}</a></p><h1>${titles[validDocument]}</h1>${draftNotice}${legalText[lang][validDocument]}<footer><nav aria-label="${lang === "tr" ? "Yasal bağlantılar" : "Legal links"}">${legalLinks}<a href="${paths.contact}" target="_blank" rel="noopener noreferrer">${titles.contact}</a></nav></footer>`;
+      content.innerHTML = `<p class="meta">Bilgi · ${lang === "tr" ? "Taslak bilgilendirme" : "Draft notice"} · <a href="${otherLanguagePaths[validDocument]}">${lang === "tr" ? "English" : "Türkçe"}</a></p><h1>${titles[validDocument]}</h1>${draftNotice}${legalText[lang][validDocument]}${scannerDisclosure}<footer><nav aria-label="${lang === "tr" ? "Yasal bağlantılar" : "Legal links"}">${legalLinks}<a href="${paths.contact}" target="_blank" rel="noopener noreferrer">${titles.contact}</a></nav></footer>`;
     </script>
   </body>
 </html>

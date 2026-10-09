@@ -52,6 +52,7 @@ Deno.serve(async (request: Request) => {
       .select(safeFields)
       .eq("access_mode", "public")
       .eq("id", key)
+      .eq("status", "active")
       .maybeSingle());
   }
   if (!card && !error) {
@@ -60,6 +61,7 @@ Deno.serve(async (request: Request) => {
       .select(safeFields)
       .eq("access_mode", "public")
       .eq("slug", key)
+      .eq("status", "active")
       .maybeSingle());
   }
 
@@ -69,6 +71,7 @@ Deno.serve(async (request: Request) => {
       .select(safeFields)
       .eq("access_mode", "private")
       .eq("access_token", key)
+      .eq("status", "active")
       .maybeSingle());
   }
   if (error) {

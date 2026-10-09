@@ -1455,33 +1455,33 @@ function App() {
       setToast({ message: t("Kart silindi.") });
       await loadData();
     }
-
-    async function toggleCardActive(card) {
-      const nextActive = !card.is_active;
-      const { error: updateError } = await supabase
-        .from("nfc_cards")
-        .update({ is_active: nextActive })
-        .eq("id", card.id);
-      if (updateError) {
-        setToast({ message: t("Kart durumu güncellenemedi: {error}", { error: updateError.message }), bad: true });
-        return;
-      }
-      setCards((current) => current.map((item) => item.id === card.id ? { ...item, is_active: nextActive } : item));
-      setToast({ message: nextActive ? t("Kart yeniden etkinleştirildi.") : t("Kart geçici olarak donduruldu.") });
-    }
-
-    async function updateReportStatus(report, status) {
-      const { error: updateError } = await supabase
-        .from("abuse_reports")
-        .update({ status })
-        .eq("id", report.id);
-      if (updateError) {
-        setToast({ message: t("Bildirim durumu güncellenemedi: {error}", { error: updateError.message }), bad: true });
-        return;
-      }
-      setAbuseReports((current) => current.map((item) => item.id === report.id ? { ...item, status } : item));
-    }
     setDeletingCard(false);
+  }
+
+  async function toggleCardActive(card) {
+    const nextActive = !card.is_active;
+    const { error: updateError } = await supabase
+      .from("nfc_cards")
+      .update({ is_active: nextActive })
+      .eq("id", card.id);
+    if (updateError) {
+      setToast({ message: t("Kart durumu güncellenemedi: {error}", { error: updateError.message }), bad: true });
+      return;
+    }
+    setCards((current) => current.map((item) => item.id === card.id ? { ...item, is_active: nextActive } : item));
+    setToast({ message: nextActive ? t("Kart yeniden etkinleştirildi.") : t("Kart geçici olarak donduruldu.") });
+  }
+
+  async function updateReportStatus(report, status) {
+    const { error: updateError } = await supabase
+      .from("abuse_reports")
+      .update({ status })
+      .eq("id", report.id);
+    if (updateError) {
+      setToast({ message: t("Bildirim durumu güncellenemedi: {error}", { error: updateError.message }), bad: true });
+      return;
+    }
+    setAbuseReports((current) => current.map((item) => item.id === report.id ? { ...item, status } : item));
   }
 
   async function exportData() {

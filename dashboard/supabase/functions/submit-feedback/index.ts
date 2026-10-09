@@ -33,11 +33,23 @@ Deno.serve(async (request: Request) => {
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers });
   }
-  const { key, rating, customer_message: message, customer_contact: customerContact } = payload;
+  const {
+    key,
+    rating,
+    customer_message: message,
+    customer_contact: customerContact,
+    customer_name: customerName,
+    hide_name: hideName,
+    hide_email: hideEmail,
+  } = payload;
   if (
     typeof key !== "string" || key.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(key) ||
     typeof rating !== "number" || !Number.isInteger(rating) || rating < 1 || rating > 3 ||
     typeof message !== "string" || message.trim().length < 1 || message.length > 2000 ||
+    (customerName !== undefined &&
+      (typeof customerName !== "string" || customerName.trim().length > 120)) ||
+    (hideName !== undefined && typeof hideName !== "boolean") ||
+    (hideEmail !== undefined && typeof hideEmail !== "boolean") ||
     (customerContact !== undefined && customerContact !== "" &&
       (typeof customerContact !== "string" || customerContact.length > 254 ||
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerContact)))
@@ -51,24 +63,36 @@ Deno.serve(async (request: Request) => {
     return new Response(JSON.stringify({ error: "Feedback service is not configured" }), { status: 503, headers });
   }
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+  let userId: string | null = null;
+  const authorization = request.headers.get("authorization");
+  if (authorization) {
+    const token = authorization.replace(/^Bearer\s+/i, "");
+    const { data: authenticatedUser, error: authError } = await admin.auth.getUser(token);
+    if (authError || !authenticatedUser.user) {
+      return new Response(JSON.stringify({ error: "Invalid user session" }), { status: 401, headers });
+    }
+    userId = authenticatedUser.user.id;
+  }
   let { data: card, error: cardError } = await admin
     .from("nfc_cards")
-    .select("id")
+    .select("id,user_id")
     .eq("access_mode", "public")
     .eq("slug", key)
     .eq("type", "google_review")
     .eq("status", "active")
     .eq("is_active", true)
+    .not("user_id", "is", null)
     .maybeSingle();
   if (!card && !cardError) {
     ({ data: card, error: cardError } = await admin
       .from("nfc_cards")
-      .select("id")
+      .select("id,user_id")
       .eq("access_mode", "private")
       .eq("access_token", key)
       .eq("type", "google_review")
       .eq("status", "active")
       .eq("is_active", true)
+      .not("user_id", "is", null)
       .maybeSingle());
   }
   if (cardError) {
@@ -76,12 +100,29 @@ Deno.serve(async (request: Request) => {
     return new Response(JSON.stringify({ error: "Unable to verify card" }), { status: 500, headers });
   }
   if (!card) return new Response(JSON.stringify({ error: "Card not found" }), { status: 404, headers });
+  const { data: ownerProfile, error: ownerError } = await admin
+    .from("profiles")
+    .select("is_suspended")
+    .eq("id", card.user_id)
+    .maybeSingle();
+  if (ownerError) {
+    console.error("Feedback owner status lookup failed", ownerError.message);
+    return new Response(JSON.stringify({ error: "Unable to verify card owner" }), { status: 500, headers });
+  }
+  if (!ownerProfile || ownerProfile.is_suspended) {
+    return new Response(JSON.stringify({ error: "Card not found" }), { status: 404, headers });
+  }
 
   const { error: insertError } = await admin.from("card_feedbacks").insert({
     card_id: card.id,
+    user_id: userId,
     rating,
     customer_message: message.trim(),
     customer_contact: typeof customerContact === "string" && customerContact.trim() ? customerContact.trim() : null,
+    name: typeof customerName === "string" && customerName.trim() ? customerName.trim() : null,
+    email: typeof customerContact === "string" && customerContact.trim() ? customerContact.trim() : null,
+    is_name_hidden: hideName === true,
+    is_email_hidden: hideEmail === true,
   });
   if (insertError) {
     console.error("Feedback insert failed", insertError.message);

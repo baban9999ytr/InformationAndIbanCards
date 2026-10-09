@@ -43,7 +43,7 @@ Deno.serve(async (request: Request) => {
     return new Response(JSON.stringify({ error: "Card lookup is not configured" }), { status: 503, headers });
   }
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
-  const safeFields = "id,title,type,access_mode,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,extra_links,is_active";
+  const safeFields = "id,title,type,access_mode,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,extra_links,blocks,is_active,user_id";
   let card = null;
   let error = null;
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
@@ -53,6 +53,7 @@ Deno.serve(async (request: Request) => {
       .eq("access_mode", "public")
       .eq("id", key)
       .eq("status", "active")
+      .not("user_id", "is", null)
       .maybeSingle());
   }
   if (!card && !error) {
@@ -62,6 +63,7 @@ Deno.serve(async (request: Request) => {
       .eq("access_mode", "public")
       .eq("slug", key)
       .eq("status", "active")
+      .not("user_id", "is", null)
       .maybeSingle());
   }
 
@@ -72,6 +74,7 @@ Deno.serve(async (request: Request) => {
       .eq("access_mode", "private")
       .eq("access_token", key)
       .eq("status", "active")
+      .not("user_id", "is", null)
       .maybeSingle());
   }
   if (error) {
@@ -79,11 +82,25 @@ Deno.serve(async (request: Request) => {
     return new Response(JSON.stringify({ error: "Card lookup failed" }), { status: 500, headers });
   }
   if (!card) return new Response(JSON.stringify({ error: "Card not found" }), { status: 404, headers });
+  const { data: ownerProfile, error: ownerError } = await admin
+    .from("profiles")
+    .select("is_suspended")
+    .eq("id", card.user_id)
+    .maybeSingle();
+  if (ownerError) {
+    console.error("Card owner status lookup failed", ownerError.message);
+    return new Response(JSON.stringify({ error: "Card lookup failed" }), { status: 500, headers });
+  }
+  if (!ownerProfile || ownerProfile.is_suspended) {
+    return new Response(JSON.stringify({ error: "Card not found" }), { status: 404, headers });
+  }
   if (!card.is_active) {
     return new Response(
       JSON.stringify({ card: { id: card.id, title: card.title, type: card.type, is_active: false } }),
       { status: 200, headers },
     );
   }
-  return new Response(JSON.stringify({ card }), { status: 200, headers });
+  const publicCard = { ...card };
+  delete publicCard.user_id;
+  return new Response(JSON.stringify({ card: publicCard }), { status: 200, headers });
 });

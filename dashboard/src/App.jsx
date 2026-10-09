@@ -25,6 +25,7 @@ import {
   Sun,
   Trash2,
   UserRound,
+  Users,
   X,
 } from "lucide-react";
 import { scanExternalUrl, validateHttpsUrl } from "./security.js";
@@ -54,6 +55,50 @@ const initialCard = {
   managed_by_admin: false,
   client_notes: "",
 };
+const cardBlockTypes = ["profile", "payment", "google_review", "contact", "social", "custom"];
+const cardBlockLabels = {
+  profile: "Profil",
+  payment: "IBAN / ödeme",
+  google_review: "Google yorum",
+  contact: "İletişim",
+  social: "Sosyal bağlantılar",
+  custom: "Ek bağlantılar",
+};
+function makeCardBlocks(type, existing = []) {
+  const relevant = cardBlockTypes.filter((blockType) => (
+    blockType === "profile" ||
+    blockType === "contact" ||
+    blockType === "social" ||
+    blockType === "custom" ||
+    (type === "iban_card" && blockType === "payment") ||
+    (type === "google_review" && blockType === "google_review")
+  ));
+  const orderedTypes = [
+    ...existing
+      .filter((block) => relevant.includes(block?.type))
+      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
+      .map((block) => block.type),
+    ...relevant,
+  ].filter((blockType, index, all) => all.indexOf(blockType) === index);
+  return orderedTypes.map((blockType, index) => {
+    const previous = existing.find((block) => block?.type === blockType);
+    return {
+      id: previous?.id || `block-${blockType}`,
+      type: blockType,
+      order: index,
+      visible: previous?.visible !== false,
+      data: previous?.data || {},
+    };
+  });
+}
+function cardBlockVisibility(card, type) {
+  const block = card?.blocks?.find((item) => item?.type === type);
+  return !block || block.visible !== false;
+}
+function cardBlockOrder(card, type, fallback) {
+  const block = card?.blocks?.find((item) => item?.type === type);
+  return Number.isFinite(block?.order) ? block.order : fallback;
+}
 const appOrigin = (
   import.meta.env.VITE_APP_ORIGIN || "https://bilgi.openstacktool.com"
 ).replace(/\/$/, "");
@@ -100,7 +145,7 @@ const legalLinksByLanguage = {
   ],
 };
 const reservedRoutes = new Set([
-  "c", "p", "dashboard", "create", "settings", "login", "informationpage",
+  "c", "p", "dashboard", "admin", "create", "settings", "login", "informationpage",
   "terms-of-service", "privacy-policy", "gdpr-kvkk", "privacy-notice", "cookie-policy",
 ]);
 
@@ -625,7 +670,10 @@ function PublicCard({ token, onReport }) {
   const [error, setError] = useState("");
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+  const [hideName, setHideName] = useState(false);
+  const [hideEmail, setHideEmail] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
@@ -676,12 +724,14 @@ function PublicCard({ token, onReport }) {
   }
 
   const links = useMemo(() => {
-    if (!card) return [];
-    return [
-      card.type !== "google_review" && card.google_review_url && { label: "Google'da değerlendirin", url: card.google_review_url },
-      card.instagram_url && { label: "Instagram profili", url: card.instagram_url },
-      ...(card.extra_links || []).map((item) => ({ label: item.label, url: item.url })),
-    ].filter(Boolean);
+    if (!card) return { google: [], social: [], custom: [] };
+    return {
+      google: card.type !== "google_review" && card.google_review_url
+        ? [{ label: "Google'da değerlendirin", url: card.google_review_url }]
+        : [],
+      social: card.instagram_url ? [{ label: "Instagram profili", url: card.instagram_url }] : [],
+      custom: (card.extra_links || []).map((item) => ({ label: item.label, url: item.url })),
+    };
   }, [card]);
 
   async function submitFeedback(event) {
@@ -690,7 +740,15 @@ function PublicCard({ token, onReport }) {
     setFeedbackBusy(true);
     try {
       const { error: submitError } = await supabase.functions.invoke("submit-feedback", {
-        body: { key: token, rating, customer_message: message, customer_contact: contactEmail },
+        body: {
+          key: token,
+          rating,
+          customer_message: message,
+          customer_name: customerName,
+          customer_contact: contactEmail,
+          hide_name: hideName,
+          hide_email: hideEmail,
+        },
       });
       if (submitError) throw submitError;
       setFeedbackSent(true);
@@ -720,13 +778,15 @@ function PublicCard({ token, onReport }) {
     return <PublicNotFound onReport={onReport} message={t(error)} />;
   }
 
+  const blockOrder = (type, fallback) => cardBlockOrder(card, type, fallback);
+
   return (
     <main className="public-page">
       <header className="public-header">
         <a className="brand public-brand" href="/"><span className="brand-symbol">b.</span><span>bilgi</span></a>
         <div><LanguageSwitcher /><button className="public-report-link" onClick={() => onReport({ cardId, reportedUrl: window.location.href })}>{t("Kötüye kullanım bildirimi")}</button></div>
       </header>
-      <article className="public-card">
+      <article className="public-card public-card-builder">
         {loading ? <LoaderCircle className="spin" /> : error ? <><div className="empty-icon"><Link2 /></div><h1>{t("Kart bulunamadı")}</h1><p>{t(error)}</p></> : !card.is_active ? (
           <div className="inactive-card-notice" role="status">
             <div className="empty-icon"><ShieldCheck /></div>
@@ -735,26 +795,30 @@ function PublicCard({ token, onReport }) {
           </div>
         ) : (
           <>
-            <div className="public-avatar">{(card.title || "B").slice(0, 1).toLocaleUpperCase("tr")}</div>
-            <p className="eyebrow">{cardTypeLabel[card.type] ? t(cardTypeLabel[card.type]) : t("DİJİTAL KART")}</p>
-            <h1 className="public-name-heading">
-              <button type="button" className="copyable-name" aria-label={`${t("Adı kopyala")}: ${card.title}`} onClick={() => copyCardValue(card.title, "Ad kopyalandı.")}>
-                <span>{card.title}</span><Copy size={16} aria-hidden="true" />
-              </button>
-            </h1>
-            {card.bank_name && <p className="public-subtitle">{card.bank_name}</p>}
-            {card.iban && sanitizeIban(card.iban) && (
-              <div className="iban-box">
-                <span className="iban-label">{t("IBAN")}</span>
-                <button type="button" className="iban-copy-value" aria-label={t("IBAN'ı kopyala")} onClick={() => copyCardValue(sanitizeIban(card.iban), "IBAN kopyalandı.")}>
-                  <strong className="iban-text">{formatIban(sanitizeIban(card.iban))}</strong><Copy size={16} aria-hidden="true" />
+            {cardBlockVisibility(card, "profile") && <section className="public-card-block" style={{ order: blockOrder("profile", 0) }}>
+              <div className="public-avatar">{(card.title || "B").slice(0, 1).toLocaleUpperCase("tr")}</div>
+              <p className="eyebrow">{cardTypeLabel[card.type] ? t(cardTypeLabel[card.type]) : t("DİJİTAL KART")}</p>
+              <h1 className="public-name-heading">
+                <button type="button" className="copyable-name" aria-label={`${t("Adı kopyala")}: ${card.title}`} onClick={() => copyCardValue(card.title, "Ad kopyalandı.")}>
+                  <span>{card.title}</span><Copy size={16} aria-hidden="true" />
                 </button>
-              </div>
-            )}
-            {copyFeedback && <p className="copy-feedback" role="status" aria-live="polite">{copyFeedback}</p>}
-            {card.email && <button className="contact-link contact-button" onClick={() => requestExternal({ label: "E-posta gönder", url: mailtoUrl(card.email) })}><UserRound size={16} /> {t("E-posta gönder")}</button>}
-            {card.type === "google_review" && (
-              <section className="rating-section">
+              </h1>
+            </section>}
+            {cardBlockVisibility(card, "payment") && (card.bank_name || card.iban) && <section className="public-card-block" style={{ order: blockOrder("payment", 1) }}>
+              {card.bank_name && <p className="public-subtitle">{card.bank_name}</p>}
+              {card.iban && sanitizeIban(card.iban) && (
+                <div className="iban-box">
+                  <span className="iban-label">{t("IBAN")}</span>
+                  <button type="button" className="iban-copy-value" aria-label={t("IBAN'ı kopyala")} onClick={() => copyCardValue(sanitizeIban(card.iban), "IBAN kopyalandı.")}>
+                    <strong className="iban-text">{formatIban(sanitizeIban(card.iban))}</strong><Copy size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
+            </section>}
+            {copyFeedback && <p className="copy-feedback" role="status" aria-live="polite" style={{ order: 20 }}>{copyFeedback}</p>}
+            {cardBlockVisibility(card, "contact") && card.email && <section className="public-card-block" style={{ order: blockOrder("contact", 3) }}><button className="contact-link contact-button" onClick={() => requestExternal({ label: "E-posta gönder", url: mailtoUrl(card.email) })}><UserRound size={16} /> {t("E-posta gönder")}</button></section>}
+            {card.type === "google_review" && cardBlockVisibility(card, "google_review") && (
+              <section className="rating-section public-card-block" style={{ order: blockOrder("google_review", 2) }}>
                 <h2>{t("Deneyiminiz nasıldı?")}</h2>
                 <p>{t("Geri bildiriminiz işletmenin hizmetini geliştirmesine yardımcı olur.")}</p>
                 <div className="rating-buttons" role="group" aria-label={t("1 ile 5 arasında puan verin")}>
@@ -767,12 +831,12 @@ function PublicCard({ token, onReport }) {
                 {rating >= 1 && rating <= 3 && (feedbackSent ? (
                   <>
                     <div className="inline-success" role="status">{t("Geri bildiriminiz için teşekkür ederiz. İşletme sizinle iletişime geçebilir.")}</div>
-                    {(card.whatsapp || card.sms || card.instagram_url || card.email) && (
+                    {cardBlockVisibility(card, "contact") && (card.whatsapp || card.sms || card.instagram_url || card.email) && (
                       <div className="direct-contact">
                         <p>{t("İşletmeyle doğrudan iletişim kurun:")}</p>
                         {card.whatsapp && <button onClick={() => requestExternal({ label: "WhatsApp", url: `https://wa.me/${card.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(t("Kartınız üzerinden geri bildirim paylaşmak istiyorum."))}` })}>{t("WhatsApp")} <ExternalLink size={13} /></button>}
                         {card.sms && <button onClick={() => requestExternal({ label: "SMS", url: `sms:+${card.sms.replace(/\D/g, "")}?body=${encodeURIComponent(t("Kartınız üzerinden geri bildirim paylaşmak istiyorum."))}` })}>{t("SMS")} <ExternalLink size={13} /></button>}
-                        {card.instagram_url && <button onClick={() => requestExternal({ label: "Instagram", url: card.instagram_url })}>{t("Instagram")} <ExternalLink size={13} /></button>}
+                        {cardBlockVisibility(card, "social") && card.instagram_url && <button onClick={() => requestExternal({ label: "Instagram", url: card.instagram_url })}>{t("Instagram")} <ExternalLink size={13} /></button>}
                         {card.email && <button onClick={() => requestExternal({ label: "E-posta", url: mailtoUrl(card.email, t("Kart üzerinden geri bildirim")) })}>{t("E-posta")} <ExternalLink size={13} /></button>}
                       </div>
                     )}
@@ -781,7 +845,11 @@ function PublicCard({ token, onReport }) {
                   <form className="low-rating-form" onSubmit={submitFeedback}>
                     <p>{t("Yaşadığınız deneyimi doğrudan işletmeye iletin.")}</p>
                     <textarea value={message} onChange={(event) => setMessage(event.target.value)} maxLength={2000} required placeholder={t("Geri bildiriminizi buraya yazın...")} />
+                    <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} maxLength={120} placeholder={t("Adınız (isteğe bağlı)")} />
                     <input type="email" value={contactEmail} onChange={(event) => setContactEmail(event.target.value)} placeholder={t("E-posta adresiniz (isteğe bağlı)")} />
+                    <label className="feedback-privacy-option"><input type="checkbox" checked={hideName} onChange={(event) => setHideName(event.target.checked)} />{t("Adımı işletmeden gizle")}</label>
+                    <label className="feedback-privacy-option"><input type="checkbox" checked={hideEmail} onChange={(event) => setHideEmail(event.target.checked)} />{t("E-postamı işletmeden gizle")}</label>
+                    <small>{t("Gizlediğiniz bilgiler kart sahibine maskeli gösterilir; platform yöneticileri kötüye kullanımı önlemek için bunlara erişebilir.")}</small>
                     {feedbackError && <div className="inline-error" role="alert">{t(feedbackError)}</div>}
                     <button className="button button-primary button-wide" disabled={feedbackBusy}>{feedbackBusy ? <LoaderCircle className="spin" size={16} /> : null}{t("Geri bildirimi gönder")}</button>
                   </form>
@@ -790,10 +858,30 @@ function PublicCard({ token, onReport }) {
                 {rating >= 4 && <div className="review-next-step"><p>{t("Google'da yorumunuzu paylaşmak ister misiniz?")}</p><button className="button button-primary button-wide" onClick={() => requestExternal({ label: "Google Haritalar yorumu", url: card.google_review_url })}>{t("Google'da Yorum Yap")} <ExternalLink size={15} /></button><small>{t("Devam etmeden önce açılacak hedef adresi görebilirsiniz.")}</small></div>}
               </section>
             )}
-            {links.length > 0 && (
-              <div className="public-links">
+            {cardBlockVisibility(card, "google_review") && links.google.length > 0 && (
+              <div className="public-links public-card-block" style={{ order: blockOrder("google_review", 2) }}>
                 <p className="safe-notice"><ShieldCheck size={15} /> {t("Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.")}</p>
-                {links.map((link) => (
+                {links.google.map((link) => (
+                  <button className="public-link" onClick={() => requestExternal(link)} key={link.label}>
+                    <span>{link.label}</span><ExternalLink size={16} />
+                  </button>
+                ))}
+              </div>
+            )}
+            {cardBlockVisibility(card, "social") && links.social.length > 0 && (
+              <div className="public-links public-card-block" style={{ order: blockOrder("social", 4) }}>
+                <p className="safe-notice"><ShieldCheck size={15} /> {t("Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.")}</p>
+                {links.social.map((link) => (
+                  <button className="public-link" onClick={() => requestExternal(link)} key={link.label}>
+                    <span>{link.label}</span><ExternalLink size={16} />
+                  </button>
+                ))}
+              </div>
+            )}
+            {cardBlockVisibility(card, "custom") && links.custom.length > 0 && (
+              <div className="public-links public-card-block" style={{ order: blockOrder("custom", 5) }}>
+                <p className="safe-notice"><ShieldCheck size={15} /> {t("Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.")}</p>
+                {links.custom.map((link) => (
                   <button className="public-link" onClick={() => requestExternal(link)} key={link.label}>
                     <span>{link.label}</span><ExternalLink size={16} />
                   </button>
@@ -828,11 +916,19 @@ function TextField({ label, value, onChange, type = "text", placeholder, require
 
 function readCardDraft(userId, cardId) {
   try {
-    const draft = JSON.parse(localStorage.getItem("card_form_draft") || "null");
+    const draft = JSON.parse(
+      localStorage.getItem("card_builder_draft") ||
+      localStorage.getItem("card_form_draft") ||
+      "null",
+    );
     if (draft?.userId !== userId || draft?.cardId !== (cardId || null) || !draft.form || typeof draft.form !== "object") {
       return null;
     }
-    return { ...draft, form: serializableCardDraft(draft.form) };
+    return {
+      ...draft,
+      form: serializableCardDraft(draft.form),
+      blocks: Array.isArray(draft.blocks) ? draft.blocks : [],
+    };
   } catch (error) {
     console.error("Could not read saved card draft:", error);
     return null;
@@ -862,6 +958,10 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
       };
     return savedDraft ? { ...initial, ...savedDraft.form, extra_links: Array.isArray(savedDraft.form.extra_links) ? savedDraft.form.extra_links : initial.extra_links } : initial;
   });
+  const [blocks, setBlocks] = useState(() => makeCardBlocks(
+    savedDraft?.form?.type || card?.type || initialCard.type,
+    savedDraft?.blocks?.length ? savedDraft.blocks : card?.blocks || [],
+  ));
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(() => savedDraft?.slugManuallyEdited ?? Boolean(card?.slug));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -871,10 +971,11 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
 
   function persistDraft() {
     try {
-      localStorage.setItem("card_form_draft", JSON.stringify({
+      localStorage.setItem("card_builder_draft", JSON.stringify({
         userId: user.id,
         cardId: card?.id || null,
         form: serializableCardDraft(form),
+        blocks,
         slugManuallyEdited,
         savedAt: new Date().toISOString(),
       }));
@@ -887,7 +988,11 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
     if (!isDirty || busy) return undefined;
     const timer = window.setTimeout(persistDraft, 400);
     return () => window.clearTimeout(timer);
-  }, [busy, card?.id, form, isDirty, slugManuallyEdited, user.id]);
+  }, [blocks, busy, card?.id, form, isDirty, slugManuallyEdited, user.id]);
+
+  useEffect(() => {
+    setBlocks((current) => makeCardBlocks(form.type, current));
+  }, [form.type]);
 
   useEffect(() => {
     if (!isDirty) return undefined;
@@ -898,7 +1003,7 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
     };
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
-  }, [card?.id, form, isDirty, slugManuallyEdited, user.id]);
+  }, [blocks, card?.id, form, isDirty, slugManuallyEdited, user.id]);
 
   function requestClose() {
     if (isDirty && !window.confirm(t("Kaydedilmemiş değişiklikleriniz var. Çıkmak istediğinize emin misiniz?"))) return;
@@ -913,6 +1018,22 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
       [key]: value,
       ...(key === "title" && !slugManuallyEdited ? { slug: slugify(value) } : {}),
     }));
+  }
+
+  function moveBlock(index, direction) {
+    setIsDirty(true);
+    setBlocks((current) => {
+      const ordered = [...current].sort((a, b) => a.order - b.order);
+      const target = index + direction;
+      if (target < 0 || target >= ordered.length) return current;
+      [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+      return ordered.map((block, order) => ({ ...block, order }));
+    });
+  }
+
+  function setBlockVisible(type, visible) {
+    setIsDirty(true);
+    setBlocks((current) => current.map((block) => block.type === type ? { ...block, visible } : block));
   }
 
   function updateExtra(index, key, value) {
@@ -974,6 +1095,20 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
         iban: form.type === "iban_card" ? form.iban.replace(/\s/g, "").toUpperCase() : null,
         bank_name: form.type === "iban_card" ? form.bank_name.trim() || null : null,
         extra_links: extraLinks,
+        blocks: makeCardBlocks(form.type, blocks).map((block) => ({
+          ...block,
+          data: block.type === "profile"
+            ? { name: form.title.trim() }
+            : block.type === "payment"
+              ? { iban: form.iban.replace(/\s/g, "").toUpperCase(), bank_name: form.bank_name.trim() }
+              : block.type === "google_review"
+                ? { url: scanned.google_review_url || null }
+                : block.type === "contact"
+                  ? { email: form.email.trim() || null, whatsapp: normalizePhone(form.whatsapp) || null, sms: normalizePhone(form.sms) || null }
+                  : block.type === "social"
+                    ? { instagram_url: scanned.instagram_url || null }
+                    : { links: extraLinks },
+        })),
         nfc_active: form.nfc_active,
         user_id: isAdmin ? (form.user_id || user.id) : user.id,
         managed_by_admin: isAdmin && form.managed_by_admin,
@@ -985,6 +1120,7 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
       const { data, error: saveError } = await query;
       if (saveError) throw saveError;
       try {
+        localStorage.removeItem("card_builder_draft");
         localStorage.removeItem("card_form_draft");
       } catch (draftError) {
         console.error("Could not remove saved card draft:", draftError);
@@ -1056,6 +1192,56 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
               </div>
             )}
           </div>
+          <div className="form-section card-builder-section">
+            <h3>04 <span>{t("Kart blokları")}</span></h3>
+            <p className="field-hint">{t("Blokların görünürlüğünü ve sırasını belirleyin. İçerikleri yukarıdaki kart alanlarından düzenleyebilirsiniz.")}</p>
+            <label className="field block-template-field">
+              <span>{t("Şablon")}</span>
+              <select value="" onChange={(event) => {
+                const order = event.target.value.split(",");
+                setIsDirty(true);
+                setBlocks((current) => {
+                  const byType = new Map(current.map((block) => [block.type, block]));
+                  return order.filter((type) => byType.has(type)).map((type, index) => ({ ...byType.get(type), order: index }));
+                });
+              }}>
+                <option value="">{t("Sıralama şablonu seçin")}</option>
+                <option value="profile,payment,contact,social,custom">{t("Dijital profil")}</option>
+                <option value="profile,google_review,contact,social,custom">{t("Google yorum")}</option>
+                <option value="profile,contact,payment,custom,social">{t("İşletme iletişim")}</option>
+              </select>
+            </label>
+            <div className="card-builder-layout">
+              <div className="card-builder-list" aria-label={t("Kart blokları")}>
+                {[...blocks].sort((a, b) => a.order - b.order).map((block, index) => (
+                  <div className={`card-builder-item ${block.visible ? "" : "is-hidden"}`} key={block.id}>
+                    <label className="check-row">
+                      <input type="checkbox" checked={block.visible} onChange={(event) => setBlockVisible(block.type, event.target.checked)} />
+                      <span>{t(cardBlockLabels[block.type])}</span>
+                    </label>
+                    <div className="block-reorder-actions">
+                      <button type="button" className="text-button" disabled={index === 0} aria-label={`${t("Yukarı taşı")}: ${t(cardBlockLabels[block.type])}`} onClick={() => moveBlock(index, -1)}>{t("Yukarı")}</button>
+                      <button type="button" className="text-button" disabled={index === blocks.length - 1} aria-label={`${t("Aşağı taşı")}: ${t(cardBlockLabels[block.type])}`} onClick={() => moveBlock(index, 1)}>{t("Aşağı")}</button>
+                    </div>
+                  </div>
+                ))}
+                {blocks.length > 8 && <div className="inline-warning" role="status">{t("Bu kartta sekizden fazla blok var. Daha iyi bir mobil deneyim için bazı blokları kaldırmayı düşünün.")}</div>}
+              </div>
+              <div className="card-builder-preview" aria-label={t("Canlı önizleme")}>
+                <div className="phone-preview">
+                  <span className="phone-speaker" />
+                  <strong>{form.title || t("Kart / işletme adı")}</strong>
+                  <span className="phone-height-marker">{t("İlk ekran sınırı")}</span>
+                  <div className="phone-preview-blocks">
+                    {[...blocks].sort((a, b) => a.order - b.order).filter((block) => block.visible).map((block) => (
+                      <span key={block.id}>{t(cardBlockLabels[block.type])}</span>
+                    ))}
+                  </div>
+                </div>
+                <small>{t("Canlı önizleme")}</small>
+              </div>
+            </div>
+          </div>
           {isAdmin && (
             <div className="form-section admin-card-fields">
               <h3><ShieldCheck size={15} /> <span>{t("Yönetici / bayi yönetimi")}</span></h3>
@@ -1112,7 +1298,7 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
   );
 }
 
-function Sidebar({ section, onSection, onSignOut, user, mobileOpen, onClose, dark, onToggleTheme, isAdmin, pendingReports }) {
+function Sidebar({ section, onSection, onSignOut, user, mobileOpen, onClose, dark, onToggleTheme, isAdmin, canManageUsers, pendingReports }) {
   const { t } = useTranslation();
   const roleLabel = user.is_super_user
     ? t("Süper yönetici")
@@ -1129,6 +1315,9 @@ function Sidebar({ section, onSection, onSignOut, user, mobileOpen, onClose, dar
           <button className={section === "cards" ? "selected" : ""} onClick={() => onSection("cards")}><Smartphone size={17} /> {t("Kartlarım")}</button>
           <button className={section === "feedback" ? "selected" : ""} onClick={() => onSection("feedback")}><FileText size={17} /> {t("Geri bildirimler")}</button>
           {isAdmin && <button className={section === "abuse" ? "selected" : ""} onClick={() => onSection("abuse")}><ShieldCheck size={17} /> {t("Kötüye kullanım bildirimleri")} {pendingReports > 0 && <span className="nav-count-badge">{pendingReports}</span>}</button>}
+          {canManageUsers && <button className={section === "users" ? "selected" : ""} onClick={() => onSection("users")}><Users size={17} /> {t("Kullanıcı yönetimi")}</button>}
+          {canManageUsers && <button className={section === "audit" ? "selected" : ""} onClick={() => onSection("audit")}><FileText size={17} /> {t("Denetim günlüğü")}</button>}
+          {canManageUsers && <button className={section === "allowlist" ? "selected" : ""} onClick={() => onSection("allowlist")}><ShieldCheck size={17} /> {t("Güvenli alan adları")}</button>}
         </nav>
         <p className="nav-caption nav-caption-lower">{t("HESAP")}</p>
         <nav className="side-nav">
@@ -1144,7 +1333,7 @@ function Sidebar({ section, onSection, onSignOut, user, mobileOpen, onClose, dar
   );
 }
 
-function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = false, canApprove = false, onApprove, onToggleActive }) {
+function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = false, canApprove = false, onApprove, onModerate, onToggleActive }) {
   const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const url = cardUrl(card);
@@ -1160,7 +1349,7 @@ function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = f
     <article className="card-row">
       <div className={`card-type-icon ${card.type === "iban_card" ? "type-iban" : ""}`}><Smartphone size={18} /></div>
       <div className="card-main">
-      <div className="card-name-row"><h3>{card.title}</h3><span className={`status-badge ${card.status === "pending_approval" ? "status-pending" : card.status === "rejected" ? "status-rejected" : card.access_mode === "public" ? "status-public" : "status-private"}`}><i />{card.status === "pending_approval" ? t("Onay bekliyor") : card.status === "rejected" ? t("Kart reddedildi") : card.access_mode === "public" ? t("Herkese açık") : t("Gizli")}</span></div>
+      <div className="card-name-row"><h3>{card.title}</h3><span className={`status-badge ${card.status === "pending_approval" ? "status-pending" : card.status === "rejected" ? "status-rejected" : card.status === "suspended" ? "status-suspended" : card.status === "deleted" ? "status-deleted" : card.access_mode === "public" ? "status-public" : "status-private"}`}><i />{card.status === "pending_approval" ? t("Onay bekliyor") : card.status === "rejected" ? t("Kart reddedildi") : card.status === "suspended" ? t("Askıya alındı") : card.status === "deleted" ? t("Arşivlendi") : card.access_mode === "public" ? t("Herkese açık") : t("Gizli")}</span></div>
         <p>{t(cardTypeLabel[card.type] || "Dijital kart")} <span>·</span> {card.nfc_active ? t("NFC aktif") : t("NFC kapalı")}
           {isAdmin && card.managed_by_admin && <> <span>·</span> {t("Yönetilen müşteri kartı")}</>}
           {!card.is_active && <> <span>·</span> <strong className="inactive-label">{t("Donduruldu")}</strong></>}
@@ -1170,7 +1359,7 @@ function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = f
       </div>
       <div className="card-actions">
         {canApprove && card.status === "pending_approval" && <button className="button button-primary" onClick={() => onApprove(card)}><Check size={14} /> {t("Kartı onayla")}</button>}
-        {card.status === "active" && <><a className="button button-quiet" href={url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> {t("Görüntüle")}</a>
+        {card.status === "active" && card.is_active && <><a className="button button-quiet" href={url} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> {t("Görüntüle")}</a>
         <button className="button button-quiet copy-action" onClick={copyUrl}><Copy size={14} /> {t("Bağlantıyı kopyala")}</button></>}
         <button className="button button-quiet edit-action" onClick={() => onEdit(card)}>{t("Düzenle")}</button>
         {isAdmin && <IconButton label={t(card.is_active ? "Kartı dondur" : "Kartı etkinleştir")} className={`active-toggle ${card.is_active ? "" : "is-frozen"}`} onClick={() => onToggleActive(card)}><ShieldCheck size={16} /></IconButton>}
@@ -1178,6 +1367,10 @@ function CardRow({ card, onEdit, onDelete, onViewFeedback, onNotify, isAdmin = f
           <IconButton label={t("Diğer işlemler")} onClick={() => setMenuOpen(!menuOpen)}><MoreHorizontal size={18} /></IconButton>
           {menuOpen && <div className="action-menu">
             <button onClick={() => { setMenuOpen(false); onViewFeedback(card); }}><FileText size={15} /> {t("Geri bildirimler")}</button>
+            {canApprove && card.status !== "deleted" && card.status !== "active" && <button onClick={() => { setMenuOpen(false); onModerate(card, "active"); }}><Check size={15} /> {t("Yeniden yayınla")}</button>}
+            {canApprove && card.status === "pending_approval" && <button className="menu-danger" onClick={() => { setMenuOpen(false); onModerate(card, "rejected"); }}><X size={15} /> {t("Reddet")}</button>}
+            {canApprove && card.status === "active" && <button className="menu-danger" onClick={() => { setMenuOpen(false); onModerate(card, "suspended"); }}><ShieldCheck size={15} /> {t("Askıya al")}</button>}
+            {canApprove && card.status !== "deleted" && <button className="menu-danger" onClick={() => { setMenuOpen(false); onModerate(card, "deleted"); }}><Trash2 size={15} /> {t("Arşivle")}</button>}
             <button onClick={() => { setMenuOpen(false); onEdit(card); }}><Settings size={15} /> {t("Kartı düzenle")}</button>
             <button className="menu-danger" onClick={() => { setMenuOpen(false); onDelete(card); }}><Trash2 size={15} /> {t("Kartı sil")}</button>
           </div>}
@@ -1274,9 +1467,10 @@ function App() {
     : null;
   const loginRoute = normalizedPath === "/login";
   const createRoute = normalizedPath === "/create";
+  const adminRoute = normalizedPath === "/admin";
   const dashboardRoute = /^\/dashboard(?:\/.*)?$/.test(normalizedPath);
   const settingsRoute = /^\/settings(?:\/.*)?$/.test(normalizedPath);
-  const protectedRoute = createRoute || dashboardRoute || settingsRoute;
+  const protectedRoute = createRoute || adminRoute || dashboardRoute || settingsRoute;
   const authRoute = protectedRoute || loginRoute;
   const cardKey = publicMatch
     ? decodeRouteSegment(publicMatch[2])
@@ -1294,6 +1488,16 @@ function App() {
   const [googleConsentStatus, setGoogleConsentStatus] = useState("not-required");
   const [googleConsentError, setGoogleConsentError] = useState("");
   const [clients, setClients] = useState([]);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminUsersPage, setAdminUsersPage] = useState(1);
+  const [adminUsersHasMore, setAdminUsersHasMore] = useState(false);
+  const [adminUsersBusy, setAdminUsersBusy] = useState(false);
+  const [adminUserCounts, setAdminUserCounts] = useState({ total: 0, active: 0 });
+  const [auditEvents, setAuditEvents] = useState([]);
+  const [scanDomains, setScanDomains] = useState([]);
+  const [scanDomainInput, setScanDomainInput] = useState("");
+  const [scanDomainBusy, setScanDomainBusy] = useState(false);
+  const canManageUsers = profile?.role === "admin" || profile?.is_super_user === true;
   const [abuseReports, setAbuseReports] = useState([]);
   const [section, setSection] = useState(settingsRoute ? "settings" : "overview");
   const [cardScope, setCardScope] = useState("all");
@@ -1414,10 +1618,9 @@ function App() {
     }
     const role = profileData?.role || "user";
     const isAdmin = role === "admin" || role === "reseller" || profileData?.is_super_user === true;
-    const [cardsResult, feedbackResult, feedbackCountResult, clientsResult, reportsResult] = await Promise.all([
+    const [cardsResult, feedbackResult, clientsResult, reportsResult] = await Promise.all([
       supabase.from("nfc_cards").select("*").order("created_at", { ascending: false }),
-      supabase.from("card_feedbacks").select("id,card_id,customer_message,rating,created_at,customer_contact").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("card_feedbacks").select("id", { count: "exact", head: true }),
+      supabase.rpc("get_card_feedback"),
       isAdmin
         ? supabase.from("profiles").select("id,full_name,email,phone").eq("role", "user").order("full_name")
         : Promise.resolve({ data: [], error: null }),
@@ -1433,14 +1636,15 @@ function App() {
     if (cardsResult.error) setError(`Kartlar yüklenemedi: ${cardsResult.error.message}`);
     else setCards(cardsResult.data || []);
     if (feedbackResult.error) {
-      if (feedbackResult.error.code !== "42P01") {
+      if (feedbackResult.error.code !== "42883") {
         setError((previous) => [previous, `Geri bildirimler yüklenemedi: ${feedbackResult.error.message}`].filter(Boolean).join(" "));
       }
       setFeedback([]);
-    } else setFeedback(feedbackResult.data || []);
-    if (feedbackCountResult.error) {
-      setError((previous) => [previous, `Geri bildirim sayısı alınamadı: ${feedbackCountResult.error.message}`].filter(Boolean).join(" "));
-    } else setFeedbackTotal(feedbackCountResult.count || 0);
+      setFeedbackTotal(0);
+    } else {
+      setFeedback(feedbackResult.data || []);
+      setFeedbackTotal(feedbackResult.data?.length || 0);
+    }
     if (clientsResult.error) {
       setError((previous) => [previous, t("Müşteri profilleri yüklenemedi: {error}", { error: clientsResult.error.message })].filter(Boolean).join(" "));
       setClients([]);
@@ -1457,6 +1661,126 @@ function App() {
       loadData();
     }
   }, [session, protectedRoute, googleConsentStatus]);
+
+  useEffect(() => {
+    if (!adminRoute || !session || loading) return;
+    if (canManageUsers) {
+      setSection("users");
+      return;
+    }
+    window.history.replaceState({}, "", "/dashboard");
+    setSection("overview");
+    setToast({ message: t("Yönetici yetkisi gerekiyor."), bad: true });
+  }, [adminRoute, canManageUsers, loading, profile, session, t]);
+
+  async function loadAdminUsers(page = 1, append = false) {
+    if (!supabase || !canManageUsers) return;
+    setAdminUsersBusy(true);
+    try {
+      const { data, error: usersError } = await supabase.functions.invoke("admin-users", {
+        body: { action: "list", page },
+      });
+      if (usersError) throw usersError;
+      if (!data || !Array.isArray(data.users)) throw new Error(t("Kullanıcı listesi yanıtı geçersiz."));
+      setAdminUsers((current) => append ? [...current, ...data.users] : data.users);
+      setAdminUsersPage(page);
+      setAdminUsersHasMore(data.hasMore === true);
+      setAdminUserCounts({ total: data.totalUsers || 0, active: data.activeUsers || 0 });
+    } finally {
+      setAdminUsersBusy(false);
+    }
+  }
+
+  async function setAdminUserSuspended(targetUser, suspended) {
+    try {
+      const { error: statusError } = await supabase.functions.invoke("admin-users", {
+        body: { action: "set_status", userId: targetUser.id, suspended },
+      });
+      if (statusError) throw statusError;
+      setAdminUsers((current) => current.map((item) => item.id === targetUser.id ? { ...item, is_suspended: suspended } : item));
+      setAdminUserCounts((current) => ({ ...current, active: Math.max(0, current.active + (suspended ? -1 : 1)) }));
+      setToast({ message: t(suspended ? "Kullanıcı askıya alındı." : "Kullanıcı yeniden etkinleştirildi.") });
+    } catch (statusError) {
+      setToast({ message: statusError.message || t("Kullanıcı durumu güncellenemedi."), bad: true });
+    }
+  }
+
+  useEffect(() => {
+    if (section === "users" && canManageUsers) {
+      loadAdminUsers().catch((usersError) => setToast({ message: usersError.message || t("Kullanıcı listesi yüklenemedi."), bad: true }));
+    }
+  }, [section, canManageUsers]);
+
+  useEffect(() => {
+    if (section === "overview" && canManageUsers) {
+      loadAdminUsers().catch((usersError) => setToast({ message: usersError.message || t("Kullanıcı listesi yüklenemedi."), bad: true }));
+    }
+  }, [section, canManageUsers]);
+
+  useEffect(() => {
+    if (section !== "audit" || !canManageUsers) return;
+    supabase.from("admin_audit_log")
+      .select("id,actor_user_id,action,entity_type,entity_id,changed_fields,old_status,new_status,created_at")
+      .order("created_at", { ascending: false })
+      .limit(250)
+      .then(({ data, error: auditError }) => {
+        if (auditError) setToast({ message: auditError.message, bad: true });
+        else setAuditEvents(data || []);
+      });
+  }, [section, canManageUsers]);
+
+  async function loadScanDomains() {
+    const { data, error: allowlistError } = await supabase
+      .from("url_scan_allowlist")
+      .select("domain,created_at")
+      .order("domain");
+    if (allowlistError) throw allowlistError;
+    setScanDomains(data || []);
+  }
+
+  useEffect(() => {
+    if (section === "allowlist" && canManageUsers) {
+      loadScanDomains().catch((allowlistError) => setToast({ message: allowlistError.message, bad: true }));
+    }
+  }, [section, canManageUsers]);
+
+  async function saveScanDomain(event) {
+    event.preventDefault();
+    const domain = scanDomainInput.trim().toLowerCase();
+    if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(domain)) {
+      setToast({ message: t("Etki alanı biçimi geçersiz."), bad: true });
+      return;
+    }
+    setScanDomainBusy(true);
+    try {
+      const { error: insertError } = await supabase.from("url_scan_allowlist").insert({
+        domain,
+        created_by: session.user.id,
+      });
+      if (insertError) throw insertError;
+      setScanDomainInput("");
+      setToast({ message: t("Güvenli etki alanı eklendi.") });
+      await loadScanDomains();
+    } catch (allowlistError) {
+      setToast({ message: allowlistError.message || t("Güvenli etki alanı eklenemedi."), bad: true });
+    } finally {
+      setScanDomainBusy(false);
+    }
+  }
+
+  async function removeScanDomain(domain) {
+    setScanDomainBusy(true);
+    try {
+      const { error: deleteError } = await supabase.from("url_scan_allowlist").delete().eq("domain", domain);
+      if (deleteError) throw deleteError;
+      setScanDomains((current) => current.filter((item) => item.domain !== domain));
+      setToast({ message: t("Güvenli etki alanı kaldırıldı.") });
+    } catch (allowlistError) {
+      setToast({ message: allowlistError.message || t("Güvenli etki alanı kaldırılamadı."), bad: true });
+    } finally {
+      setScanDomainBusy(false);
+    }
+  }
 
   async function acceptGoogleConsent() {
     if (!supabase || !session || !isGoogleAuthSession(session)) return;
@@ -1573,6 +1897,26 @@ function App() {
     setToast({ message: t("Kart onaylandı ve yayınlandı.") });
   }
 
+  async function moderateCard(card, status) {
+    if (!supabase || !(profile?.role === "admin" || profile?.is_super_user)) return;
+    const reason = status === "rejected"
+      ? window.prompt(t("Kart için ret gerekçesi girin:"))
+      : null;
+    if (status === "rejected" && reason === null) return;
+    const { data, error: moderationError } = await supabase
+      .from("nfc_cards")
+      .update({ status, rejection_reason: status === "rejected" ? reason.trim() || null : null })
+      .eq("id", card.id)
+      .select()
+      .single();
+    if (moderationError) {
+      setToast({ message: moderationError.message, bad: true });
+      return;
+    }
+    setCards((current) => current.map((item) => item.id === data.id ? data : item));
+    setToast({ message: t(status === "rejected" ? "Kart reddedildi." : status === "suspended" ? "Kart askıya alındı." : status === "deleted" ? "Kart arşivlendi." : "Kart yeniden etkinleştirildi.") });
+  }
+
   async function updateReportStatus(report, status) {
     const { error: updateError } = await supabase
       .from("abuse_reports")
@@ -1600,12 +1944,13 @@ function App() {
         if (!data || data.length < 1000) return rows;
       }
     }
-    const [exportCards, exportFeedback, nfcTags, consents] = await Promise.all([
+    const [exportCards, feedbackResult, nfcTags, consents] = await Promise.all([
       fetchAllRows("nfc_cards", "*"),
-      fetchAllRows("card_feedbacks", "*"),
+      supabase.rpc("get_card_feedback"),
       fetchAllRows("nfc_tags", "*"),
       fetchAllRows("consent_records", "*"),
     ]);
+    if (feedbackResult.error) throw feedbackResult.error;
     const exportObject = {
       exported_at: new Date().toISOString(),
       profile: {
@@ -1617,7 +1962,7 @@ function App() {
       },
       cards: exportCards,
       nfc_tags: nfcTags,
-      feedback: exportFeedback,
+      feedback: feedbackResult.data || [],
       consent_records: consents,
     };
     const blob = new Blob([JSON.stringify(exportObject, null, 2)], { type: "application/json" });
@@ -1704,11 +2049,14 @@ function App() {
     feedback: [t("Geri bildirimler"), t("Kartlarınız üzerinden gelen müşteri yorumları.")],
     settings: [t("Hesap ayarları"), t("Kişisel verilerinizi ve hesabınızı yönetin.")],
     abuse: [t("Kötüye kullanım bildirimleri"), t("Bildirilen bağlantıları inceleyin ve gerekirse kartları geçici olarak devre dışı bırakın.")],
+    users: [t("Kullanıcı yönetimi"), t("Platform kullanıcılarını ve erişim durumlarını yönetin.")],
+    audit: [t("Denetim günlüğü"), t("Yönetici ve moderasyon işlemlerinin son kayıtları.")],
+    allowlist: [t("Güvenli alan adları"), t("URL taramasında güvenilir kabul edilen alan adlarını yönetin.")],
   }[section];
 
   return (
     <div className="dashboard-shell">
-      <Sidebar section={section} onSection={goTo} onSignOut={signOut} user={{ ...user, role: profile?.role, is_super_user: profile?.is_super_user }} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} dark={dark} onToggleTheme={() => setDark(!dark)} isAdmin={isAdmin} pendingReports={pendingReports} />
+      <Sidebar section={section} onSection={goTo} onSignOut={signOut} user={{ ...user, role: profile?.role, is_super_user: profile?.is_super_user }} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} dark={dark} onToggleTheme={() => setDark(!dark)} isAdmin={isAdmin} canManageUsers={canManageUsers} pendingReports={pendingReports} />
       <main className="main-area">
         <header className="topbar">
           <button className="mobile-menu-button icon-button" aria-label={t("Menüyü aç")} onClick={() => setMobileOpen(true)}><Menu size={19} /></button>
@@ -1724,7 +2072,7 @@ function App() {
         <div className="page-content">
           <div className="page-heading">
             <div><p className="eyebrow">{new Intl.DateTimeFormat(language === "tr" ? "tr-TR" : "en-US", { weekday: "long", day: "numeric", month: "long" }).format(new Date())}</p><h1>{heading[0]}</h1><p>{heading[1]}</p></div>
-            {section !== "settings" && section !== "feedback" && section !== "abuse" && <div className="heading-actions">
+            {section !== "settings" && section !== "feedback" && section !== "abuse" && section !== "users" && section !== "audit" && section !== "allowlist" && <div className="heading-actions">
               {isAdmin && <button className="button button-secondary" onClick={() => { setStartManagedCard(true); setModalCard(null); }}><Plus size={17} /> {t("Müşteri için kart oluştur")}</button>}
               <button className="button button-primary" onClick={() => { setStartManagedCard(false); setModalCard(null); }}><Plus size={17} /> {t("Yeni kart oluştur")}</button>
             </div>}
@@ -1739,10 +2087,15 @@ function App() {
                     <article className="stat-card"><div className="stat-top"><span>{t("Herkese açık")}</span><span className="stat-icon stat-green"><Globe2 size={17} /></span></div><strong>{cards.filter((card) => card.access_mode === "public").length.toString().padStart(2, "0")}</strong><p><span className="stat-dot dot-green" /> {t("Herkese açık kartlar")}</p></article>
                     <article className="stat-card"><div className="stat-top"><span>{t("Gizli bağlantı")}</span><span className="stat-icon stat-orange"><ShieldCheck size={17} /></span></div><strong>{cards.filter((card) => card.access_mode === "private").length.toString().padStart(2, "0")}</strong><p><span className="stat-dot dot-orange" /> {t("Özel bağlantılı kartlar")}</p></article>
                     <article className="stat-card"><div className="stat-top"><span>{t("Müşteri geri bildirimi")}</span><span className="stat-icon stat-green"><FileText size={17} /></span></div><strong>{feedbackTotal.toString().padStart(2, "0")}</strong><p><span className="stat-dot dot-green" /> {t("Toplam alınan yanıt")}</p></article>
+                    {canManageUsers && <>
+                      <article className="stat-card"><div className="stat-top"><span>{t("Kayıtlı kullanıcılar")}</span><span className="stat-icon stat-purple"><Users size={17} /></span></div><strong>{adminUserCounts.total.toString().padStart(2, "0")}</strong><p><span className="stat-dot dot-purple" /> {t("Etkin kullanıcılar")}: {adminUserCounts.active}</p></article>
+                      <article className="stat-card"><div className="stat-top"><span>{t("Etkin kartlar")}</span><span className="stat-icon stat-green"><Smartphone size={17} /></span></div><strong>{cards.filter((card) => card.status === "active" && card.is_active).length.toString().padStart(2, "0")}</strong><p><span className="stat-dot dot-green" /> {t("Platform genelinde")}</p></article>
+                      <article className="stat-card"><div className="stat-top"><span>{t("Sistem durumu")}</span><span className={`stat-icon ${error ? "stat-orange" : "stat-green"}`}><ShieldCheck size={17} /></span></div><strong>{t(error ? "İnceleme gerekiyor" : loading ? "Kontrol ediliyor" : "Bağlı")}</strong><p><span className={`stat-dot ${error ? "dot-orange" : "dot-green"}`} /> {t("Supabase veri erişimi")}</p></article>
+                    </>}
                   </section>
                   <section className="panel cards-panel">
                     <div className="panel-heading"><div><h2>{t("Son kartlarınız")}</h2><p>{t("Tüm dijital kartlarınızı tek yerden yönetin.")}</p></div><button className="text-button" onClick={() => goTo("cards")}>{t("Tümünü gör")} <ArrowUpRight size={14} /></button></div>
-                    {cards.length ? cards.slice(0, 4).map((card) => <CardRow key={card.id} card={card} onEdit={setModalCard} onDelete={setDeleteCardTarget} onViewFeedback={(selectedCard) => { setFeedbackCardId(selectedCard.id); goTo("feedback"); }} onNotify={(message, bad) => setToast({ message, bad })} isAdmin={isAdmin} canApprove={profile?.role === "admin" || profile?.is_super_user} onApprove={approveCard} onToggleActive={toggleCardActive} />) : <EmptyCards onCreate={() => { setStartManagedCard(false); setModalCard(null); }} />}
+                    {cards.length ? cards.slice(0, 4).map((card) => <CardRow key={card.id} card={card} onEdit={setModalCard} onDelete={setDeleteCardTarget} onViewFeedback={(selectedCard) => { setFeedbackCardId(selectedCard.id); goTo("feedback"); }} onNotify={(message, bad) => setToast({ message, bad })} isAdmin={isAdmin} canApprove={profile?.role === "admin" || profile?.is_super_user} onApprove={approveCard} onModerate={moderateCard} onToggleActive={toggleCardActive} />) : <EmptyCards onCreate={() => { setStartManagedCard(false); setModalCard(null); }} />}
                   </section>
                   <section className="trust-banner"><span className="trust-icon"><ShieldCheck size={21} /></span><div><strong>{t("Paylaştığınız her bağlantı kontrol altında")}</strong><p>{t("Harici bağlantılar kartınıza eklenmeden önce güvenlik kontrolünden geçirilir.")}</p></div><span className="trust-check"><Check size={16} /></span></section>
                 </>
@@ -1760,7 +2113,7 @@ function App() {
                       <label className="search-field"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("Kartlarda ara...")} /></label>
                     </div>
                   </div>
-                  {filteredCards.length ? filteredCards.map((card) => <CardRow key={card.id} card={card} onEdit={setModalCard} onDelete={setDeleteCardTarget} onViewFeedback={(selectedCard) => { setFeedbackCardId(selectedCard.id); goTo("feedback"); }} onNotify={(message, bad) => setToast({ message, bad })} isAdmin={isAdmin} canApprove={profile?.role === "admin" || profile?.is_super_user} onApprove={approveCard} onToggleActive={toggleCardActive} />) : <EmptyCards onCreate={() => { setStartManagedCard(false); setModalCard(null); }} />}
+                  {filteredCards.length ? filteredCards.map((card) => <CardRow key={card.id} card={card} onEdit={setModalCard} onDelete={setDeleteCardTarget} onViewFeedback={(selectedCard) => { setFeedbackCardId(selectedCard.id); goTo("feedback"); }} onNotify={(message, bad) => setToast({ message, bad })} isAdmin={isAdmin} canApprove={profile?.role === "admin" || profile?.is_super_user} onApprove={approveCard} onModerate={moderateCard} onToggleActive={toggleCardActive} />) : <EmptyCards onCreate={() => { setStartManagedCard(false); setModalCard(null); }} />}
                 </section>
               )}
               {section === "feedback" && (
@@ -1768,7 +2121,7 @@ function App() {
                   <div className="panel-heading"><div><h2>{feedbackCardId ? `${cards.find((card) => card.id === feedbackCardId)?.title || t("Kart")} ${t("Geri bildirimleri")}` : t("Müşteri yanıtları")}</h2><p>{t("Google yorum kartlarınızdan gelen geri bildirimler.")}</p></div><div className="feedback-heading-actions">{feedbackCardId && <button className="text-button" onClick={() => setFeedbackCardId("")}>{t("Tüm kartlar")}</button>}<span className="count-pill">{(feedbackCardId ? feedback.filter((item) => item.card_id === feedbackCardId) : feedback).length} {t("yanıt")}</span></div></div>
                   {(feedbackCardId ? feedback.filter((item) => item.card_id === feedbackCardId) : feedback).length ? <div className="feedback-list">{(feedbackCardId ? feedback.filter((item) => item.card_id === feedbackCardId) : feedback).map((item) => {
                     const card = cards.find((entry) => entry.id === item.card_id);
-                    return <article className="feedback-row" key={item.id}><div className="feedback-rating">{item.rating ? `${item.rating} ★` : <FileText size={17} />}</div><div className="feedback-copy"><div><strong>{card?.title || t("Silinmiş kart")}</strong><time>{new Date(item.created_at).toLocaleDateString(language === "tr" ? "tr-TR" : "en-US")}</time></div><p>{item.customer_message || t("Yorum metni belirtilmedi.")}</p>{item.customer_contact && <small>{item.customer_contact}</small>}</div></article>;
+                    return <article className="feedback-row" key={item.id}><div className="feedback-rating">{item.rating ? `${item.rating} ★` : <FileText size={17} />}</div><div className="feedback-copy"><div><strong>{card?.title || t("Silinmiş kart")}</strong><time>{new Date(item.created_at).toLocaleDateString(language === "tr" ? "tr-TR" : "en-US")}</time></div>{item.display_name && <small>{item.is_name_hidden ? t("Anonim kullanıcı") : item.display_name}</small>}<p>{item.customer_message || t("Yorum metni belirtilmedi.")}</p>{item.display_email && <small>{item.display_email}</small>}</div></article>;
                   })}</div> :                   <div className="empty-state"><div className="empty-icon"><FileText size={21} /></div><h3>{t("Henüz geri bildirim yok")}</h3><p>{t("Müşterileriniz kartlarınız üzerinden yanıt verdiğinde burada görebilirsiniz.")}</p></div>}
                 </section>
               )}
@@ -1795,6 +2148,64 @@ function App() {
                       </article>;
                     })}
                   </div> : <div className="empty-state"><div className="empty-icon"><ShieldCheck size={21} /></div><h3>{t("Henüz kötüye kullanım bildirimi yok.")}</h3><p>{t("Yeni bildirimler burada görüntülenecektir.")}</p></div>}
+                </section>
+              )}
+              {section === "users" && canManageUsers && (
+                <section className="panel admin-users-panel">
+                  <div className="panel-heading">
+                    <div><h2>{t("Kullanıcı yönetimi")}</h2><p>{t("Hesap durumlarını güvenli şekilde yönetin.")}</p></div>
+                    <button className="button button-secondary" disabled={adminUsersBusy} onClick={() => loadAdminUsers().catch((usersError) => setToast({ message: usersError.message, bad: true }))}>{adminUsersBusy ? t("Yükleniyor") : t("Yenile")}</button>
+                  </div>
+                  <div className="admin-user-stats">
+                    <article><span>{t("Kayıtlı kullanıcılar")}</span><strong>{adminUserCounts.total}</strong></article>
+                    <article><span>{t("Etkin kullanıcılar")}</span><strong>{adminUserCounts.active}</strong></article>
+                  </div>
+                  {adminUsers.length ? (
+                    <>
+                      <div className="admin-user-table-wrap">
+                        <table className="admin-user-table">
+                          <thead><tr><th>{t("Kullanıcı")}</th><th>{t("Rol")}</th><th>{t("Kayıt tarihi")}</th><th>{t("Durum")}</th><th>{t("İşlemler")}</th></tr></thead>
+                          <tbody>{adminUsers.map((adminUser) => (
+                            <tr key={adminUser.id}>
+                              <td><strong>{adminUser.full_name || t("Ad belirtilmedi")}</strong><small>{adminUser.email || adminUser.id}</small></td>
+                              <td>{adminUser.is_super_user ? t("Süper yönetici") : t(adminUser.role === "admin" ? "Yönetici" : adminUser.role === "reseller" ? "Bayi" : "Kullanıcı")}</td>
+                              <td>{new Date(adminUser.created_at).toLocaleDateString(language === "tr" ? "tr-TR" : "en-US")}</td>
+                              <td><span className={`status-badge ${adminUser.is_suspended ? "status-suspended" : "status-public"}`}><i />{adminUser.is_suspended ? t("Askıya alındı") : t("Etkin")}</span></td>
+                              <td>{adminUser.role !== "admin" && !adminUser.is_super_user && <button className={`button ${adminUser.is_suspended ? "button-secondary" : "button-danger"}`} disabled={adminUsersBusy} onClick={() => setAdminUserSuspended(adminUser, !adminUser.is_suspended)}>{t(adminUser.is_suspended ? "Kullanıcıyı etkinleştir" : "Kullanıcıyı askıya al")}</button>}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                      {adminUsersHasMore && <button className="button button-secondary load-more-users" disabled={adminUsersBusy} onClick={() => loadAdminUsers(adminUsersPage + 1, true).catch((usersError) => setToast({ message: usersError.message, bad: true }))}>{t("Daha fazla yükle")}</button>}
+                    </>
+                  ) : <div className="empty-state"><div className="empty-icon"><Users size={21} /></div><h3>{t(adminUsersBusy ? "Kullanıcılar yükleniyor..." : "Kullanıcı bulunamadı.")}</h3></div>}
+                </section>
+              )}
+              {section === "audit" && canManageUsers && (
+                <section className="panel admin-users-panel">
+                  <div className="panel-heading"><div><h2>{t("Denetim günlüğü")}</h2><p>{t("Yönetici ve moderasyon işlemlerinin son kayıtları.")}</p></div></div>
+                  {auditEvents.length ? <div className="admin-user-table-wrap">
+                    <table className="admin-user-table">
+                      <thead><tr><th>{t("İşlem")}</th><th>{t("Hedef")}</th><th>{t("Değişen alanlar")}</th><th>{t("Tarih")}</th></tr></thead>
+                      <tbody>{auditEvents.map((event) => <tr key={event.id}>
+                        <td><strong>{event.action}</strong><small>{event.actor_user_id || t("Sistem")}</small></td>
+                        <td>{event.entity_type} · {event.entity_id}</td>
+                        <td>{(event.changed_fields || []).join(", ")}{event.old_status || event.new_status ? ` · ${event.old_status || "—"} → ${event.new_status || "—"}` : ""}</td>
+                        <td>{new Date(event.created_at).toLocaleString(language === "tr" ? "tr-TR" : "en-US")}</td>
+                      </tr>)}</tbody>
+                    </table>
+                  </div> : <div className="empty-state"><div className="empty-icon"><FileText size={21} /></div><h3>{t("Henüz denetim kaydı yok.")}</h3></div>}
+                </section>
+              )}
+              {section === "allowlist" && canManageUsers && (
+                <section className="panel admin-users-panel">
+                  <div className="panel-heading"><div><h2>{t("Güvenli alan adları")}</h2><p>{t("Eklemeden önce alan adının güvenilir olduğundan emin olun. Alan adı ve alt alan adları tarama atlaması alır.")}</p></div></div>
+                  <form className="scan-allowlist-form" onSubmit={saveScanDomain}>
+                    <label className="field"><span>{t("Alan adı")}</span><input value={scanDomainInput} onChange={(event) => setScanDomainInput(event.target.value)} placeholder="example.com" autoComplete="off" /></label>
+                    <button className="button button-primary" disabled={scanDomainBusy || !scanDomainInput.trim()}>{t("Güvenli alan adı ekle")}</button>
+                  </form>
+                  <p className="field-hint">{t("Güvenilir alan adı eşleşmeleri tüm alt alan adlarını da kapsar. URL güvenlik servisleri yine diğer alan adlarını kontrol eder.")}</p>
+                  {scanDomains.length ? <div className="scan-allowlist-list">{scanDomains.map((item) => <div key={item.domain}><code>{item.domain}</code><button className="button button-danger" disabled={scanDomainBusy} onClick={() => removeScanDomain(item.domain)}>{t("Kaldır")}</button></div>)}</div> : <div className="empty-state"><div className="empty-icon"><ShieldCheck size={21} /></div><h3>{t("Ek özel güvenli alan adı yok.")}</h3><p>{t("Yerleşik güvenli alan adları URL tarama hizmetinde tanımlıdır.")}</p></div>}
                 </section>
               )}
               {section === "settings" && (

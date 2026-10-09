@@ -124,7 +124,7 @@ export default {
     let userResponse;
     try {
       userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        headers: { apikey: env.SUPABASE_ANON_KEY, authorization: `Bearer ${bearer}` },
+        headers: { apikey: env.SUPABASE_ANON_KEY, authorization: "Bearer " + bearer },
         signal: AbortSignal.timeout(3000),
       });
     } catch {
@@ -143,8 +143,8 @@ export default {
     let profileResponse;
     try {
       profileResponse = await fetch(
-        `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=role,is_super_user`,
-        { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` }, signal: AbortSignal.timeout(3000) },
+        `${supabaseUrl}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=role,is_super_user,is_suspended`,
+        { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY }, signal: AbortSignal.timeout(3000) },
       );
     } catch {
       return json({ error: "Unable to verify card permissions" }, 502, appOrigin);
@@ -157,6 +157,9 @@ export default {
       return json({ error: "Supabase returned an invalid profile response" }, 502, appOrigin);
     }
     const profile = Array.isArray(profileRows) ? profileRows[0] : null;
+    if (!profile || profile.is_suspended === true) {
+      return json({ error: "This account cannot create or scan card links" }, 403, appOrigin);
+    }
     const privileged = profile?.role === "admin" || profile?.is_super_user === true;
     let submittedUrl;
     let skipScan = false;
@@ -182,7 +185,35 @@ export default {
     }
 
     const host = submittedUrl.hostname.toLowerCase();
-    const trustedDomains = ["google.com", "googleapis.com", "instagram.com", "whatsapp.com"];
+    const trustedDomains = ["google.com", "googleapis.com", "instagram.com", "whatsapp.com", "wa.me"];
+    let allowlistResponse;
+    try {
+      allowlistResponse = await fetch(
+        `${supabaseUrl}/rest/v1/url_scan_allowlist?select=domain`,
+        {
+          headers: {
+            apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+            authorization: "Bearer " + env.SUPABASE_SERVICE_ROLE_KEY,
+          },
+          signal: AbortSignal.timeout(3000),
+        },
+      );
+    } catch {
+      return json({ error: "Unable to load the URL safety allowlist" }, 502, appOrigin);
+    }
+    if (!allowlistResponse.ok) return json({ error: "Unable to load the URL safety allowlist" }, 502, appOrigin);
+    let allowlistRows;
+    try {
+      allowlistRows = await allowlistResponse.json();
+    } catch {
+      return json({ error: "Supabase returned an invalid URL safety allowlist" }, 502, appOrigin);
+    }
+    if (!Array.isArray(allowlistRows)) return json({ error: "Supabase returned an invalid URL safety allowlist" }, 502, appOrigin);
+    for (const row of allowlistRows) {
+      if (typeof row?.domain === "string" && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(row.domain)) {
+        trustedDomains.push(row.domain);
+      }
+    }
     if (trustedDomains.some((domain) => host === domain || host.endsWith(`.${domain}`))) {
       return json({ safe: true, provider: "allowlist" }, 200, appOrigin);
     }

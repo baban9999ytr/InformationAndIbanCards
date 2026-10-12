@@ -61,7 +61,7 @@ async function fetchCardData(id, token, slug) {
         p_token: token || null,
         p_slug: slug || null,
       }),
-    }
+    },
   );
 
   if (!response.ok) return null;
@@ -103,7 +103,9 @@ function setupGoogleReviewMode(data) {
   modeSection.classList.remove("hidden");
 
   const stars = document.querySelectorAll(".star");
-  const feedbackContainer = document.getElementById("feedback-options-container");
+  const feedbackContainer = document.getElementById(
+    "feedback-options-container",
+  );
   const feedbackStatus = document.getElementById("feedback-contact-status");
   const feedbackOptions = buildFeedbackOptions(data);
 
@@ -124,10 +126,13 @@ function setupGoogleReviewMode(data) {
       } else {
         feedbackContainer.classList.add("hidden");
         feedbackStatus.innerText = "";
-        
+
         if (data.google_review_url) {
           let reviewUrl = data.google_review_url.trim();
-          if (!reviewUrl.startsWith("http://") && !reviewUrl.startsWith("https://")) {
+          if (
+            !reviewUrl.startsWith("http://") &&
+            !reviewUrl.startsWith("https://")
+          ) {
             reviewUrl = "https://" + reviewUrl;
           }
           setTimeout(() => {
@@ -144,7 +149,8 @@ function setupGoogleReviewMode(data) {
 function buildFeedbackOptions(data) {
   const options = [];
 
-  const rawWhatsapp = data.contact_whatsapp || data.notification_phone || data.phone;
+  const rawWhatsapp =
+    data.contact_whatsapp || data.notification_phone || data.phone;
   const rawSms = data.contact_sms || data.notification_phone || data.phone;
   const rawEmail = data.contact_email || data.notification_email || data.email;
   const rawInstagram = data.contact_instagram || data.instagram_url;
@@ -155,11 +161,12 @@ function buildFeedbackOptions(data) {
     if (whatsappDigits.length === 10 && whatsappDigits.startsWith("5")) {
       whatsappDigits = "90" + whatsappDigits;
     }
-    const msg = "Merhaba, hizmetinizle ilgili geri bildirimde bulunmak istiyorum.";
+    const msg =
+      "Merhaba, hizmetinizle ilgili geri bildirimde bulunmak istiyorum.";
     const encodedMsg = encodeURIComponent(msg);
     options.push({
       id: "feedback-whatsapp",
-      href: `https://wa.me/${whatsappDigits}?text=${encodedMsg}`
+      href: `https://wa.me/${whatsappDigits}?text=${encodedMsg}`,
     });
   }
 
@@ -167,7 +174,7 @@ function buildFeedbackOptions(data) {
   if (smsPhone) {
     options.push({
       id: "feedback-sms",
-      href: `sms:${smsPhone}`
+      href: `sms:${smsPhone}`,
     });
   }
 
@@ -178,7 +185,7 @@ function buildFeedbackOptions(data) {
     }
     options.push({
       id: "feedback-instagram",
-      href: instaUrl
+      href: instaUrl,
     });
   }
 
@@ -187,7 +194,7 @@ function buildFeedbackOptions(data) {
     const subject = encodeURIComponent("Geri Bildirim");
     options.push({
       id: "feedback-email",
-      href: `mailto:${encodeURI(email)}?subject=${subject}`
+      href: `mailto:${encodeURI(email)}?subject=${subject}`,
     });
   }
 
@@ -207,10 +214,10 @@ function showFeedbackOptions(options, container, status) {
     "feedback-whatsapp",
     "feedback-sms",
     "feedback-instagram",
-    "feedback-email"
+    "feedback-email",
   ];
 
-  elementIds.forEach(id => {
+  elementIds.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   });
@@ -222,7 +229,7 @@ function showFeedbackOptions(options, container, status) {
     return;
   }
 
-  options.forEach(opt => {
+  options.forEach((opt) => {
     const el = document.getElementById(opt.id);
     if (el) {
       el.href = opt.href;
@@ -250,7 +257,9 @@ function setupIbanCardMode(data) {
   if (data.iban) {
     const bName = data.bank_name || "Banka Hesabı";
     document.getElementById("bank-name").innerText = bName;
-    document.getElementById("iban-text").innerText = formatIban(cleanIban(data.iban));
+    document.getElementById("iban-text").innerText = formatIban(
+      cleanIban(data.iban),
+    );
     document.getElementById("btn-copy-iban").addEventListener("click", (e) => {
       copyToClipboard(cleanIban(data.iban), e.currentTarget);
     });
@@ -259,16 +268,21 @@ function setupIbanCardMode(data) {
   if (accountHolder) {
     document.getElementById("account-holder").innerText = accountHolder;
     receiverRow.classList.remove("hidden");
-    document.getElementById("btn-copy-receiver").addEventListener("click", (e) => {
-      copyToClipboard(accountHolder, e.currentTarget);
-    });
+    document
+      .getElementById("btn-copy-receiver")
+      .addEventListener("click", (e) => {
+        copyToClipboard(accountHolder, e.currentTarget);
+      });
   }
 
   if (data.instagram_url) {
     const el = document.getElementById("link-instagram");
     if (el) {
       let instagramUrl = data.instagram_url;
-      if (!instagramUrl.startsWith("http://") && !instagramUrl.startsWith("https://")) {
+      if (
+        !instagramUrl.startsWith("http://") &&
+        !instagramUrl.startsWith("https://")
+      ) {
         instagramUrl = "https://" + instagramUrl;
       }
       el.href = instagramUrl;
@@ -282,11 +296,19 @@ function setupIbanCardMode(data) {
 }
 
 function formatIban(value) {
-  return cleanIban(value).match(/.{1,4}/g)?.join(" ") || "";
+  return (
+    cleanIban(value)
+      .match(/.{1,4}/g)
+      ?.join(" ") || ""
+  );
 }
 
 function cleanIban(value) {
-  return String(value || "").trim().split(":", 1)[0].replace(/[^a-z\d]/gi, "").toUpperCase();
+  return String(value || "")
+    .trim()
+    .split(":", 1)[0]
+    .replace(/[^a-z\d]/gi, "")
+    .toUpperCase();
 }
 
 function setupLink(elementId, url, defaultText) {
@@ -319,7 +341,7 @@ async function copyToClipboard(value, button) {
     button.innerText = "Kopyalanamadı";
   }
 
-  window.setTimeout(() => { 
+  window.setTimeout(() => {
     button.innerText = defaultText;
   }, 2000);
 }

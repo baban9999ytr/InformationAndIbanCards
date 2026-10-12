@@ -6,22 +6,31 @@ function keyString(key) {
   return JSON.stringify(key);
 }
 
-export async function queryCached(key, staleTimeMs, query, { force = false } = {}) {
+export async function queryCached(
+  key,
+  staleTimeMs,
+  query,
+  { force = false } = {},
+) {
   const cacheKey = keyString(key);
   const cached = entries.get(cacheKey);
-  if (!force && cached && Date.now() - cached.updatedAt < staleTimeMs) return cached.value;
+  if (!force && cached && Date.now() - cached.updatedAt < staleTimeMs)
+    return cached.value;
   if (!force && inFlight.has(cacheKey)) return inFlight.get(cacheKey);
 
   const generation = generations.get(cacheKey) || 0;
   let pending;
-  pending = Promise.resolve().then(query).then((value) => {
-    if (!value?.error && (generations.get(cacheKey) || 0) === generation) {
-      entries.set(cacheKey, { value, updatedAt: Date.now() });
-    }
-    return value;
-  }).finally(() => {
-    if (inFlight.get(cacheKey) === pending) inFlight.delete(cacheKey);
-  });
+  pending = Promise.resolve()
+    .then(query)
+    .then((value) => {
+      if (!value?.error && (generations.get(cacheKey) || 0) === generation) {
+        entries.set(cacheKey, { value, updatedAt: Date.now() });
+      }
+      return value;
+    })
+    .finally(() => {
+      if (inFlight.get(cacheKey) === pending) inFlight.delete(cacheKey);
+    });
   inFlight.set(cacheKey, pending);
   return pending;
 }

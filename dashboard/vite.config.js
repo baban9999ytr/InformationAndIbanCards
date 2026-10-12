@@ -13,7 +13,10 @@ export default defineConfig({
       apply: "build",
       closeBundle() {
         const outputDir = resolve(process.cwd(), "dist");
-        copyFileSync(resolve(outputDir, "index.html"), resolve(outputDir, "404.html"));
+        copyFileSync(
+          resolve(outputDir, "index.html"),
+          resolve(outputDir, "404.html"),
+        );
       },
     },
   ],
@@ -21,4 +24,3 @@ export default defineConfig({
   base: "/",
   build: { outDir: "dist" },
 });
- 

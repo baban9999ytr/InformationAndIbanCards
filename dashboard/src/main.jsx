@@ -21,7 +21,9 @@ class AppErrorBoundary extends Component {
         <main className="app-error-fallback" role="alert">
           <h1>Something went wrong</h1>
           <p>The page could not be displayed. Reload to try again.</p>
-          <button type="button" onClick={() => window.location.reload()}>Reload page</button>
+          <button type="button" onClick={() => window.location.reload()}>
+            Reload page
+          </button>
         </main>
       );
     }

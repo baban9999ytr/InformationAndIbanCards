@@ -61,7 +61,7 @@ async function fetchCardData(id, token, slug) {
         p_token: token || null,
         p_slug: slug || null,
       }),
-    }
+    },
   );
 
   if (!response.ok) return null;
@@ -103,7 +103,9 @@ function setupGoogleReviewMode(data) {
   modeSection.classList.remove("hidden");
 
   const stars = document.querySelectorAll(".star");
-  const feedbackContainer = document.getElementById("feedback-options-container");
+  const feedbackContainer = document.getElementById(
+    "feedback-options-container",
+  );
   const feedbackStatus = document.getElementById("feedback-contact-status");
   const feedbackOptions = buildFeedbackOptions(data);
 
@@ -131,7 +133,7 @@ function setupGoogleReviewMode(data) {
       } else {
         feedbackContainer.classList.add("hidden");
         feedbackStatus.innerText = "";
-        
+
         if (data.google_review_url) {
           setTimeout(() => {
             window.location.href = data.google_review_url;
@@ -150,11 +152,12 @@ function buildFeedbackOptions(data) {
   const whatsappPhone = normalizePhone(data.contact_whatsapp);
   if (whatsappPhone) {
     const whatsappDigits = whatsappPhone.replace(/\D/g, "");
-    const msg = "Merhaba, hizmetinizle ilgili geri bildirimde bulunmak istiyorum.";
+    const msg =
+      "Merhaba, hizmetinizle ilgili geri bildirimde bulunmak istiyorum.";
     const encodedMsg = encodeURIComponent(msg);
     options.push({
       id: "feedback-whatsapp",
-      href: `https://wa.me/${whatsappDigits}?text=${encodedMsg}`
+      href: `https://wa.me/${whatsappDigits}?text=${encodedMsg}`,
     });
   }
 
@@ -162,7 +165,7 @@ function buildFeedbackOptions(data) {
   if (smsPhone) {
     options.push({
       id: "feedback-sms",
-      href: `sms:${smsPhone}`
+      href: `sms:${smsPhone}`,
     });
   }
 
@@ -173,16 +176,17 @@ function buildFeedbackOptions(data) {
     }
     options.push({
       id: "feedback-instagram",
-      href: instaUrl
+      href: instaUrl,
     });
   }
 
-  const email = typeof data.contact_email === "string" ? data.contact_email.trim() : "";
+  const email =
+    typeof data.contact_email === "string" ? data.contact_email.trim() : "";
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     const subject = encodeURIComponent("Geri Bildirim");
     options.push({
       id: "feedback-email",
-      href: `mailto:${encodeURI(email)}?subject=${subject}`
+      href: `mailto:${encodeURI(email)}?subject=${subject}`,
     });
   }
 
@@ -200,12 +204,12 @@ function showFeedbackOptions(options, container, status) {
 
   const elementIds = [
     "feedback-whatsapp",
-    "feedback-sms", 
-    "feedback-instagram", 
-    "feedback-email"
+    "feedback-sms",
+    "feedback-instagram",
+    "feedback-email",
   ];
-  
-  elementIds.forEach(id => {
+
+  elementIds.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.classList.add("hidden");
   });
@@ -217,7 +221,7 @@ function showFeedbackOptions(options, container, status) {
     return;
   }
 
-  options.forEach(opt => {
+  options.forEach((opt) => {
     const el = document.getElementById(opt.id);
     if (el) el.classList.remove("hidden");
   });
@@ -246,7 +250,7 @@ function setupIbanCardMode(data) {
     const bName = data.bank_name || "Banka Hesabı";
     document.getElementById("bank-name").innerText = bName;
     document.getElementById("iban-text").innerText = data.iban;
-    
+
     document.getElementById("btn-copy-iban").addEventListener("click", (e) => {
       copyToClipboard(data.iban, e.currentTarget);
     });
@@ -255,17 +259,22 @@ function setupIbanCardMode(data) {
   if (accountHolder) {
     document.getElementById("account-holder").innerText = accountHolder;
     receiverRow.classList.remove("hidden");
-    
-    document.getElementById("btn-copy-receiver").addEventListener("click", (e) => {
-      copyToClipboard(accountHolder, e.currentTarget);
-    });
+
+    document
+      .getElementById("btn-copy-receiver")
+      .addEventListener("click", (e) => {
+        copyToClipboard(accountHolder, e.currentTarget);
+      });
   }
 
   if (data.instagram_url) {
     const el = document.getElementById("link-instagram");
     if (el) {
       let instagramUrl = data.instagram_url;
-      if (!instagramUrl.startsWith("http://") && !instagramUrl.startsWith("https://")) {
+      if (
+        !instagramUrl.startsWith("http://") &&
+        !instagramUrl.startsWith("https://")
+      ) {
         instagramUrl = "https://" + instagramUrl;
       }
       el.href = instagramUrl;

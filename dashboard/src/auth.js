@@ -1,4 +1,7 @@
-export async function signInWithGoogle(supabaseClient, redirectTo = `${window.location.origin}/dashboard`) {
+export async function signInWithGoogle(
+  supabaseClient,
+  redirectTo = `${window.location.origin}/dashboard`,
+) {
   if (!supabaseClient) {
     throw new Error("Supabase is not configured.");
   }

@@ -127,6 +127,65 @@ alter table public.nfc_cards add column if not exists status text not null defau
 alter table public.nfc_cards add column if not exists managed_by_admin boolean not null default false;
 alter table public.nfc_cards add column if not exists blocks jsonb not null default '[]'::jsonb;
 alter table public.nfc_cards add column if not exists rejection_reason text;
+alter table public.nfc_cards add column if not exists palette_id uuid;
+
+-- -----------------------------------------------------------------------------
+-- 4. PALETTE TABLES
+-- -----------------------------------------------------------------------------
+-- Palette tokens are deliberately limited to colors consumed by the card
+-- renderer. Keeping them as JSONB allows the frontend to add presentation
+-- tokens without a schema migration, while the check prevents arbitrary data.
+create table if not exists public.palette_definitions (
+  id uuid primary key default gen_random_uuid(),
+  owner_user_id uuid references auth.users(id) on delete cascade,
+  name text not null check (length(trim(name)) between 1 and 80),
+  description text,
+  kind text not null default 'custom' check (kind in ('system', 'custom')),
+  tokens jsonb not null check (
+    jsonb_typeof(tokens) = 'object'
+    and tokens ?& array['background', 'surface', 'text', 'primary', 'accent', 'muted', 'button_text']
+    and (tokens - 'background' - 'surface' - 'text' - 'primary' - 'accent' - 'muted' - 'button_text') = '{}'::jsonb
+    and (tokens ->> 'background') ~ '^#[0-9A-Fa-f]{6}$'
+    and (tokens ->> 'surface') ~ '^#[0-9A-Fa-f]{6}$'
+    and (tokens ->> 'text') ~ '^#[0-9A-Fa-f]{6}$'
+    and (tokens ->> 'primary') ~ '^#[0-9A-Fa-f]{6}$'
+    and (tokens ->> 'accent') ~ '^#[0-9A-Fa-f]{6}$'
+    and (tokens ->> 'muted') ~ '^#[0-9A-Fa-f]{6}$'
+    and (tokens ->> 'button_text') ~ '^#[0-9A-Fa-f]{6}$'
+  ),
+  is_default boolean not null default false,
+  is_active boolean not null default true,
+  moderation_status text not null default 'approved'
+    check (moderation_status in ('pending', 'approved', 'rejected')),
+  moderation_note text,
+  created_by uuid references auth.users(id) on delete set null,
+  updated_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint palette_system_owner_check check (
+    (kind = 'system' and owner_user_id is null and is_default = true)
+    or (kind = 'custom' and owner_user_id is not null and is_default = false)
+  )
+);
+
+alter table public.palette_definitions add column if not exists owner_user_id uuid;
+alter table public.palette_definitions add column if not exists name text;
+alter table public.palette_definitions add column if not exists description text;
+alter table public.palette_definitions add column if not exists kind text not null default 'custom';
+alter table public.palette_definitions add column if not exists tokens jsonb;
+alter table public.palette_definitions add column if not exists is_default boolean not null default false;
+alter table public.palette_definitions add column if not exists is_active boolean not null default true;
+alter table public.palette_definitions add column if not exists moderation_status text not null default 'approved';
+alter table public.palette_definitions add column if not exists moderation_note text;
+alter table public.palette_definitions add column if not exists created_by uuid;
+alter table public.palette_definitions add column if not exists updated_by uuid;
+alter table public.palette_definitions add column if not exists created_at timestamptz not null default now();
+alter table public.palette_definitions add column if not exists updated_at timestamptz not null default now();
+
+alter table public.nfc_cards drop constraint if exists nfc_cards_palette_id_fkey;
+alter table public.nfc_cards
+  add constraint nfc_cards_palette_id_fkey
+  foreign key (palette_id) references public.palette_definitions(id) on delete set null;
 
 -- Alter column defaults safely
 alter table public.nfc_cards alter column type set default 'digital_card'::card_type;
@@ -151,7 +210,7 @@ alter table public.nfc_cards
   foreign key (user_id) references auth.users(id) on delete cascade;
 
 -- -----------------------------------------------------------------------------
--- 4. DEPENDENT TABLES
+-- 5. DEPENDENT TABLES
 -- -----------------------------------------------------------------------------
 create table if not exists public.nfc_tags (
   id uuid primary key default gen_random_uuid(),
@@ -227,7 +286,7 @@ end;
 $$;
 
 -- -----------------------------------------------------------------------------
--- 5. INDEXES
+-- 6. INDEXES
 -- -----------------------------------------------------------------------------
 create unique index if not exists nfc_cards_public_slug_unique
   on public.nfc_cards (slug) where access_mode = 'public';
@@ -243,6 +302,12 @@ create index if not exists nfc_tags_card_id_idx on public.nfc_tags (card_id);
 create index if not exists nfc_tags_user_id_idx on public.nfc_tags (user_id);
 create index if not exists card_feedbacks_card_id_idx on public.card_feedbacks (card_id);
 create index if not exists card_feedbacks_user_id_idx on public.card_feedbacks (user_id);
+create index if not exists palette_definitions_owner_idx
+  on public.palette_definitions (owner_user_id, updated_at desc);
+create index if not exists palette_definitions_status_idx
+  on public.palette_definitions (kind, moderation_status, is_active);
+create unique index if not exists palette_definitions_one_default_idx
+  on public.palette_definitions (is_default) where is_default;
 
 -- -----------------------------------------------------------------------------
 -- 6. FUNCTIONS & TRIGGERS
@@ -585,6 +650,130 @@ create trigger record_required_signup_consents
   after insert on auth.users
   for each row execute function public.record_required_signup_consents();
 
+insert into public.palette_definitions (
+  name, description, kind, tokens, is_default, is_active, moderation_status
+)
+select
+  'Bilgi Default',
+  'Default palette for new cards',
+  'system',
+  '{"background":"#0F172A","surface":"#1E293B","text":"#F8FAFC","primary":"#38BDF8","accent":"#22C55E","muted":"#94A3B8","button_text":"#0F172A"}'::jsonb,
+  true,
+  true,
+  'approved'
+where not exists (
+  select 1 from public.palette_definitions where is_default = true
+);
+
+create or replace function public.enforce_palette_privileges()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if public.is_admin_or_super_user() then
+    new.updated_by := auth.uid();
+    if new.kind = 'system' then
+      new.owner_user_id := null;
+      new.is_default := true;
+      new.moderation_status := 'approved';
+    end if;
+    return new;
+  end if;
+
+  if tg_op = 'INSERT' then
+    new.owner_user_id := auth.uid();
+    new.kind := 'custom';
+    new.is_default := false;
+    new.created_by := auth.uid();
+    new.updated_by := auth.uid();
+    new.moderation_status := 'pending';
+  elsif old.owner_user_id is distinct from auth.uid()
+    or old.kind <> 'custom'
+    or new.owner_user_id is distinct from old.owner_user_id
+    or new.kind is distinct from old.kind
+    or new.is_default is distinct from old.is_default
+    or new.moderation_status is distinct from old.moderation_status then
+    raise exception 'Only the palette owner may edit this custom palette';
+  else
+    new.moderation_status := 'pending';
+    new.moderation_note := null;
+    new.updated_by := auth.uid();
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.enforce_palette_privileges() from public;
+drop trigger if exists enforce_palette_privileges on public.palette_definitions;
+create trigger enforce_palette_privileges
+  before insert or update on public.palette_definitions
+  for each row execute function public.enforce_palette_privileges();
+
+create or replace function public.get_effective_card_palette(p_card_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    (
+      select p.tokens
+      from public.nfc_cards c
+      join public.palette_definitions p on p.id = c.palette_id
+      where c.id = p_card_id
+        and c.status = 'active'
+        and c.is_active
+        and p.is_active
+        and p.moderation_status = 'approved'
+    ),
+    (
+      select p.tokens
+      from public.palette_definitions p
+      where p.is_default
+        and p.is_active
+        and p.moderation_status = 'approved'
+      order by p.updated_at desc
+      limit 1
+    )
+  );
+$$;
+
+revoke all on function public.get_effective_card_palette(uuid) from public;
+grant execute on function public.get_effective_card_palette(uuid) to anon, authenticated;
+
+create or replace function public.enforce_card_palette_access()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if new.palette_id is not null
+    and not public.is_admin_or_super_user()
+    and not exists (
+      select 1
+      from public.palette_definitions p
+      where p.id = new.palette_id
+        and (
+          (p.kind = 'system' and p.is_active and p.moderation_status = 'approved')
+          or (p.kind = 'custom' and p.owner_user_id = auth.uid())
+        )
+    ) then
+    raise exception 'You may only apply your own custom palette or an active system palette';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function public.enforce_card_palette_access() from public;
+drop trigger if exists enforce_card_palette_access on public.nfc_cards;
+create trigger enforce_card_palette_access
+  before insert or update of palette_id on public.nfc_cards
+  for each row execute function public.enforce_card_palette_access();
+
 -- -----------------------------------------------------------------------------
 -- 7. ROW LEVEL SECURITY (RLS) & POLICIES
 -- -----------------------------------------------------------------------------
@@ -595,6 +784,7 @@ alter table public.nfc_tags enable row level security;
 alter table public.card_feedbacks enable row level security;
 alter table public.abuse_reports enable row level security;
 alter table public.url_scan_allowlist enable row level security;
+alter table public.palette_definitions enable row level security;
 
 drop policy if exists "Users can view their own profile" on public.profiles;
 create policy "Users can view their own profile"
@@ -649,6 +839,30 @@ create policy "Admins have full control over all cards"
   with check (public.is_admin_or_reseller());
 
 grant select, insert, update, delete on public.nfc_cards to authenticated;
+
+drop policy if exists "Anyone can view active palettes" on public.palette_definitions;
+create policy "Anyone can view active palettes"
+  on public.palette_definitions for select to anon, authenticated
+  using (
+    is_active
+    and moderation_status = 'approved'
+    and (kind = 'system' or owner_user_id = (select auth.uid()))
+  );
+
+drop policy if exists "Users can manage their custom palettes" on public.palette_definitions;
+create policy "Users can manage their custom palettes"
+  on public.palette_definitions for all to authenticated
+  using (owner_user_id = (select auth.uid()) and kind = 'custom' and public.is_account_active())
+  with check (owner_user_id = (select auth.uid()) and kind = 'custom' and public.is_account_active());
+
+drop policy if exists "Admins have full control over palettes" on public.palette_definitions;
+create policy "Admins have full control over palettes"
+  on public.palette_definitions for all to authenticated
+  using (public.is_admin_or_super_user())
+  with check (public.is_admin_or_super_user());
+
+grant select on public.palette_definitions to anon;
+grant select, insert, update, delete on public.palette_definitions to authenticated;
 
 drop policy if exists "Users can manage their own NFC tags" on public.nfc_tags;
 create policy "Users can manage their own NFC tags"

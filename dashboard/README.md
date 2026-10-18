@@ -64,6 +64,19 @@ Administrators and super users can manage custom trusted domains from the dashbo
 
 The card editor stores the selected block layout in `nfc_cards.blocks`, while continuing to write the existing columns consumed by older card links and clients. Existing records are backfilled by the modular-card migration. Owners can reorder and hide supported profile, payment, review, contact, social, and custom-link blocks; administrators can approve, reject, suspend, restore, or archive a card. Rejection reasons and status transitions are recorded in `admin_audit_log`. The app writes local drafts to `card_builder_draft` and still reads the earlier `card_form_draft` key for recovery.
 
+### Dynamic card palettes
+
+`palette_definitions` stores the active system default and user-owned custom palettes. A palette has seven validated hex tokens (`background`, `surface`, `text`, `primary`, `accent`, `muted`, and `button_text`), and `nfc_cards.palette_id` optionally assigns one to a card. Cards without an assignment use the active system default through `get_effective_card_palette(uuid)`.
+
+The Supabase REST API exposes the normal CRUD routes for `palette_definitions`:
+
+- `GET /rest/v1/palette_definitions?kind=eq.system&is_default=eq.true` retrieves the default palette.
+- Authenticated users can `POST`, `PATCH`, `GET`, and `DELETE` their own custom palettes; inserts and edits enter `pending` moderation.
+- `PATCH /rest/v1/nfc_cards?id=eq.<card_id>` with `{ "palette_id": "<palette_id>" }` applies a palette to an owned card.
+- Administrators and super users have full CRUD access to palettes through RLS and can set `moderation_status`, `is_active`, or replace the system default.
+
+The dashboard helper functions in `src/paletteApi.js` centralize these calls. The public `resolve-card` function adds the effective palette to its response, so the public card can render it without exposing private palette ownership data. The frontend should list the user's palettes in the card editor, save a new palette before applying it, and show pending/rejected moderation state. The admin panel should use `listPalettesForAdmin` and `moderatePalette` for review, activation, and default-palette management.
+
 ## Deploy the dashboard
 
 Build this app from the `dashboard` directory with `npm run build`; the output directory is `dashboard/dist`. Set the `VITE_...` variables as build-time environment variables using real Supabase project values. The React app serves a public landing page at `/`, public card links at `/c/:slug`, and auth-protected dashboard screens at `/dashboard`, `/create`, and `/settings`. Email users must verify their address before accessing protected pages; after verification, the dashboard shows a one-step onboarding prompt until they choose an account type or skip it. The build emits `404.html` as a copy of the SPA entry point for static hosts that use a 404 document, and `public/_redirects` provides the Cloudflare Pages SPA rewrite. For Cloudflare Workers Assets, use `dashboard/wrangler.toml`, which configures `dist` and `single-page-application` not-found handling; `public/_routes.json` excludes `/assets/*` from Worker-first routing. Deploy the dashboard assets to `bilgi.openstacktool.com`. Deploy the API Worker on `api.openstacktool.com`, route `/api/*` to it, and configure its allowed origins as above. The main-site CTAs in the repository root link to the dashboard and card-creation routes. The repository-root `404.html` maps legacy legal aliases to `bilgi.openstacktool.com` and `/c/:slug` links to the legacy viewer; unmatched paths show a not-found page rather than becoming card lookups.

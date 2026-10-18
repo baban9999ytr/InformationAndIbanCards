@@ -100,7 +100,15 @@ Deno.serve(async (request: Request) => {
       { status: 200, headers },
     );
   }
+  const { data: palette, error: paletteError } = await admin.rpc("get_effective_card_palette", {
+    p_card_id: card.id,
+  });
+  if (paletteError) {
+    console.error("Card palette lookup failed", paletteError.message);
+    return new Response(JSON.stringify({ error: "Card lookup failed" }), { status: 500, headers });
+  }
   const publicCard = { ...card };
   delete publicCard.user_id;
+  publicCard.palette = palette;
   return new Response(JSON.stringify({ card: publicCard }), { status: 200, headers });
 });

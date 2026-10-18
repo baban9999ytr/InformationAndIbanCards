@@ -55,6 +55,7 @@ const initialCard = {
   iban: "",
   bank_name: "",
   extra_links: [],
+  palette_id: null,
   nfc_active: false,
   is_active: true,
   managed_by_admin: false,
@@ -74,6 +75,19 @@ const isAdminProfile = (profile) =>
   profile?.role === "admin" || profile?.role === "reseller" || profile?.is_super_user === true;
 const isSuperAdminProfile = (profile) =>
   profile?.role === "admin" || profile?.is_super_user === true;
+function cardPaletteStyle(palette) {
+  const tokens = palette && typeof palette === "object" ? palette : {};
+  const validColor = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : undefined;
+  return {
+    "--page": validColor(tokens.background),
+    "--surface": validColor(tokens.surface),
+    "--text": validColor(tokens.text),
+    "--muted": validColor(tokens.muted),
+    "--purple": validColor(tokens.primary),
+    "--green": validColor(tokens.accent),
+    "--surface-soft": validColor(tokens.surface),
+  };
+}
 function cardBlockVisibility(card, type) {
   const block = card?.blocks?.find((item) => normalizeBlockType(item?.type) === normalizeBlockType(type));
   return !block || block.visible !== false;
@@ -804,7 +818,7 @@ function PublicCard({ token, onReport }) {
         <a className="brand public-brand" href="/"><span className="brand-symbol">b.</span><span>bilgi</span></a>
         <div><LanguageSwitcher /><button className="public-report-link" onClick={() => onReport({ cardId, reportedUrl: window.location.href })}>{t("Kötüye kullanım bildirimi")}</button></div>
       </header>
-      <article className="public-card public-card-builder">
+      <article className="public-card public-card-builder" style={cardPaletteStyle(card?.palette)}>
         {loading ? <LoaderCircle className="spin" /> : error ? <><div className="empty-icon"><Link2 /></div><h1>{t("Kart bulunamadı")}</h1><p>{t(error)}</p></> : !card.is_active ? (
           <div className="inactive-card-notice" role="status">
             <div className="empty-icon"><ShieldCheck /></div>
@@ -1276,6 +1290,7 @@ function CardModal({ card, onClose, onSaved, isAdmin, canSkipScan, accessToken, 
         user_id: isAdmin ? (form.user_id || user.id) : user.id,
         managed_by_admin: isAdmin && form.managed_by_admin,
         client_notes: isAdmin && form.managed_by_admin ? form.client_notes.trim() || null : null,
+        palette_id: card?.palette_id || null,
       };
       const safeValues = { ...values };
       if (!canSkipScan) delete safeValues.nfc_active;
@@ -1760,7 +1775,7 @@ function App() {
     const [cardsResult, feedbackResult, clientsResult, reportsResult] = await Promise.all([
       cachedRequest(cardsKey, 60_000, () => supabase
         .from("nfc_cards")
-        .select("id,user_id,type,access_mode,slug,access_token,title,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,extra_links,blocks,nfc_active,is_active,status,managed_by_admin,client_notes,rejection_reason,created_at,updated_at")
+        .select("id,user_id,type,access_mode,slug,access_token,title,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,extra_links,blocks,palette_id,nfc_active,is_active,status,managed_by_admin,client_notes,rejection_reason,created_at,updated_at")
         .order("created_at", { ascending: false })),
       cachedRequest(feedbackKey, 60_000, () => supabase.rpc(privilegedFeedbackAccess ? "get_admin_card_feedback" : "get_card_feedback")),
       hasAdminAccess

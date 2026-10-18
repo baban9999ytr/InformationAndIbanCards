@@ -97,7 +97,12 @@ const isAdminProfile = (profile) =>
 const isSuperAdminProfile = (profile) =>
   profile?.role === "admin" || profile?.is_super_user === true;
 function cardPaletteStyle(palette) {
-  const tokens = palette && typeof palette === "object" ? palette : {};
+  const tokens =
+    palette?.tokens && typeof palette.tokens === "object"
+      ? palette.tokens
+      : palette && typeof palette === "object"
+        ? palette
+        : {};
   const validColor = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : undefined;
   return {
     "--bg-color": validColor(tokens.background),
@@ -157,7 +162,9 @@ function cardBlockPreviewText(block) {
     case "google_review":
       return data.business_name || data.url || "";
     case "payment_or_iban":
-      return [data.bank_name, data.iban].filter(Boolean).join(" · ");
+      return [data.recipient_name, data.bank_name, data.iban]
+        .filter(Boolean)
+        .join(" · ");
     case "contact":
       return [data.phone, data.email, data.whatsapp]
         .filter(Boolean)
@@ -1350,7 +1357,10 @@ function PublicCard({ token, onReport }) {
           </button>
         </div>
       </header>
-      <article className="public-card public-card-builder">
+      <article
+        className="public-card public-card-builder"
+        style={cardPaletteStyle(card?.palette)}
+      >
         {loading ? (
           <LoaderCircle className="spin" />
         ) : error ? (
@@ -1421,13 +1431,30 @@ function PublicCard({ token, onReport }) {
                   className="public-card-block"
                   style={{ order: blockOrder("payment", 1) }}
                 >
-                  {(links.payment.recipient_name ||
-                    links.payment.bank_name ||
-                    card.bank_name) && (
+                  {links.payment.recipient_name && (
+                    <div className="iban-recipient-row">
+                      <span className="iban-recipient-label">{t("Hesap sahibi")}</span>
+                      <button
+                        type="button"
+                        className="copyable-name iban-recipient-name"
+                        aria-label={`${t("Hesap sahibini kopyala")}: ${
+                          links.payment.recipient_name
+                        }`}
+                        onClick={() =>
+                          copyCardValue(
+                            links.payment.recipient_name,
+                            "Hesap sahibi kopyalandı.",
+                          )
+                        }
+                      >
+                        <span>{links.payment.recipient_name}</span>
+                        <Copy size={16} aria-hidden="true" />
+                      </button>
+                    </div>
+                  )}
+                  {(links.payment.bank_name || card.bank_name) && (
                     <p className="public-subtitle">
-                      {links.payment.recipient_name ||
-                        links.payment.bank_name ||
-                        card.bank_name}
+                      {links.payment.bank_name || card.bank_name}
                     </p>
                   )}
                   {(links.payment.iban || card.iban) &&
@@ -2686,7 +2713,7 @@ function CardModal({
         managed_by_admin: isAdmin && form.managed_by_admin,
         client_notes:
           isAdmin && form.managed_by_admin
-            ? form.client_notes.trim() || null
+            ? String(form.client_notes || "").trim() || null
             : null,
         palette_id: paletteId,
       };
@@ -3016,8 +3043,8 @@ function CardModal({
                         }}
                       >
                         <span className="palette-swatches" aria-hidden="true">
-                          <i style={{ backgroundColor: palette.tokens.background }} />
-                          <i style={{ backgroundColor: palette.tokens.primary }} />
+                          <i style={{ backgroundColor: palette.tokens?.background }} />
+                          <i style={{ backgroundColor: palette.tokens?.primary }} />
                         </span>
                         <span>
                           <strong>{palette.name}</strong>

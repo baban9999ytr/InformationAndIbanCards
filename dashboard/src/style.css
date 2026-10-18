@@ -2726,6 +2726,26 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 12px;
 }
+.iban-recipient-row {
+  display: grid;
+  gap: 4px;
+}
+.iban-recipient-label {
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.iban-recipient-name {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+}
 .iban-value-row {
   flex-wrap: wrap;
 }

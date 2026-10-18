@@ -39,7 +39,9 @@ test("invalidated in-flight requests cannot repopulate the cache", async () => {
   let calls = 0;
   const firstQuery = () => {
     calls += 1;
-    return new Promise((resolve) => { resolveFirst = resolve; });
+    return new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
   };
 
   const firstRequest = queryCached(key, 60_000, firstQuery);

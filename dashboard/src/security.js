@@ -15,12 +15,17 @@ export function validateHttpsUrl(value) {
     parsed.username ||
     parsed.password
   ) {
-    throw new Error("Bağlantılar HTTPS ile başlamalı ve kullanıcı bilgisi içermemelidir.");
+    throw new Error(
+      "Bağlantılar HTTPS ile başlamalı ve kullanıcı bilgisi içermemelidir.",
+    );
   }
   return parsed.href;
 }
 
-export async function scanExternalUrl(value, { accessToken, skipScan = false } = {}) {
+export async function scanExternalUrl(
+  value,
+  { accessToken, skipScan = false } = {},
+) {
   const url = validateHttpsUrl(value);
   const workerBase = (
     import.meta.env.VITE_WORKER_URL ||
@@ -43,18 +48,28 @@ export async function scanExternalUrl(value, { accessToken, skipScan = false } =
     return { url, reviewRequired: true };
   }
 
-  if (response.status >= 500 || response.status === 429 || response.status === 404) {
+  if (
+    response.status >= 500 ||
+    response.status === 429 ||
+    response.status === 404
+  ) {
     return { url, reviewRequired: true };
   }
 
-  if (response.status === 401 || response.status === 403 || response.status === 400) {
+  if (
+    response.status === 401 ||
+    response.status === 403 ||
+    response.status === 400
+  ) {
     let errorData;
     try {
       errorData = await response.json();
     } catch {
       throw new Error("URL güvenlik kontrolü için yetkilendirme yapılamadı.");
     }
-    throw new Error(errorData.error || "URL güvenlik kontrolü için yetkilendirme yapılamadı.");
+    throw new Error(
+      errorData.error || "URL güvenlik kontrolü için yetkilendirme yapılamadı.",
+    );
   }
 
   let result;

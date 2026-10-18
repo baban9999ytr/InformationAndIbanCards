@@ -163,7 +163,7 @@ create table if not exists public.palette_definitions (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint palette_system_owner_check check (
-    (kind = 'system' and owner_user_id is null and is_default = true)
+    (kind = 'system' and owner_user_id is null)
     or (kind = 'custom' and owner_user_id is not null and is_default = false)
   )
 );
@@ -181,6 +181,12 @@ alter table public.palette_definitions add column if not exists created_by uuid;
 alter table public.palette_definitions add column if not exists updated_by uuid;
 alter table public.palette_definitions add column if not exists created_at timestamptz not null default now();
 alter table public.palette_definitions add column if not exists updated_at timestamptz not null default now();
+alter table public.palette_definitions drop constraint if exists palette_system_owner_check;
+alter table public.palette_definitions
+  add constraint palette_system_owner_check check (
+    (kind = 'system' and owner_user_id is null)
+    or (kind = 'custom' and owner_user_id is not null and is_default = false)
+  );
 
 alter table public.nfc_cards drop constraint if exists nfc_cards_palette_id_fkey;
 alter table public.nfc_cards
@@ -650,6 +656,10 @@ create trigger record_required_signup_consents
   after insert on auth.users
   for each row execute function public.record_required_signup_consents();
 
+-- Seed system palettes before installing the user-facing palette trigger.
+-- This also handles reruns against projects that still have the old trigger.
+drop trigger if exists enforce_palette_privileges on public.palette_definitions;
+
 insert into public.palette_definitions (
   name, description, kind, tokens, is_default, is_active, moderation_status
 )
@@ -665,6 +675,41 @@ where not exists (
   select 1 from public.palette_definitions where is_default = true
 );
 
+insert into public.palette_definitions (
+  name, description, kind, tokens, is_default, is_active, moderation_status
+)
+select seed.name, seed.description, 'system', seed.tokens::jsonb, false, true, 'approved'
+from (values
+  ('Midnight OLED', 'Pure black with crisp white text',
+   '{"background":"#000000","surface":"#0A0A0A","text":"#FFFFFF","primary":"#E5E7EB","accent":"#22D3EE","muted":"#9CA3AF","button_text":"#000000"}'),
+  ('Emerald Corporate', 'Deep green with mint accents',
+   '{"background":"#062E2A","surface":"#0B3B36","text":"#ECFDF5","primary":"#34D399","accent":"#A7F3D0","muted":"#99C2B8","button_text":"#062E2A"}'),
+  ('Sunset Warmth', 'Warm slate with orange and coral accents',
+   '{"background":"#2B1B1A","surface":"#3D2926","text":"#FFF7ED","primary":"#FB923C","accent":"#FB7185","muted":"#D6A89C","button_text":"#2B1B1A"}'),
+  ('Cyberpunk Neon', 'Dark purple with cyan and pink neon',
+   '{"background":"#160B2B","surface":"#24113F","text":"#F5F3FF","primary":"#22D3EE","accent":"#F472B6","muted":"#B9A8D4","button_text":"#160B2B"}'),
+  ('Nordic Slate', 'Cool grey-blue Nordic palette',
+   '{"background":"#1E293B","surface":"#334155","text":"#F1F5F9","primary":"#93C5FD","accent":"#A7F3D0","muted":"#A8B6C8","button_text":"#1E293B"}'),
+  ('Luxury Gold', 'Obsidian with metallic gold accents',
+   '{"background":"#111111","surface":"#1C1C1C","text":"#FAF7EF","primary":"#D4AF37","accent":"#F5D76E","muted":"#B7B0A0","button_text":"#111111"}'),
+  ('Minimal Clean Light', 'Light grey and white with dark text',
+   '{"background":"#F3F4F6","surface":"#FFFFFF","text":"#111827","primary":"#2563EB","accent":"#10B981","muted":"#6B7280","button_text":"#FFFFFF"}'),
+  ('Sahibinden Amber', 'Navy and amber brand-inspired theme',
+   '{"background":"#172033","surface":"#24324A","text":"#F8FAFC","primary":"#F5B400","accent":"#FFD166","muted":"#B8C2D1","button_text":"#172033"}'),
+  ('Instagram Gradient Style', 'Deep violet with magenta and orange',
+   '{"background":"#241033","surface":"#37164D","text":"#FFF7FC","primary":"#E1306C","accent":"#FCAF45","muted":"#D8B4FE","button_text":"#FFFFFF"}'),
+  ('LinkedIn Professional', 'Clean professional blue and slate',
+   '{"background":"#0B1F33","surface":"#123454","text":"#F8FAFC","primary":"#0A66C2","accent":"#70B5F9","muted":"#B8C7D9","button_text":"#FFFFFF"}'),
+  ('Banking / Platinum', 'Sleek slate with platinum accents',
+   '{"background":"#17202A","surface":"#263442","text":"#F8FAFC","primary":"#CBD5E1","accent":"#94A3B8","muted":"#AAB7C4","button_text":"#17202A"}'),
+  ('Bilgi Dark', 'Default navy and sky blue theme',
+   '{"background":"#0F172A","surface":"#1E293B","text":"#F8FAFC","primary":"#38BDF8","accent":"#22C55E","muted":"#94A3B8","button_text":"#0F172A"}')
+) as seed(name, description, tokens)
+where not exists (
+  select 1 from public.palette_definitions existing
+  where existing.name = seed.name and existing.kind = 'system'
+);
+
 create or replace function public.enforce_palette_privileges()
 returns trigger
 language plpgsql
@@ -672,11 +717,17 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- Seed/migration statements run without an end-user JWT. Preserve their
+  -- system-palette fields; RLS and table grants still prevent public inserts.
+  if auth.uid() is null then
+    return new;
+  end if;
+
   if public.is_admin_or_super_user() then
+    new.updated_at := now();
     new.updated_by := auth.uid();
     if new.kind = 'system' then
       new.owner_user_id := null;
-      new.is_default := true;
       new.moderation_status := 'approved';
     end if;
     return new;
@@ -697,6 +748,7 @@ begin
     or new.moderation_status is distinct from old.moderation_status then
     raise exception 'Only the palette owner may edit this custom palette';
   else
+    new.updated_at := now();
     new.moderation_status := 'pending';
     new.moderation_note := null;
     new.updated_by := auth.uid();
@@ -751,6 +803,7 @@ security definer
 set search_path = ''
 as $$
 begin
+  new.updated_at := now();
   if new.palette_id is not null
     and not public.is_admin_or_super_user()
     and not exists (

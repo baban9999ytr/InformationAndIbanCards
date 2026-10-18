@@ -1,4 +1,22 @@
 const paletteColumns = "id,owner_user_id,name,description,kind,tokens,is_default,is_active,moderation_status,moderation_note,created_at,updated_at";
+const tokenNames = ["background", "surface", "text", "primary", "accent", "muted", "button_text"];
+const safeColor = /^#[0-9a-f]{6}$/i;
+
+export function validatePaletteTokens(tokens) {
+  if (!tokens || typeof tokens !== "object" || Array.isArray(tokens)) {
+    throw new Error("Palette tokens must be an object");
+  }
+  const keys = Object.keys(tokens);
+  if (keys.length !== tokenNames.length || keys.some((key) => !tokenNames.includes(key))) {
+    throw new Error("Palette tokens contain unsupported fields");
+  }
+  for (const name of tokenNames) {
+    if (typeof tokens[name] !== "string" || !safeColor.test(tokens[name])) {
+      throw new Error(`Invalid color token: ${name}`);
+    }
+  }
+  return Object.fromEntries(tokenNames.map((name) => [name, tokens[name].toUpperCase()]));
+}
 
 function requireClient(client) {
   if (!client) throw new Error("Supabase is not configured");
@@ -32,9 +50,9 @@ export async function listMyPalettes(client) {
 
 export async function saveCustomPalette(client, palette) {
   const payload = {
-    name: palette.name,
+    name: String(palette.name || "").trim(),
     description: palette.description || null,
-    tokens: palette.tokens,
+    tokens: validatePaletteTokens(palette.tokens),
     owner_user_id: palette.owner_user_id,
     kind: "custom",
     is_default: false,
@@ -70,6 +88,7 @@ export async function listPalettesForAdmin(client, { status } = {}) {
 }
 
 export async function moderatePalette(client, paletteId, changes) {
+  if (changes.tokens) changes = { ...changes, tokens: validatePaletteTokens(changes.tokens) };
   const { data, error } = await requireClient(client)
     .from("palette_definitions")
     .update(changes)

@@ -9,7 +9,8 @@ const english = {
   "İletişim / Bildirim": "Abuse report",
   "Güvenli dijital bağlantılar.": "Secure digital connections.",
   "Süper yönetici": "Super admin",
-  "Platform hesapları, kartlar ve hizmet durumu.": "Platform accounts, cards, and service status.",
+  "Platform hesapları, kartlar ve hizmet durumu.":
+    "Platform accounts, cards, and service status.",
   "Yönetici yetkisi gerekiyor.": "Super administrator access is required.",
   "Sistem istatistikleri": "System statistics",
   "Kayıtlı kullanıcılar": "Registered users",
@@ -18,8 +19,10 @@ const english = {
   "Kullanıcı yönetimi": "User management",
   "Denetim günlüğü": "Audit log",
   "Güvenli alan adları": "Trusted domains",
-  "URL taramasında güvenilir kabul edilen alan adlarını yönetin.": "Manage domains considered trusted by URL scanning.",
-  "Eklemeden önce alan adının güvenilir olduğundan emin olun. Alan adı ve alt alan adları tarama atlaması alır.": "Only add domains you trust. The domain and its subdomains will bypass URL scanning.",
+  "URL taramasında güvenilir kabul edilen alan adlarını yönetin.":
+    "Manage domains considered trusted by URL scanning.",
+  "Eklemeden önce alan adının güvenilir olduğundan emin olun. Alan adı ve alt alan adları tarama atlaması alır.":
+    "Only add domains you trust. The domain and its subdomains will bypass URL scanning.",
   "Alan adı": "Domain",
   "Güvenli alan adı ekle": "Add trusted domain",
   "Etki alanı biçimi geçersiz.": "Invalid domain format.",
@@ -27,23 +30,28 @@ const english = {
   "Güvenli etki alanı kaldırılamadı.": "Could not remove the trusted domain.",
   "Güvenli etki alanı eklendi.": "Trusted domain added.",
   "Güvenli etki alanı kaldırıldı.": "Trusted domain removed.",
-  "Güvenilir alan adı eşleşmeleri tüm alt alan adlarını da kapsar. URL güvenlik servisleri yine diğer alan adlarını kontrol eder.": "Trusted-domain matches also include subdomains. URL safety providers still scan other domains.",
-  "Kaldır": "Remove",
+  "Güvenilir alan adı eşleşmeleri tüm alt alan adlarını da kapsar. URL güvenlik servisleri yine diğer alan adlarını kontrol eder.":
+    "Trusted-domain matches also include subdomains. URL safety providers still scan other domains.",
+  Kaldır: "Remove",
   "Ek özel güvenli alan adı yok.": "No custom trusted domains.",
-  "Yerleşik güvenli alan adları URL tarama hizmetinde tanımlıdır.": "Built-in trusted domains are configured in the URL scanning service.",
-  "Yönetici ve moderasyon işlemlerinin son kayıtları.": "Recent administrator and moderation activity.",
-  "İşlem": "Action",
-  "Hedef": "Target",
+  "Yerleşik güvenli alan adları URL tarama hizmetinde tanımlıdır.":
+    "Built-in trusted domains are configured in the URL scanning service.",
+  "Yönetici ve moderasyon işlemlerinin son kayıtları.":
+    "Recent administrator and moderation activity.",
+  İşlem: "Action",
+  Hedef: "Target",
   "Değişen alanlar": "Changed fields",
-  "Tarih": "Date",
-  "Sistem": "System",
+  Tarih: "Date",
+  Sistem: "System",
   "Henüz denetim kaydı yok.": "No audit events yet.",
-  "Platform kullanıcılarını ve erişim durumlarını yönetin.": "Manage platform users and their access status.",
-  "Hesap durumlarını güvenli şekilde yönetin.": "Securely manage account status.",
-  "Yenile": "Refresh",
-  "Yükleniyor": "Loading",
-  "Kullanıcı": "User",
-  "İşlemler": "Actions",
+  "Platform kullanıcılarını ve erişim durumlarını yönetin.":
+    "Manage platform users and their access status.",
+  "Hesap durumlarını güvenli şekilde yönetin.":
+    "Securely manage account status.",
+  Yenile: "Refresh",
+  Yükleniyor: "Loading",
+  Kullanıcı: "User",
+  İşlemler: "Actions",
   "Ad belirtilmedi": "Name not provided",
   "Kullanıcıyı etkinleştir": "Activate user",
   "Kullanıcıyı askıya al": "Suspend user",
@@ -59,67 +67,76 @@ const english = {
   "Etkin kartlar": "Active cards",
   "Toplam kart": "Total cards",
   "Sistem durumu": "System health",
-  "Bağlı": "Connected",
+  Bağlı: "Connected",
   "Kontrol ediliyor": "Checking",
   "İnceleme gerekiyor": "Needs attention",
   "Supabase veri erişimi": "Supabase data access",
   "Kayıt tarihi ve profil durumu": "Registration date and profile status",
-  "Rol": "Role",
+  Rol: "Role",
   "Kayıt tarihi": "Registered",
-  "Durum": "Status",
+  Durum: "Status",
   "Profil mevcut": "Profile available",
   "Kullanıcı profili bulunamadı.": "No user profiles found.",
   "Tüm kartlara genel bakış": "Global card overview",
-  "Kötüye kullanılan kartları inceleyin ve devre dışı bırakın.": "Review and deactivate abusive cards.",
-  "Etkin": "Active",
+  "Kötüye kullanılan kartları inceleyin ve devre dışı bırakın.":
+    "Review and deactivate abusive cards.",
+  Etkin: "Active",
   "Devre dışı": "Inactive",
   "Kartı devre dışı bırak": "Deactivate card",
   "Kartı yeniden etkinleştir": "Reactivate card",
   "Onay bekliyor": "Pending approval",
   "Kart reddedildi": "Rejected",
   "Askıya alındı": "Suspended",
-  "Arşivlendi": "Archived",
+  Arşivlendi: "Archived",
   "Kart blokları": "Card blocks",
-  "Blokların görünürlüğünü ve sırasını belirleyin. İçerikleri yukarıdaki kart alanlarından düzenleyebilirsiniz.": "Choose which blocks are visible and how they are ordered. Edit their content in the card fields above.",
-  "Şablon": "Template",
+  "Blokların görünürlüğünü ve sırasını belirleyin. İçerikleri yukarıdaki kart alanlarından düzenleyebilirsiniz.":
+    "Choose which blocks are visible and how they are ordered. Edit their content in the card fields above.",
+  Şablon: "Template",
   "Sıralama şablonu seçin": "Choose a layout template",
   "Dijital profil": "Digital profile",
   "Google yorum": "Google review",
   "İşletme iletişim": "Business contact",
-  "Profil": "Profile",
+  Profil: "Profile",
   "IBAN / ödeme": "IBAN / payment",
-  "İletişim": "Contact",
+  İletişim: "Contact",
   "Sosyal bağlantılar": "Social links",
   "Canlı önizleme": "Live preview",
   "İlk ekran sınırı": "Above-the-fold marker",
-  "Yukarı": "Up",
-  "Aşağı": "Down",
+  Yukarı: "Up",
+  Aşağı: "Down",
   "Yukarı taşı": "Move up",
   "Aşağı taşı": "Move down",
-  "Bu kartta sekizden fazla blok var. Daha iyi bir mobil deneyim için bazı blokları kaldırmayı düşünün.": "This card has more than eight blocks. Consider removing some for a better mobile experience.",
+  "Bu kartta sekizden fazla blok var. Daha iyi bir mobil deneyim için bazı blokları kaldırmayı düşünün.":
+    "This card has more than eight blocks. Consider removing some for a better mobile experience.",
   "Adınız (isteğe bağlı)": "Your name (optional)",
   "Adımı işletmeden gizle": "Hide my name from the business",
   "E-postamı işletmeden gizle": "Hide my email from the business",
-  "Gizlediğiniz bilgiler kart sahibine maskeli gösterilir; platform yöneticileri kötüye kullanımı önlemek için bunlara erişebilir.": "Hidden information is masked from the card owner; platform administrators may access it to prevent abuse.",
+  "Gizlediğiniz bilgiler kart sahibine maskeli gösterilir; platform yöneticileri kötüye kullanımı önlemek için bunlara erişebilir.":
+    "Hidden information is masked from the card owner; platform administrators may access it to prevent abuse.",
   "Anonim kullanıcı": "Anonymous user",
   "Kart için ret gerekçesi girin:": "Enter a reason for rejecting this card:",
   "Kart reddedildi.": "Card rejected.",
   "Kart askıya alındı.": "Card suspended.",
   "Kart arşivlendi.": "Card archived.",
   "Yeniden yayınla": "Republish",
-  "Reddet": "Reject",
+  Reddet: "Reject",
   "Askıya al": "Suspend",
-  "Arşivle": "Archive",
+  Arşivle: "Archive",
   "Kartı onayla": "Approve card",
   "Kart onaylandı ve yayınlandı.": "Card approved and published.",
-  "Kartınız onay için kuyruğa alındı.": "Your card has been queued for approval.",
-  "Güvenlik servisine şu an ulaşılamadı. Kartınız incelemeye alınmak üzere kaydedilecektir.": "Security services are unavailable. Your card will be saved for review.",
-  "Kaydedilmemiş değişiklikleriniz var. Çıkmak istediğinize emin misiniz?": "You have unsaved changes. Are you sure you want to leave?",
-  "Harici bağlantılar güvenlik ve onay kurallarına tabidir.": "External links are subject to security and approval checks.",
+  "Kartınız onay için kuyruğa alındı.":
+    "Your card has been queued for approval.",
+  "Güvenlik servisine şu an ulaşılamadı. Kartınız incelemeye alınmak üzere kaydedilecektir.":
+    "Security services are unavailable. Your card will be saved for review.",
+  "Kaydedilmemiş değişiklikleriniz var. Çıkmak istediğinize emin misiniz?":
+    "You have unsaved changes. Are you sure you want to leave?",
+  "Harici bağlantılar güvenlik ve onay kurallarına tabidir.":
+    "External links are subject to security and approval checks.",
   "Kart bulunamadı.": "No cards found.",
   "Kullanıcı listesi yüklenemedi: {error}": "Could not load user list: {error}",
   "NFC & DİJİTAL KART YÖNETİMİ": "NFC & DIGITAL CARD MANAGEMENT",
-  "Verileriniz güvenli ve size aittir.": "Your data is secure and belongs to you.",
+  "Verileriniz güvenli ve size aittir.":
+    "Your data is secure and belongs to you.",
   "Yeni misiniz?": "New here?",
   "Hesap oluştur": "Create an account",
   "Giriş yap": "Log in",
@@ -131,47 +148,69 @@ const english = {
   "Devam etmek için bilgilerinizi girin.": "Enter your details to continue.",
   "E-posta": "Email",
   "Telefon ile giriş": "Phone sign-in",
-  "Supabase ayarları bulunamadı. Uygulamayı başlatmak için ortam değişkenlerini yapılandırın.": "Supabase is not configured. Set the environment variables to start the app.",
+  "Supabase ayarları bulunamadı. Uygulamayı başlatmak için ortam değişkenlerini yapılandırın.":
+    "Supabase is not configured. Set the environment variables to start the app.",
   "Ad soyad": "Full name",
   "Adınız Soyadınız": "Your full name",
   "E-posta adresi": "Email address",
-  "Şifre": "Password",
+  Şifre: "Password",
   "En az 8 karakter": "At least 8 characters",
-  "Kullanım Koşulları ve Gizlilik Politikası'nı okudum ve kabul ediyorum.": "I have read and accept the Terms of Service and Privacy Policy.",
+  "Kullanım Koşulları ve Gizlilik Politikası'nı okudum ve kabul ediyorum.":
+    "I have read and accept the Terms of Service and Privacy Policy.",
   "Kullanım Koşulları": "Terms of Service",
   "Gizlilik Politikası": "Privacy Policy",
   "Şunları kabul ediyorum:": "I agree to the",
-  "En az 18 yaşında olduğumu veya ülkemdeki yasal asgari yaş şartını karşıladığımı onaylıyorum.": "I confirm that I am at least 18 years old or meet the minimum age requirement in my country.",
-  "Ürün güncellemelerini, ipuçlarını ve tanıtım haberlerini e-posta ile almak istiyorum.": "I would like to receive product updates, tips, and promotional news via email.",
-  "Şifreniz": "Your password",
-  "En az 8 karakter, harf ve rakam": "At least 8 characters, a letter, and a number",
-  "Şifreniz en az 8 karakter olmalı ve en az bir harf ile bir rakam içermelidir.": "Use at least 8 characters, including at least one letter and one number.",
-  "E-posta adresinizi doğrulamanız gerekiyor. Lütfen etkinleştirme bağlantısını kullanın.": "You need to verify your email address. Please use the activation link.",
+  "En az 18 yaşında olduğumu veya ülkemdeki yasal asgari yaş şartını karşıladığımı onaylıyorum.":
+    "I confirm that I am at least 18 years old or meet the minimum age requirement in my country.",
+  "Ürün güncellemelerini, ipuçlarını ve tanıtım haberlerini e-posta ile almak istiyorum.":
+    "I would like to receive product updates, tips, and promotional news via email.",
+  Şifreniz: "Your password",
+  "En az 8 karakter, harf ve rakam":
+    "At least 8 characters, a letter, and a number",
+  "Şifreniz en az 8 karakter olmalı ve en az bir harf ile bir rakam içermelidir.":
+    "Use at least 8 characters, including at least one letter and one number.",
+  "E-posta adresinizi doğrulamanız gerekiyor. Lütfen etkinleştirme bağlantısını kullanın.":
+    "You need to verify your email address. Please use the activation link.",
   "Geçerli bir e-posta adresi girin.": "Enter a valid email address.",
-  "Kayıt için adınızı, güçlü bir şifreyi ve zorunlu onayı tamamlayın.": "Enter your name, choose a strong password, and accept the required notice to register.",
-  "Google ile devam etmek için yasal koşulları kabul edin.": "Accept the legal terms before continuing with Google.",
+  "Kayıt için adınızı, güçlü bir şifreyi ve zorunlu onayı tamamlayın.":
+    "Enter your name, choose a strong password, and accept the required notice to register.",
+  "Google ile devam etmek için yasal koşulları kabul edin.":
+    "Accept the legal terms before continuing with Google.",
   "Yasal onayınız kaydedilemedi.": "Could not save your legal consent.",
-  "Yasal onayınız kaydedilemedi: {error}": "Could not save your legal consent: {error}",
+  "Yasal onayınız kaydedilemedi: {error}":
+    "Could not save your legal consent: {error}",
   "Google ile devam et": "Continue with Google",
   "Google ile giriş yapılamadı.": "Could not sign in with Google.",
   "E-posta adresinizi doğrulayın": "Check your email",
-  "Etkinleştirme bağlantısını e-posta adresinize gönderdik:": "We sent an activation link to:",
-  "Hesabınıza erişmek için e-postanızdaki bağlantıyı açın.": "Open the link in your email to activate your account.",
+  "Etkinleştirme bağlantısını e-posta adresinize gönderdik:":
+    "We sent an activation link to:",
+  "Hesabınıza erişmek için e-postanızdaki bağlantıyı açın.":
+    "Open the link in your email to activate your account.",
   "Doğrulama e-postasını yeniden gönder": "Resend verification email",
-  "Doğrulama e-postası gönderilemedi.": "Could not resend the verification email.",
-  "Doğrulama e-postasını yeniden gönderdik.": "We sent another verification email.",
-  "Kayıt olmak için e-posta adresinizi doğrulamanız gerekir.": "You must verify your email address to complete registration.",
+  "Doğrulama e-postası gönderilemedi.":
+    "Could not resend the verification email.",
+  "Doğrulama e-postasını yeniden gönderdik.":
+    "We sent another verification email.",
+  "Kayıt olmak için e-posta adresinizi doğrulamanız gerekir.":
+    "You must verify your email address to complete registration.",
   "HESABINIZI HAZIRLAYIN": "SET UP YOUR ACCOUNT",
-  "Bilgi NFC'yi en çok nasıl kullanacaksınız?": "How will you primarily use Bilgi NFC?",
-  "Bu, deneyiminizi kişiselleştirmemize yardımcı olur. İsterseniz daha sonra da yanıtlayabilirsiniz.": "This helps us personalize your experience. You can also answer later.",
+  "Bilgi NFC'yi en çok nasıl kullanacaksınız?":
+    "How will you primarily use Bilgi NFC?",
+  "Bu, deneyiminizi kişiselleştirmemize yardımcı olur. İsterseniz daha sonra da yanıtlayabilirsiniz.":
+    "This helps us personalize your experience. You can also answer later.",
   "Kişisel / Serbest çalışan": "Personal / Freelancer",
   "İşletme / Kurumsal": "Business / Enterprise",
   "Şimdilik geç": "Skip for now",
-  "Onboarding tercihiniz kaydedilemedi.": "Could not save your onboarding preference.",
-  "KVKK Aydınlatma Metni'ni okudum ve kişisel verilerimin belirtilen amaçlarla işlenmesine açık rıza veriyorum.": "I have read the Privacy Notice and explicitly consent to the processing of my personal data as described.",
-  "KVKK Aydınlatma Metni kapsamında kişisel verilerimin işlenmesine onay veriyorum.": "I consent to the processing of my personal data under the Privacy Notice.",
-  "Devam etmek için tüm zorunlu onayları vermelisiniz.": "You must accept all required notices to continue.",
-  "SMS kodu istemeden önce tüm zorunlu onayları vermelisiniz.": "You must accept all required notices before requesting an SMS code.",
+  "Onboarding tercihiniz kaydedilemedi.":
+    "Could not save your onboarding preference.",
+  "KVKK Aydınlatma Metni'ni okudum ve kişisel verilerimin belirtilen amaçlarla işlenmesine açık rıza veriyorum.":
+    "I have read the Privacy Notice and explicitly consent to the processing of my personal data as described.",
+  "KVKK Aydınlatma Metni kapsamında kişisel verilerimin işlenmesine onay veriyorum.":
+    "I consent to the processing of my personal data under the Privacy Notice.",
+  "Devam etmek için tüm zorunlu onayları vermelisiniz.":
+    "You must accept all required notices to continue.",
+  "SMS kodu istemeden önce tüm zorunlu onayları vermelisiniz.":
+    "You must accept all required notices before requesting an SMS code.",
   "Hesabımı oluştur": "Create my account",
   "Henüz hesabınız yok mu?": "Don't have an account yet?",
   "Zaten hesabınız var mı?": "Already have an account?",
@@ -179,57 +218,74 @@ const english = {
   "Telefon numarası": "Phone number",
   "SMS doğrulama kodu": "SMS verification code",
   "6 haneli kod": "6-digit code",
-  "SMS ile giriş için numaranızı ülke koduyla birlikte yazın.": "Enter your phone number with its country code for SMS sign-in.",
+  "SMS ile giriş için numaranızı ülke koduyla birlikte yazın.":
+    "Enter your phone number with its country code for SMS sign-in.",
   "SMS kodu gönder": "Send SMS code",
   "Kodu doğrula": "Verify code",
   "İşlem tamamlanamadı.": "The operation could not be completed.",
-  "E-posta adresinize doğrulama bağlantısı gönderdik. Giriş yapmadan önce e-postanızı doğrulayın.": "We sent a verification link to your email. Verify your address before signing in.",
-  "Doğrulama kodu telefonunuza gönderildi.": "A verification code was sent to your phone.",
+  "E-posta adresinize doğrulama bağlantısı gönderdik. Giriş yapmadan önce e-postanızı doğrulayın.":
+    "We sent a verification link to your email. Verify your address before signing in.",
+  "Doğrulama kodu telefonunuza gönderildi.":
+    "A verification code was sent to your phone.",
   "SMS doğrulaması tamamlanamadı.": "SMS verification failed.",
-  "İşletmenizin dijital kartlarını tek bir yerden oluşturun, paylaşın ve yönetin.": "Create, share, and manage your business's digital cards in one place.",
+  "İşletmenizin dijital kartlarını tek bir yerden oluşturun, paylaşın ve yönetin.":
+    "Create, share, and manage your business's digital cards in one place.",
   "İyi bağlantılar,": "Good connections,",
   "iyi izlenimler": "great impressions",
   "bırakır.": "that last.",
   "Yeni dijital kart oluştur": "Create a digital card",
   "Kart bulunamadı": "Card not found",
   "Bu kart şu anda görüntülenemiyor.": "This card is currently unavailable.",
-  "Kart bulunamadı veya artık erişilebilir değil.": "This card was not found or is no longer available.",
+  "Kart bulunamadı veya artık erişilebilir değil.":
+    "This card was not found or is no longer available.",
   "Google yorum kartı": "Google review card",
   "DİJİTAL KART": "DIGITAL CARD",
   "E-posta gönder": "Send email",
   "Deneyiminiz nasıldı?": "How was your experience?",
-  "Geri bildiriminiz işletmenin hizmetini geliştirmesine yardımcı olur.": "Your feedback helps the business improve its service.",
+  "Geri bildiriminiz işletmenin hizmetini geliştirmesine yardımcı olur.":
+    "Your feedback helps the business improve its service.",
   "1 ile 5 arasında puan verin": "Rate from 1 to 5 stars",
-  "yıldız": "stars",
-  "Yaşadığınız deneyimi doğrudan işletmeye iletin.": "Share your experience directly with the business.",
+  yıldız: "stars",
+  "Yaşadığınız deneyimi doğrudan işletmeye iletin.":
+    "Share your experience directly with the business.",
   "Geri bildiriminizi buraya yazın...": "Write your feedback here...",
   "E-posta adresiniz (isteğe bağlı)": "Your email address (optional)",
-  "Geri bildiriminiz gönderilemedi. Lütfen tekrar deneyin.": "Your feedback could not be sent. Please try again.",
-  "Geri bildiriminiz için teşekkür ederiz. İşletme sizinle iletişime geçebilir.": "Thank you for your feedback. The business may contact you.",
+  "Geri bildiriminiz gönderilemedi. Lütfen tekrar deneyin.":
+    "Your feedback could not be sent. Please try again.",
+  "Geri bildiriminiz için teşekkür ederiz. İşletme sizinle iletişime geçebilir.":
+    "Thank you for your feedback. The business may contact you.",
   "Geri bildirimi gönder": "Send feedback",
   "İşletmeyle doğrudan iletişim kurun:": "Contact the business directly:",
-  "WhatsApp": "WhatsApp",
-  "SMS": "SMS",
-  "Instagram": "Instagram",
-  "Veya doğrudan Google Haritalar üzerinde yorum yapın": "Or leave a review directly on Google Maps",
-  "Google'da yorumunuzu paylaşmak ister misiniz?": "Would you like to share your review on Google?",
+  WhatsApp: "WhatsApp",
+  SMS: "SMS",
+  Instagram: "Instagram",
+  "Veya doğrudan Google Haritalar üzerinde yorum yapın":
+    "Or leave a review directly on Google Maps",
+  "Google'da yorumunuzu paylaşmak ister misiniz?":
+    "Would you like to share your review on Google?",
   "Google'da Yorum Yap": "Review on Google",
-  "Devam etmeden önce açılacak hedef adresi görebilirsiniz.": "You can review the destination before continuing.",
-  "Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.": "The destination is shown for your review before opening an external link.",
+  "Devam etmeden önce açılacak hedef adresi görebilirsiniz.":
+    "You can review the destination before continuing.",
+  "Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.":
+    "The destination is shown for your review before opening an external link.",
   "Harici bağlantı": "External link",
-  "bağlantısına devam etmek üzeresiniz. Hedef adres:": "You are about to open this link. Destination:",
-  "Vazgeç": "Cancel",
+  "bağlantısına devam etmek üzeresiniz. Hedef adres:":
+    "You are about to open this link. Destination:",
+  Vazgeç: "Cancel",
   "Bağlantıya devam et": "Continue to link",
   "Google Haritalar yorumu": "Google Maps review",
-  "Bu bağlantı güvenli değil veya desteklenmiyor.": "This link is unsafe or not supported.",
+  "Bu bağlantı güvenli değil veya desteklenmiyor.":
+    "This link is unsafe or not supported.",
   "Kart türü": "Card type",
   "Müşteri yorumlarını güvenli şekilde toplayın": "Collect customer feedback",
   "Dijital profil kartı": "Digital profile card",
-  "İletişim ve IBAN bilgilerinizi paylaşın": "Share your contact and IBAN details",
+  "İletişim ve IBAN bilgilerinizi paylaşın":
+    "Share your contact and IBAN details",
   "Görünürlük ve bağlantı": "Visibility and link",
   "Herkese açık": "Public",
   "Gizli bağlantı": "Private link",
-  "Kaydedildiğinde yalnızca bağlantıya sahip kişilerin erişebileceği güçlü, rastgele bir bağlantı oluşturulur.": "A strong, random link will be generated. Anyone with the link can access it.",
+  "Kaydedildiğinde yalnızca bağlantıya sahip kişilerin erişebileceği güçlü, rastgele bir bağlantı oluşturulur.":
+    "A strong, random link will be generated. Anyone with the link can access it.",
   "Kart bilgileri": "Card details",
   "Kart / işletme adı": "Card / business name",
   "Örn. Mavi Kahve": "E.g. Blue Coffee",
@@ -238,27 +294,30 @@ const english = {
   "WhatsApp telefonu": "WhatsApp phone",
   "SMS telefonu": "SMS phone",
   "Geri bildirim e-postası": "Feedback email",
-  "IBAN": "IBAN",
+  IBAN: "IBAN",
   "IBAN bilgileri": "IBAN details",
   "IBAN'ı kopyala": "Copy IBAN",
   "Adı kopyala": "Copy account name",
   "IBAN kopyalandı.": "IBAN copied.",
   "Ad kopyalandı.": "Name copied.",
   "Panoya kopyalanamadı.": "Could not copy to clipboard.",
-  "Kopyalandı": "Copied",
-  "TR00 0000 0000 0000 0000 0000 00": "TR00 0000 0000 0000 0000 0000 00",
+  Kopyalandı: "Copied",
+  "TR12 0006 1000 0000 0123 4567 89": "TR12 0006 1000 0000 0123 4567 89",
   "Banka adı": "Bank name",
   "04": "04",
   "Ek bağlantılar": "Extra links",
   "Bağlantı ekle": "Add link",
-  "HTTPS adresleri güvenlik taramasından geçirilir. En fazla 3 bağlantı ekleyebilirsiniz.": "HTTPS links are security-scanned. Add up to 3 links.",
+  "HTTPS adresleri güvenlik taramasından geçirilir. En fazla 3 bağlantı ekleyebilirsiniz.":
+    "HTTPS links are security-scanned. Add up to 3 links.",
   "Bağlantı etiketi": "Link label",
   "Örn. Menümüz": "E.g. Our menu",
   "HTTPS adresi": "HTTPS URL",
   "Bağlantıyı kaldır": "Remove link",
   "NFC etiketi aktif": "NFC tag active",
-  "Bağlantılar güvenlik kontrolünden geçiriliyor…": "Checking links for security…",
-  "Harici bağlantılar kaydetmeden önce güvenlik taramasından geçirilir.": "External links are security-scanned before saving.",
+  "Bağlantılar güvenlik kontrolünden geçiriliyor…":
+    "Checking links for security…",
+  "Harici bağlantılar kaydetmeden önce güvenlik taramasından geçirilir.":
+    "External links are security-scanned before saving.",
   "Değişiklikleri kaydet": "Save changes",
   "Kartı oluştur": "Create card",
   "Kart ayarları": "CARD SETTINGS",
@@ -269,30 +328,36 @@ const english = {
   "Google yorum bağlantısı zorunludur.": "A Google review URL is required.",
   "IBAN alanı zorunludur.": "An IBAN is required.",
   "Kart adı zorunludur.": "A card name is required.",
-  "Herkese açık kart için geçerli bir kısa bağlantı yazın.": "Enter a valid public-card slug.",
-  "Ek bağlantılarda etiket ve URL alanlarını birlikte doldurun.": "Provide both a label and URL for each extra link.",
+  "Herkese açık kart için geçerli bir kısa bağlantı yazın.":
+    "Enter a valid public-card slug.",
+  "Ek bağlantılarda etiket ve URL alanlarını birlikte doldurun.":
+    "Provide both a label and URL for each extra link.",
   "Kart kaydedilemedi.": "The card could not be saved.",
   "Herkese açık kart": "Public card",
   "Kişisel çalışma alanı": "Personal workspace",
-  "MENÜ": "MENU",
+  MENÜ: "MENU",
   "Genel Bakış": "Overview",
-  "Kartlarım": "My cards",
+  Kartlarım: "My cards",
   "Geri bildirimler": "Feedback",
-  "HESAP": "ACCOUNT",
-  "Ayarlar": "Settings",
+  HESAP: "ACCOUNT",
+  Ayarlar: "Settings",
   "Açık tema": "Light theme",
   "Koyu tema": "Dark theme",
   "Yardıma mı ihtiyacınız var?": "Need help?",
   "Ekibimiz size yardımcı olmaya hazır.": "Our team is ready to help.",
   "Destek ile iletişime geç": "Contact support",
-  "Hesabım": "My account",
+  Hesabım: "My account",
   "Çalışma alanı": "Workspace",
-  "Yardım": "Help",
+  Yardım: "Help",
   "Yeni bildiriminiz yok.": "You have no new notifications.",
-  "Dijital varlıklarınızın bugünkü özeti.": "A snapshot of your digital assets.",
-  "Dijital kartlarınızı ve NFC bağlantılarınızı yönetin.": "Manage your digital cards and NFC links.",
-  "Kartlarınız üzerinden gelen müşteri yorumları.": "Customer feedback received through your cards.",
-  "Kişisel verilerinizi ve hesabınızı yönetin.": "Manage your personal data and account.",
+  "Dijital varlıklarınızın bugünkü özeti.":
+    "A snapshot of your digital assets.",
+  "Dijital kartlarınızı ve NFC bağlantılarınızı yönetin.":
+    "Manage your digital cards and NFC links.",
+  "Kartlarınız üzerinden gelen müşteri yorumları.":
+    "Customer feedback received through your cards.",
+  "Kişisel verilerinizi ve hesabınızı yönetin.":
+    "Manage your personal data and account.",
   "Yeni kart oluştur": "Create a new card",
   "Tüm dijital kartlarınız": "All your digital cards",
   "Herkese açık kartlar": "Public cards",
@@ -300,65 +365,85 @@ const english = {
   "Müşteri geri bildirimi": "Customer feedback",
   "Toplam alınan yanıt": "Total responses",
   "Son kartlarınız": "Recent cards",
-  "Tüm dijital kartlarınızı tek yerden yönetin.": "Manage all your digital cards in one place.",
+  "Tüm dijital kartlarınızı tek yerden yönetin.":
+    "Manage all your digital cards in one place.",
   "Tümünü gör": "View all",
   "Tüm kartlar": "All cards",
-  "Bağlantılarınızı görüntüleyin, kopyalayın veya güncelleyin.": "View, copy, or update your links.",
+  "Bağlantılarınızı görüntüleyin, kopyalayın veya güncelleyin.":
+    "View, copy, or update your links.",
   "Kartlarda ara...": "Search cards...",
   "İlk kartınızı oluşturun": "Create your first card",
-  "İşletmenizin dijital profilini birkaç adımda hazırlayın.": "Set up your business's digital profile in a few steps.",
+  "İşletmenizin dijital profilini birkaç adımda hazırlayın.":
+    "Set up your business's digital profile in a few steps.",
   "Kart oluştur": "Create card",
   "Kart bağlantısı panoya kopyalandı.": "Card link copied.",
-  "Bağlantı kopyalanamadı. Tarayıcı izinlerini kontrol edin.": "Could not copy the link. Check browser permissions.",
-  "Görüntüle": "View card",
+  "Bağlantı kopyalanamadı. Tarayıcı izinlerini kontrol edin.":
+    "Could not copy the link. Check browser permissions.",
+  Görüntüle: "View card",
   "Bağlantıyı kopyala": "Copy NFC/QR URL",
-  "Düzenle": "Edit card",
+  Düzenle: "Edit card",
   "Diğer işlemler": "More actions",
   "Kartı sil": "Delete card",
   "Kart silindi.": "Card deleted.",
   "Bu işlem geri alınamaz.": "This action cannot be undone.",
-  "Harici bağlantı güvenlik kontrolünden geçemedi. Lütfen güvenli bir HTTPS adresi girin.": "The external link failed the security check. Enter a safe HTTPS address.",
-  "URL güvenlik kontrolü yapılandırılmamış. Lütfen daha sonra tekrar deneyin.": "URL security scanning is not configured. Please try again later.",
-  "URL güvenlik kontrolüne şu anda ulaşılamıyor. Lütfen tekrar deneyin.": "URL security scanning is currently unavailable. Please try again.",
-  "URL güvenlik kontrolü tamamlanamadı. Lütfen tekrar deneyin.": "URL security scanning could not be completed. Please try again.",
-  "URL güvenlik kontrolünden geçerli bir yanıt alınamadı.": "URL security scanning returned an invalid response.",
-  "Verileriniz": "Your data",
+  "Harici bağlantı güvenlik kontrolünden geçemedi. Lütfen güvenli bir HTTPS adresi girin.":
+    "The external link failed the security check. Enter a safe HTTPS address.",
+  "URL güvenlik kontrolü yapılandırılmamış. Lütfen daha sonra tekrar deneyin.":
+    "URL security scanning is not configured. Please try again later.",
+  "URL güvenlik kontrolüne şu anda ulaşılamıyor. Lütfen tekrar deneyin.":
+    "URL security scanning is currently unavailable. Please try again.",
+  "URL güvenlik kontrolü tamamlanamadı. Lütfen tekrar deneyin.":
+    "URL security scanning could not be completed. Please try again.",
+  "URL güvenlik kontrolünden geçerli bir yanıt alınamadı.":
+    "URL security scanning returned an invalid response.",
+  Verileriniz: "Your data",
   "Hesap ayarları": "Account settings",
   "Hesabınızla ilişkili bilgiler.": "Information associated with your account.",
-  "Belirtilmedi": "Not provided",
+  Belirtilmedi: "Not provided",
   "Hesap oluşturma": "Account created",
   "Profil bilgileri": "Profile information",
-  "KVKK ve GDPR kapsamındaki veri haklarınız.": "Your data rights under GDPR and KVKK.",
-  "Profilinizi, kartlarınızı ve geri bildirimlerinizi makine tarafından okunabilir JSON biçiminde indirin.": "Download your profile, cards, and feedback as machine-readable JSON.",
+  "KVKK ve GDPR kapsamındaki veri haklarınız.":
+    "Your data rights under GDPR and KVKK.",
+  "Profilinizi, kartlarınızı ve geri bildirimlerinizi makine tarafından okunabilir JSON biçiminde indirin.":
+    "Download your profile, cards, and feedback as machine-readable JSON.",
   "Verilerimi dışa aktar": "Export my data",
   "Verileriniz JSON olarak indirildi.": "Your data was downloaded as JSON.",
   "Hesabı sil": "Delete account",
-  "Bu işlem kalıcıdır ve geri alınamaz.": "This is permanent and cannot be undone.",
-  "Hesabınızı sildiğinizde profiliniz, dijital kartlarınız, NFC bağlantılarınız ve ilişkili geri bildirim kayıtlarınız da silinir.": "Deleting your account also deletes your profile, digital cards, NFC links, and associated feedback.",
+  "Bu işlem kalıcıdır ve geri alınamaz.":
+    "This is permanent and cannot be undone.",
+  "Hesabınızı sildiğinizde profiliniz, dijital kartlarınız, NFC bağlantılarınız ve ilişkili geri bildirim kayıtlarınız da silinir.":
+    "Deleting your account also deletes your profile, digital cards, NFC links, and associated feedback.",
   "Kullanıcı Hesabını Sil": "Delete User Account",
   "Hesabımı kalıcı olarak sil": "Permanently delete my account",
-  "Hesabınız, kartlarınız, etiketleriniz ve geri bildirimleriniz kalıcı olarak silinecek. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?": "Your account, cards, tags, and feedback will be permanently deleted. This cannot be undone. Continue?",
-  "Hesabınız kalıcı olarak silindi.": "Your account has been permanently deleted.",
-  "Hesap silinemedi. Lütfen tekrar deneyin.": "Could not delete the account. Please try again.",
+  "Hesabınız, kartlarınız, etiketleriniz ve geri bildirimleriniz kalıcı olarak silinecek. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?":
+    "Your account, cards, tags, and feedback will be permanently deleted. This cannot be undone. Continue?",
+  "Hesabınız kalıcı olarak silindi.":
+    "Your account has been permanently deleted.",
+  "Hesap silinemedi. Lütfen tekrar deneyin.":
+    "Could not delete the account. Please try again.",
   "Kart silinemedi: {error}": "Could not delete card: {error}",
   "Yükleniyor…": "Loading…",
   "Kartlar yüklenemedi: {error}": "Could not load cards: {error}",
   "Geri bildirimler yüklenemedi: {error}": "Could not load feedback: {error}",
-  "Geri bildirim sayısı alınamadı: {error}": "Could not load feedback count: {error}",
+  "Geri bildirim sayısı alınamadı: {error}":
+    "Could not load feedback count: {error}",
   "Silinmiş kart": "Deleted card",
   "Yorum metni belirtilmedi.": "No comment was provided.",
   "Müşteri yanıtları": "Customer responses",
-  "Google yorum kartlarınızdan gelen geri bildirimler.": "Feedback received through your Google review cards.",
-  "yanıt": "responses",
+  "Google yorum kartlarınızdan gelen geri bildirimler.":
+    "Feedback received through your Google review cards.",
+  yanıt: "responses",
   "Henüz geri bildirim yok": "No feedback yet",
-  "Müşterileriniz kartlarınız üzerinden yanıt verdiğinde burada görebilirsiniz.": "Responses submitted through your cards will appear here.",
-  "Önce": "Earlier",
+  "Müşterileriniz kartlarınız üzerinden yanıt verdiğinde burada görebilirsiniz.":
+    "Responses submitted through your cards will appear here.",
+  Önce: "Earlier",
   "NFC aktif": "NFC active",
   "NFC kapalı": "NFC inactive",
-  "Gizli": "Private",
+  Gizli: "Private",
   "Dijital kart": "Digital card",
   "Kart kalıcı olarak silinsin mi?": "Permanently delete this card?",
-  "kartı, ilişkili geri bildirimler ve etiketlerle birlikte silinecek. Bu işlem geri alınamaz.": "and its associated feedback and tags will be deleted. This cannot be undone.",
+  "kartı, ilişkili geri bildirimler ve etiketlerle birlikte silinecek. Bu işlem geri alınamaz.":
+    "and its associated feedback and tags will be deleted. This cannot be undone.",
   "Geri bildiriminiz kaydedilemedi.": "Could not save your feedback.",
   "Abuse report": "Abuse report",
   "Bildirimi gönder": "Submit report",
@@ -368,85 +453,106 @@ const english = {
   "Bildirilen URL": "Reported URL",
   "E-posta adresiniz": "Your email address",
   "Bildirim nedeni": "Reason for report",
-  "Açıklama": "Details",
+  Açıklama: "Details",
   "Neden seçin": "Select a reason",
   "Kimlik avı": "Phishing",
   "Kötü amaçlı yazılım": "Malware",
   "İftira / hakaret": "Defamation",
   "Telif hakkı ihlali": "Copyright infringement",
-  "Diğer": "Other",
-  "Bildiriminiz alındı. İnceleme ekibimiz değerlendirecektir.": "Your report was received. Our review team will investigate it.",
+  Diğer: "Other",
+  "Bildiriminiz alındı. İnceleme ekibimiz değerlendirecektir.":
+    "Your report was received. Our review team will investigate it.",
   "Lütfen geçerli bir HTTPS URL girin.": "Enter a valid HTTPS URL.",
-  "Açıklama en az 10 karakter olmalıdır.": "Details must be at least 10 characters.",
-  "Bildirim gönderilemedi. Lütfen tekrar deneyin.": "Could not submit the report. Please try again.",
+  "Açıklama en az 10 karakter olmalıdır.":
+    "Details must be at least 10 characters.",
+  "Bildirim gönderilemedi. Lütfen tekrar deneyin.":
+    "Could not submit the report. Please try again.",
   "Raporu kapat": "Close report",
   "İnceleme ekibine güvenli bildirim": "Send a report to our review team",
   "En fazla 5000 karakter": "Up to 5,000 characters",
   "İşleniyor…": "Submitting…",
   "Bildirimi kapat": "Close report",
   "Yasal bağlantılar": "Legal links",
-  "ve": "and",
+  ve: "and",
   "metnini okudum ve kabul ediyorum.": "and accept the terms.",
-  "kapsamında kişisel verilerimin işlenmesine açık rıza veriyorum.": "and explicitly consent to the processing of my personal data.",
-  "Devam ederek yasal metinlerimizi kabul etmiş olursunuz. Kayıt sırasında zorunlu onaylar ayrıca alınır.": "By continuing, you agree to our legal notices. Required consent is collected during registration.",
+  "kapsamında kişisel verilerimin işlenmesine açık rıza veriyorum.":
+    "and explicitly consent to the processing of my personal data.",
+  "Devam ederek yasal metinlerimizi kabul etmiş olursunuz. Kayıt sırasında zorunlu onaylar ayrıca alınır.":
+    "By continuing, you agree to our legal notices. Required consent is collected during registration.",
   "İşletme hesabım": "Business account",
   "Menüyü aç": "Open menu",
-  "Bildirimler": "Notifications",
+  Bildirimler: "Notifications",
   "Hesap özeti": "Account overview",
-  "Paylaştığınız her bağlantı kontrol altında": "Every link you share is checked",
-  "Harici bağlantılar kartınıza eklenmeden önce güvenlik kontrolünden geçirilir.": "External links are security-scanned before being added to your card.",
-  "Telefon": "Phone",
-  "Kart": "Card",
+  "Paylaştığınız her bağlantı kontrol altında":
+    "Every link you share is checked",
+  "Harici bağlantılar kartınıza eklenmeden önce güvenlik kontrolünden geçirilir.":
+    "External links are security-scanned before being added to your card.",
+  Telefon: "Phone",
+  Kart: "Card",
   "Geri bildirimleri": "Feedback",
   "Bağlantısını açmak üzeresiniz. Hedef adres:": "link. Destination:",
   "Google'da değerlendirin": "Review on Google",
   "Instagram profili": "Instagram profile",
-  "Kartınız üzerinden geri bildirim paylaşmak istiyorum.": "I would like to share feedback about your card.",
+  "Kartınız üzerinden geri bildirim paylaşmak istiyorum.":
+    "I would like to share feedback about your card.",
   "Kart üzerinden geri bildirim": "Feedback about the card",
-  "Telefon numaralarını ülke koduyla birlikte, yalnızca rakam olarak girin.": "Enter phone numbers as digits with a country code.",
-  "Kartı, ilişkili geri bildirimler ve etiketlerle birlikte silinecek. Bu işlem geri alınamaz.": "and its associated feedback and tags will be deleted. This cannot be undone.",
-  "Girdiğiniz URL güvenlik kontrolünden geçemedi. Lütfen geçerli ve güvenli bir bağlantı adresi yazın.": "This URL failed the security check. Enter a valid, safe link.",
+  "Telefon numaralarını ülke koduyla birlikte, yalnızca rakam olarak girin.":
+    "Enter phone numbers as digits with a country code.",
+  "Kartı, ilişkili geri bildirimler ve etiketlerle birlikte silinecek. Bu işlem geri alınamaz.":
+    "and its associated feedback and tags will be deleted. This cannot be undone.",
+  "Girdiğiniz URL güvenlik kontrolünden geçemedi. Lütfen geçerli ve güvenli bir bağlantı adresi yazın.":
+    "This URL failed the security check. Enter a valid, safe link.",
   "Lütfen geçerli bir bağlantı adresi girin.": "Enter a valid URL.",
-  "Bağlantılar HTTPS ile başlamalı ve kullanıcı bilgisi içermemelidir.": "Links must use HTTPS and cannot include credentials.",
+  "Bağlantılar HTTPS ile başlamalı ve kullanıcı bilgisi içermemelidir.":
+    "Links must use HTTPS and cannot include credentials.",
   "Profil yüklenemedi: {error}": "Could not load the profile: {error}",
-  "Kullanıcı profili bulunamadı. Lütfen veritabanı şemasını uygulayın.": "The user profile was not found. Apply the database schema.",
-  "Müşteri profilleri yüklenemedi: {error}": "Could not load client profiles: {error}",
-  "Kötüye kullanım bildirimleri yüklenemedi: {error}": "Could not load abuse reports: {error}",
-  "Yönetici": "Administrator",
-  "Bayi": "Reseller",
+  "Kullanıcı profili bulunamadı. Lütfen veritabanı şemasını uygulayın.":
+    "The user profile was not found. Apply the database schema.",
+  "Müşteri profilleri yüklenemedi: {error}":
+    "Could not load client profiles: {error}",
+  "Kötüye kullanım bildirimleri yüklenemedi: {error}":
+    "Could not load abuse reports: {error}",
+  Yönetici: "Administrator",
+  Bayi: "Reseller",
   "Doğrulanmış kullanıcı": "Verified user",
   "Kötüye kullanım bildirimleri": "Abuse reports",
-  "Bildirilen bağlantıları inceleyin ve gerekirse kartları geçici olarak devre dışı bırakın.": "Review reported links and temporarily disable cards when needed.",
+  "Bildirilen bağlantıları inceleyin ve gerekirse kartları geçici olarak devre dışı bırakın.":
+    "Review reported links and temporarily disable cards when needed.",
   "Müşteri için kart oluştur": "Create a card for a client",
   "Kart kapsamı": "Card scope",
   "Kişisel kartlar": "Personal cards",
   "Müşteri kartları": "Client cards",
   "Yönetilen müşteri kartı": "Managed client card",
-  "Donduruldu": "Frozen",
+  Donduruldu: "Frozen",
   "Yönetici notu": "Admin note",
   "Yönetici / bayi yönetimi": "Admin / reseller management",
   "Müşteri için yönetilen kart": "Managed card for a client",
   "Müşteri profili": "Client profile",
   "Merkezi yönetim (admin)": "Central admin management",
-  "Ödeme, iletişim veya fiziksel konum notları": "Payment, contact, or physical location notes",
+  "Ödeme, iletişim veya fiziksel konum notları":
+    "Payment, contact, or physical location notes",
   "Kartı dondur": "Freeze card",
   "Kartı etkinleştir": "Activate card",
-  "Kart durumu güncellenemedi: {error}": "Could not update card status: {error}",
+  "Kart durumu güncellenemedi: {error}":
+    "Could not update card status: {error}",
   "Kart yeniden etkinleştirildi.": "Card reactivated.",
   "Kart geçici olarak donduruldu.": "Card temporarily frozen.",
-  "Bildirim durumu güncellenemedi: {error}": "Could not update report status: {error}",
-  "Bu kart geçici olarak devre dışı bırakılmıştır.": "This card is temporarily inactive.",
-  "Bekliyor": "Pending",
-  "İnceleniyor": "Under review",
-  "Çözüldü": "Resolved",
-  "Reddedildi": "Dismissed",
+  "Bildirim durumu güncellenemedi: {error}":
+    "Could not update report status: {error}",
+  "Bu kart geçici olarak devre dışı bırakılmıştır.":
+    "This card is temporarily inactive.",
+  Bekliyor: "Pending",
+  İnceleniyor: "Under review",
+  Çözüldü: "Resolved",
+  Reddedildi: "Dismissed",
   "İncelemeye al": "Mark as investigating",
   "Çözüldü olarak işaretle": "Mark as resolved",
   "Henüz kötüye kullanım bildirimi yok.": "There are no abuse reports yet.",
   "Yeni bildirimler burada görüntülenecektir.": "New reports will appear here.",
   "Yalnızca yönetici notu": "Admin-only notes",
   "bağlantısını açmak üzeresiniz. Hedef adres:": "link. Destination:",
-  "kapsamında kişisel verilerimin işlenmesine onay veriyorum.": "and consent to the processing of my personal data as described in the Privacy Notice.",
+  "kapsamında kişisel verilerimin işlenmesine onay veriyorum.":
+    "and consent to the processing of my personal data as described in the Privacy Notice.",
 };
 
 export function LanguageProvider({ children }) {
@@ -454,8 +560,7 @@ export function LanguageProvider({ children }) {
     try {
       const saved = localStorage.getItem("bilgi-language");
       if (saved === "tr" || saved === "en") return saved;
-    } catch {
-    }
+    } catch {}
     return navigator.language?.toLowerCase().startsWith("tr") ? "tr" : "en";
   });
 
@@ -468,34 +573,60 @@ export function LanguageProvider({ children }) {
     }
   }, [language]);
 
-  const value = useMemo(() => ({
-    language,
-    setLanguage,
-    t: (key, values = {}) => {
-      let result = language === "en" ? (english[key] || key) : key;
-      for (const [name, replacement] of Object.entries(values)) {
-        result = result.replaceAll(`{${name}}`, String(replacement));
-      }
-      return result;
-    },
-  }), [language]);
+  const value = useMemo(
+    () => ({
+      language,
+      setLanguage,
+      t: (key, values = {}) => {
+        let result = language === "en" ? english[key] || key : key;
+        for (const [name, replacement] of Object.entries(values)) {
+          result = result.replaceAll(`{${name}}`, String(replacement));
+        }
+        return result;
+      },
+    }),
+    [language],
+  );
 
-  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+  return (
+    <LanguageContext.Provider value={value}>
+      {children}
+    </LanguageContext.Provider>
+  );
 }
 
 export function useTranslation() {
   const context = useContext(LanguageContext);
-  if (!context) throw new Error("useTranslation must be used inside LanguageProvider");
+  if (!context)
+    throw new Error("useTranslation must be used inside LanguageProvider");
   return context;
 }
 
 export function LanguageSwitcher({ className = "" }) {
   const { language, setLanguage } = useTranslation();
   return (
-    <div className={`language-switcher ${className}`} role="group" aria-label={language === "tr" ? "Dil" : "Language"}>
-      <button type="button" aria-pressed={language === "tr"} className={language === "tr" ? "active" : ""} onClick={() => setLanguage("tr")}>TR</button>
+    <div
+      className={`language-switcher ${className}`}
+      role="group"
+      aria-label={language === "tr" ? "Dil" : "Language"}
+    >
+      <button
+        type="button"
+        aria-pressed={language === "tr"}
+        className={language === "tr" ? "active" : ""}
+        onClick={() => setLanguage("tr")}
+      >
+        TR
+      </button>
       <span aria-hidden="true">|</span>
-      <button type="button" aria-pressed={language === "en"} className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
+      <button
+        type="button"
+        aria-pressed={language === "en"}
+        className={language === "en" ? "active" : ""}
+        onClick={() => setLanguage("en")}
+      >
+        EN
+      </button>
     </div>
   );
 }

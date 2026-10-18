@@ -6,18 +6,66 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Bilgi legal information — draft</title>
     <style>
-      :root { color-scheme: light; font: 16px/1.65 system-ui, sans-serif; color: #1f2937; background: #f3f4f6; }
-      body { margin: 0; padding: 2rem 1rem; }
-      main { max-width: 850px; margin: 0 auto; padding: clamp(1.25rem, 5vw, 3rem); background: #fff; border: 1px solid #d1d5db; border-radius: 1rem; box-shadow: 0 12px 35px #11182712; }
-      h1, h2, h3 { color: #111827; line-height: 1.25; }
-      h1 { font-size: clamp(1.8rem, 5vw, 2.5rem); }
-      h2 { margin-top: 2rem; font-size: 1.35rem; }
-      a { color: #075985; }
-      .draft { padding: 1rem; border: 1px solid #f59e0b; border-radius: .65rem; background: #fffbeb; color: #78350f; }
-      .meta { color: #4b5563; }
-      footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #d1d5db; }
-      footer nav { display: flex; flex-wrap: wrap; gap: .5rem 1rem; }
-      li { margin: .35rem 0; }
+      :root {
+        color-scheme: light;
+        font:
+          16px/1.65 system-ui,
+          sans-serif;
+        color: #1f2937;
+        background: #f3f4f6;
+      }
+      body {
+        margin: 0;
+        padding: 2rem 1rem;
+      }
+      main {
+        max-width: 850px;
+        margin: 0 auto;
+        padding: clamp(1.25rem, 5vw, 3rem);
+        background: #fff;
+        border: 1px solid #d1d5db;
+        border-radius: 1rem;
+        box-shadow: 0 12px 35px #11182712;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #111827;
+        line-height: 1.25;
+      }
+      h1 {
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+      }
+      h2 {
+        margin-top: 2rem;
+        font-size: 1.35rem;
+      }
+      a {
+        color: #075985;
+      }
+      .draft {
+        padding: 1rem;
+        border: 1px solid #f59e0b;
+        border-radius: 0.65rem;
+        background: #fffbeb;
+        color: #78350f;
+      }
+      .meta {
+        color: #4b5563;
+      }
+      footer {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #d1d5db;
+      }
+      footer nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1rem;
+      }
+      li {
+        margin: 0.35rem 0;
+      }
     </style>
   </head>
   <body>
@@ -26,18 +74,58 @@
       const query = new URLSearchParams(window.location.search);
       const lang = query.get("lang") === "tr" ? "tr" : "en";
       const requestedDocument = query.get("document");
-      const paths = lang === "tr"
-        ? { terms: "/tr/kullanim-kosullari", privacy: "/tr/gizlilik-politikasi", kvkk: "/tr/kvkk", cookies: "/tr/cerez-politikasi", contact: "/tr/iletisim" }
-        : { terms: "/en/terms-of-service", privacy: "/en/privacy-policy", kvkk: "/en/gdpr", cookies: "/en/cookie-policy", contact: "/en/contact" };
-      const otherLanguagePaths = lang === "tr"
-        ? { terms: "/en/terms-of-service", privacy: "/en/privacy-policy", kvkk: "/en/gdpr", cookies: "/en/cookie-policy", contact: "/en/contact" }
-        : { terms: "/tr/kullanim-kosullari", privacy: "/tr/gizlilik-politikasi", kvkk: "/tr/kvkk", cookies: "/tr/cerez-politikasi", contact: "/tr/iletisim" };
-      const titles = lang === "tr"
-        ? { terms: "Kullanım Koşulları", privacy: "Gizlilik Politikası", kvkk: "KVKK Aydınlatma ve GDPR Bilgilendirmesi", cookies: "Çerez ve Tarayıcı Depolama Politikası", contact: "İletişim" }
-        : { terms: "Terms of Service", privacy: "Privacy Policy", kvkk: "KVKK Disclosure and GDPR Notice", cookies: "Cookie and Browser Storage Policy", contact: "Contact" };
-      const draftNotice = lang === "tr"
-        ? `<aside class="draft"><strong>TASLAK — yayımdan önce inceleme gerekir.</strong> Bu metin, mevcut kod ve yapılandırma belgelerinden hazırlanmıştır. Veri sorumlusu tüzel kişi/adres bilgisi, saklama süreleri, veri merkezi konumu, uluslararası aktarım mekanizması ve yürürlük tarihi operatör tarafından doğrulanmalı; KVKK/GDPR uzmanı tarafından gözden geçirilmelidir.</aside>`
-        : `<aside class="draft"><strong>DRAFT — review required before publication.</strong> Prepared from the current code and configuration documentation. The controller's legal entity/address, retention periods, hosting region, international-transfer mechanism, and effective date must be verified by the operator and reviewed by qualified privacy counsel.</aside>`;
+      const paths =
+        lang === "tr"
+          ? {
+              terms: "/tr/kullanim-kosullari",
+              privacy: "/tr/gizlilik-politikasi",
+              kvkk: "/tr/kvkk",
+              cookies: "/tr/cerez-politikasi",
+              contact: "/tr/iletisim",
+            }
+          : {
+              terms: "/en/terms-of-service",
+              privacy: "/en/privacy-policy",
+              kvkk: "/en/gdpr",
+              cookies: "/en/cookie-policy",
+              contact: "/en/contact",
+            };
+      const otherLanguagePaths =
+        lang === "tr"
+          ? {
+              terms: "/en/terms-of-service",
+              privacy: "/en/privacy-policy",
+              kvkk: "/en/gdpr",
+              cookies: "/en/cookie-policy",
+              contact: "/en/contact",
+            }
+          : {
+              terms: "/tr/kullanim-kosullari",
+              privacy: "/tr/gizlilik-politikasi",
+              kvkk: "/tr/kvkk",
+              cookies: "/tr/cerez-politikasi",
+              contact: "/tr/iletisim",
+            };
+      const titles =
+        lang === "tr"
+          ? {
+              terms: "Kullanım Koşulları",
+              privacy: "Gizlilik Politikası",
+              kvkk: "KVKK Aydınlatma ve GDPR Bilgilendirmesi",
+              cookies: "Çerez ve Tarayıcı Depolama Politikası",
+              contact: "İletişim",
+            }
+          : {
+              terms: "Terms of Service",
+              privacy: "Privacy Policy",
+              kvkk: "KVKK Disclosure and GDPR Notice",
+              cookies: "Cookie and Browser Storage Policy",
+              contact: "Contact",
+            };
+      const draftNotice =
+        lang === "tr"
+          ? `<aside class="draft"><strong>TASLAK — yayımdan önce inceleme gerekir.</strong> Bu metin, mevcut kod ve yapılandırma belgelerinden hazırlanmıştır. Veri sorumlusu tüzel kişi/adres bilgisi, saklama süreleri, veri merkezi konumu, uluslararası aktarım mekanizması ve yürürlük tarihi operatör tarafından doğrulanmalı; KVKK/GDPR uzmanı tarafından gözden geçirilmelidir.</aside>`
+          : `<aside class="draft"><strong>DRAFT — review required before publication.</strong> Prepared from the current code and configuration documentation. The controller's legal entity/address, retention periods, hosting region, international-transfer mechanism, and effective date must be verified by the operator and reviewed by qualified privacy counsel.</aside>`;
       const legalText = {
         en: {
           terms: `<p>These terms govern your use of Bilgi NFC and digital-card services. By creating an account or using an account-only feature, you agree to these terms and the linked notices. Do not use the service if you do not agree.</p>
@@ -98,15 +186,22 @@
           contact: `<p>Gizlilik başvuruları, hesap soruları, hukuki bildirimler veya genel geri bildirim için <a href="mailto:destek@openstacktool.com">destek@openstacktool.com</a> adresine e-posta gönderin.</p><p>Herkese açık kartla ilgili güvenlik veya kötüye kullanım bildirimi için kart sayfasındaki bildirim kontrolünü kullanın. Parola, kimlik doğrulama kodu, özel kart bağlantısı veya tam ödeme bilgilerini e-postayla göndermeyin.</p><p>Hizmet işletmecisinin tam hukuki kimliği ve posta adresi yayımdan önce eklenmelidir.</p>`,
         },
       };
-      const validDocument = Object.hasOwn(titles, requestedDocument) ? requestedDocument : "privacy";
+      const validDocument = Object.hasOwn(titles, requestedDocument)
+        ? requestedDocument
+        : "privacy";
       const scannerDisclosure = ["privacy", "kvkk"].includes(validDocument)
-        ? `<h2>${lang === "tr" ? "URL güvenlik kontrolü" : "URL safety checks"}</h2><p>${lang === "tr"
-          ? "URL güvenlik kontrolü için gönderdiğiniz bağlantılar, yapılandırmaya bağlı olarak VirusTotal, Google Safe Browsing ve/veya PhishTank ile paylaşılabilir. Gizli, erişim anahtarı içeren veya kişisel bilgi barındıran bağlantıları taratmayın; kullanılan sağlayıcıları ve aktarım koşullarını operatör doğrulamalıdır. Kart formu taslakları, kaydetme veya tarayıcıdan çıkış öncesi kurtarma için tarayıcınızın localStorage alanında tutulabilir ve kart başarıyla kaydedildiğinde temizlenir."
-          : "URLs submitted for safety checks may be shared with VirusTotal, Google Safe Browsing, and/or PhishTank depending on configuration. Do not submit confidential, capability-token, or personally identifying URLs; the operator must verify the providers in use and their transfer terms. Card-form drafts may be stored in your browser's localStorage for recovery before saving or leaving the page and are cleared after a successful save."}</p>`
+        ? `<h2>${lang === "tr" ? "URL güvenlik kontrolü" : "URL safety checks"}</h2><p>${
+            lang === "tr"
+              ? "URL güvenlik kontrolü için gönderdiğiniz bağlantılar, yapılandırmaya bağlı olarak VirusTotal, Google Safe Browsing ve/veya PhishTank ile paylaşılabilir. Gizli, erişim anahtarı içeren veya kişisel bilgi barındıran bağlantıları taratmayın; kullanılan sağlayıcıları ve aktarım koşullarını operatör doğrulamalıdır. Kart formu taslakları, kaydetme veya tarayıcıdan çıkış öncesi kurtarma için tarayıcınızın localStorage alanında tutulabilir ve kart başarıyla kaydedildiğinde temizlenir."
+              : "URLs submitted for safety checks may be shared with VirusTotal, Google Safe Browsing, and/or PhishTank depending on configuration. Do not submit confidential, capability-token, or personally identifying URLs; the operator must verify the providers in use and their transfer terms. Card-form drafts may be stored in your browser's localStorage for recovery before saving or leaving the page and are cleared after a successful save."
+          }</p>`
         : "";
       const legalLinks = Object.entries(paths)
         .filter(([key]) => key !== "contact" && key !== validDocument)
-        .map(([key, path]) => `<a href="${path}" target="_blank" rel="noopener noreferrer">${titles[key]}</a>`)
+        .map(
+          ([key, path]) =>
+            `<a href="${path}" target="_blank" rel="noopener noreferrer">${titles[key]}</a>`,
+        )
         .join("");
       const content = document.getElementById("content");
       document.documentElement.lang = lang;

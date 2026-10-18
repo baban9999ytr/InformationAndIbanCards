@@ -70,7 +70,7 @@ Deno.serve(async (request: Request) => {
     auth: { persistSession: false },
   });
   const safeFields =
-    "id,title,type,access_mode,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,extra_links,blocks,is_active,user_id,updated_at,palette:palette_definitions!nfc_cards_palette_id_fkey(tokens,is_active,moderation_status,kind,is_default,updated_at)";
+    "id,title,type,access_mode,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,extra_links,blocks,is_active,user_id,updated_at,palette_id,palette:palette_definitions!nfc_cards_palette_id_fkey(tokens,is_active,moderation_status,kind,is_default,updated_at)";
   let card = null;
   let error = null;
   if (
@@ -170,19 +170,15 @@ Deno.serve(async (request: Request) => {
   delete publicCard.user_id;
   delete publicCard.updated_at;
   delete publicCard.palette;
-  publicCard.palette = palette?.tokens ?? null;
-  const version = `${card.updated_at}:${palette?.updated_at ?? "none"}`;
-  const etag = `"${version.replace(/[^a-zA-Z0-9._:-]/g, "")}"`;
+  publicCard.palette = palette?.tokens
+    ? { tokens: palette.tokens }
+    : null;
   const responseHeaders = {
     ...headers,
-    etag,
-    "cache-control": card.access_mode === "public"
-      ? "public, max-age=0, s-maxage=60, stale-while-revalidate=300"
-      : "no-store",
+    "cache-control": "no-store, no-cache, must-revalidate",
+    pragma: "no-cache",
+    expires: "0",
   };
-  if (request.headers.get("if-none-match") === etag) {
-    return new Response(null, { status: 304, headers: responseHeaders });
-  }
   return new Response(JSON.stringify({ card: publicCard }), {
     status: 200,
     headers: responseHeaders,

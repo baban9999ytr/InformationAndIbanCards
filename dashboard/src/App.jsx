@@ -109,13 +109,16 @@ function cardPaletteStyle(palette) {
     "--surface-color": validColor(tokens.surface),
     "--text-color": validColor(tokens.text),
     "--primary-color": validColor(tokens.primary),
+    "--accent-color": validColor(tokens.accent),
     "--muted-color": validColor(tokens.muted),
+    "--button-text-color": validColor(tokens.button_text),
     "--page": validColor(tokens.background),
     "--surface": validColor(tokens.surface),
     "--text": validColor(tokens.text),
     "--muted": validColor(tokens.muted),
     "--purple": validColor(tokens.primary),
     "--green": validColor(tokens.accent),
+    "--button-text": validColor(tokens.button_text),
     "--surface-soft": validColor(tokens.surface),
   };
 }
@@ -1339,7 +1342,7 @@ function PublicCard({ token, onReport }) {
   const blockOrder = (type, fallback) => cardBlockOrder(card, type, fallback);
 
   return (
-    <main className="public-page">
+    <main className="public-page" style={cardPaletteStyle(card?.palette)}>
       <header className="public-header">
         <a className="brand public-brand" href="/">
           <span className="brand-symbol">b.</span>
@@ -1431,27 +1434,6 @@ function PublicCard({ token, onReport }) {
                   className="public-card-block"
                   style={{ order: blockOrder("payment", 1) }}
                 >
-                  {links.payment.recipient_name && (
-                    <div className="iban-recipient-row">
-                      <span className="iban-recipient-label">{t("Hesap sahibi")}</span>
-                      <button
-                        type="button"
-                        className="copyable-name iban-recipient-name"
-                        aria-label={`${t("Hesap sahibini kopyala")}: ${
-                          links.payment.recipient_name
-                        }`}
-                        onClick={() =>
-                          copyCardValue(
-                            links.payment.recipient_name,
-                            "Hesap sahibi kopyalandı.",
-                          )
-                        }
-                      >
-                        <span>{links.payment.recipient_name}</span>
-                        <Copy size={16} aria-hidden="true" />
-                      </button>
-                    </div>
-                  )}
                   {(links.payment.bank_name || card.bank_name) && (
                     <p className="public-subtitle">
                       {links.payment.bank_name || card.bank_name}
@@ -1460,6 +1442,29 @@ function PublicCard({ token, onReport }) {
                   {(links.payment.iban || card.iban) &&
                     sanitizeIban(links.payment.iban || card.iban) && (
                       <div className="iban-box">
+                        {links.payment.recipient_name && (
+                          <div className="iban-recipient-row">
+                            <span className="iban-recipient-label">
+                              {t("HESAP SAHİBİ")}
+                            </span>
+                            <button
+                              type="button"
+                              className="copyable-name iban-recipient-name"
+                              aria-label={`${t("Hesap sahibini kopyala")}: ${
+                                links.payment.recipient_name
+                              }`}
+                              onClick={() =>
+                                copyCardValue(
+                                  links.payment.recipient_name,
+                                  "Hesap sahibi kopyalandı.",
+                                )
+                              }
+                            >
+                              <span>{links.payment.recipient_name}</span>
+                              <Copy size={16} aria-hidden="true" />
+                            </button>
+                          </div>
+                        )}
                         <span className="iban-label">{t("IBAN")}</span>
                         <button
                           type="button"
@@ -2325,6 +2330,7 @@ function CardModal({
   const [scanning, setScanning] = useState(false);
   const [scanNotice, setScanNotice] = useState("");
   const [isDirty, setIsDirty] = useState(Boolean(savedDraft));
+  const [devToolsOpen, setDevToolsOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -2457,6 +2463,31 @@ function CardModal({
         ? { slug: slugify(value) }
         : {}),
     }));
+  }
+
+  function fillAdminTestData() {
+    const payment = blocks.find((block) => block.type === "payment_or_iban");
+    const testIban = "TR40 0006 1000 0000 0123 4567 89";
+    const testRecipient = "Test A.Ş.";
+    if (payment) {
+      updateBlock(payment.id, {
+        ...payment.data,
+        iban: testIban,
+        recipient_name: testRecipient,
+        bank_name: payment.data.bank_name || "Test Bankası",
+      });
+      setExpandedBlockId(payment.id);
+    } else {
+      const nextBlock = createCardBlock("payment_or_iban", blocks.length, {
+        iban: testIban,
+        recipient_name: testRecipient,
+        bank_name: "Test Bankası",
+      });
+      setBlocks((current) => [...current, nextBlock]);
+      setExpandedBlockId(nextBlock.id);
+      setIsDirty(true);
+    }
+    setDevToolsOpen(false);
   }
 
   function moveBlock(index, direction) {
@@ -2780,6 +2811,33 @@ function CardModal({
           {scanNotice && (
             <div className="inline-warning" role="status">
               {scanNotice}
+            </div>
+          )}
+          {isAdmin && (
+            <div className="dev-tools">
+              <button
+                type="button"
+                className="button button-quiet"
+                aria-expanded={devToolsOpen}
+                onClick={() => setDevToolsOpen((open) => !open)}
+              >
+                🛠️ {t("DevTools / Test verisi")}
+              </button>
+              {devToolsOpen && (
+                <div className="dev-tools-panel">
+                  <p>{t("Yalnızca yönetici testleri için örnek veri doldurur.")}</p>
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={fillAdminTestData}
+                  >
+                    {t("Geçerli test IBAN'ı ve alıcı adı doldur")}
+                  </button>
+                  <small>
+                    {t("Üretim doğrulamaları atlanmaz; yalnızca güvenli test verisi eklenir.")}
+                  </small>
+                </div>
+              )}
             </div>
           )}
           <div className="form-section">

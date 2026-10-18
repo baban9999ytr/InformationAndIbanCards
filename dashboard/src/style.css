@@ -1348,6 +1348,25 @@ textarea:focus-visible {
   scrollbar-color: var(--purple) var(--surface-soft);
   scrollbar-width: thin;
 }
+.dev-tools {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+.dev-tools-panel {
+  display: grid;
+  gap: 8px;
+}
+.dev-tools-panel p,
+.dev-tools-panel small {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
 .modal-body::-webkit-scrollbar {
   width: 8px;
 }

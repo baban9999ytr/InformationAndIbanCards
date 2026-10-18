@@ -2292,11 +2292,15 @@ function CardModal({
       ? {
           ...initial,
           ...savedDraft.form,
+          palette_id: card ? card.palette_id || null : savedDraft.form.palette_id || null,
           extra_links: Array.isArray(savedDraft.form.extra_links)
             ? savedDraft.form.extra_links
             : initial.extra_links,
         }
-      : initial;
+      : {
+          ...initial,
+          palette_id: card?.palette_id || null,
+        };
   });
   const [blocks, setBlocks] = useState(() =>
     makeCardBlocks(

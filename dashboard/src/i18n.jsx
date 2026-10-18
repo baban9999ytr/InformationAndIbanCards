@@ -303,6 +303,18 @@ const english = {
   "Panoya kopyalanamadı.": "Could not copy to clipboard.",
   Kopyalandı: "Copied",
   "TR12 0006 1000 0000 0123 4567 89": "TR12 0006 1000 0000 0123 4567 89",
+  "IBAN, 'TR' ile başlayıp ardından 24 haneli rakam içermelidir (Toplam 26 karakter). Harf veya boşluk yazmanıza gerek yoktur, otomatik biçimlendirilir.":
+    "An IBAN must start with 'TR' and contain 24 digits (26 characters total). You do not need to type letters or spaces; formatting is automatic.",
+  karakter: "characters",
+  "IBAN eksik girildi.": "The IBAN is incomplete.",
+  "Şu an": "You have entered",
+  "karakter girdiniz": "characters",
+  "TR dahil toplam 26 karakter olmalıdır.": "characters; 26 characters including TR are required.",
+  Örnek: "Example",
+  "Türkiye IBAN'ları 'TR' ile başlamalıdır. Örnek: TR12 0006 1000 0000 0123 4567 89":
+    "Turkish IBANs must start with 'TR'. Example: TR12 0006 1000 0000 0123 4567 89",
+  "Girdiğiniz IBAN geçerli bir hesap formatına uymuyor. Lütfen bankanızın sağladığı gerçek IBAN numarasını kontrol edin.":
+    "The IBAN format is not valid. Please check the real IBAN provided by your bank.",
   "Banka adı": "Bank name",
   "04": "04",
   "Ek bağlantılar": "Extra links",

@@ -1925,6 +1925,8 @@ function TextField({
   required = false,
   error = "",
   hint = "",
+  counter = "",
+  onBlur,
   ...props
 }) {
   return (
@@ -1940,10 +1942,13 @@ function TextField({
           onChange={onChange}
           placeholder={placeholder}
           required={required}
+          onBlur={onBlur}
           {...props}
         />
       </label>
-      {error ? <small className="field-error" role="alert">{error}</small> : hint ? <small className="field-hint">{hint}</small> : null}
+      {counter ? <small className="field-counter">{counter}</small> : null}
+      {error ? <small className="field-error" role="alert">{error}</small> : null}
+      {hint ? <small className="field-hint">{hint}</small> : null}
     </div>
   );
 }
@@ -1984,10 +1989,37 @@ function serializableCardDraft(form) {
   return draftForm;
 }
 
-function inlineFieldMessage(blockType, key, value) {
+function ibanValidationMessage(value, t) {
+  const normalized = String(value || "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
+  if (!normalized) return "";
+  if (!normalized.startsWith("TR")) {
+    return t("Türkiye IBAN'ları 'TR' ile başlamalıdır. Örnek: TR12 0006 1000 0000 0123 4567 89");
+  }
+  if (normalized.length < 26) {
+    return t(
+      "IBAN eksik girildi.",
+    ) + ` ${t("Şu an")} ${normalized.length} ${t("karakter girdiniz")}, ${t(
+      "TR dahil toplam 26 karakter olmalıdır.",
+    )} ${t("Örnek")}: TR12 0006 1000 0000 0123 4567 89`;
+  }
+  if (
+    normalized.length !== 26 ||
+    !/^TR\d{24}$/.test(normalized) ||
+    !isValidIban(normalized)
+  ) {
+    return t(
+      "Girdiğiniz IBAN geçerli bir hesap formatına uymuyor. Lütfen bankanızın sağladığı gerçek IBAN numarasını kontrol edin.",
+    );
+  }
+  return "";
+}
+
+function inlineFieldMessage(blockType, key, value, t) {
   const text = String(value || "").trim();
   if (!text) return "";
-  if (key === "iban" && !isValidIban(text)) return "Lütfen geçerli bir IBAN girin. Örnek: TR12 0006 1000 0000 0123 4567 89";
+  if (key === "iban") return ibanValidationMessage(text, t);
   if (["phone", "sms", "whatsapp"].includes(key) && !/^\d{7,15}$/.test(normalizePhone(text))) return "Telefon numarası eksik. Örnek: +90 5XX XXX XX XX";
   if (["url", "maps_url", "avatar_url"].includes(key)) {
     try {
@@ -2017,6 +2049,7 @@ function formatTurkishIban(value) {
 
 function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
   const { t } = useTranslation();
+  const [blurredFields, setBlurredFields] = useState({});
   const fields =
     {
       profile: [
@@ -2094,7 +2127,17 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
             inputMode={key === "iban" ? "numeric" : undefined}
             maxLength={key === "iban" ? 32 : undefined}
             value={key === "iban" ? formatTurkishIban(block.data[key]) : block.data[key] || ""}
-            error={inlineFieldMessage(block.type, key, block.data[key])}
+            error={blurredFields[key] ? inlineFieldMessage(block.type, key, block.data[key], t) : ""}
+            hint={
+              key === "iban"
+                ? t("IBAN, 'TR' ile başlayıp ardından 24 haneli rakam içermelidir (Toplam 26 karakter). Harf veya boşluk yazmanıza gerek yoktur, otomatik biçimlendirilir.")
+                : ""
+            }
+            counter={
+              key === "iban"
+                ? `${String(block.data[key] || "").replace(/\s+/g, "").length}/26 ${t("karakter")}`
+                : ""
+            }
             placeholder={
               key === "iban" ? "TR12 0006 1000 0000 0123 4567 89"
                 : key === "phone" || key === "sms" || key === "whatsapp" ? "+90 5XX XXX XX XX"
@@ -2105,6 +2148,7 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
               key,
               key === "iban" ? formatTurkishIban(event.target.value) : event.target.value,
             )}
+            onBlur={() => setBlurredFields((fieldsState) => ({ ...fieldsState, [key]: true }))}
           />
         ),
       )}
@@ -2558,7 +2602,7 @@ function CardModal({
       );
       if (paymentBlock?.data.iban && !isValidIban(paymentBlock.data.iban))
         throw new Error(
-          t("Lütfen geçerli bir IBAN girin. Örnek: TR12 0006 1000 0000 0123 4567 89"),
+          ibanValidationMessage(paymentBlock.data.iban, t),
         );
       if (
         [form.whatsapp, form.sms].some(

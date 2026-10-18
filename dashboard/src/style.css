@@ -1799,6 +1799,12 @@ textarea:focus-visible {
   font-size: 10px;
   line-height: 1.4;
 }
+.field-counter {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: right;
+}
 .block-reorder-actions {
   display: flex;
   gap: 8px;

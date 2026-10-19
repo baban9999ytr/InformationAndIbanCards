@@ -5,7 +5,15 @@
     "access_mode": "public",
     "slug": "current-card",
     "title": "Current card",
-    "blocks": [{ "id": "profile", "type": "profile", "order": 0, "visible": true, "data": { "name": "Current card" } }]
+    "blocks": [
+      {
+        "id": "profile",
+        "type": "profile",
+        "order": 0,
+        "visible": true,
+        "data": { "name": "Current card" }
+      }
+    ]
   },
   {
     "id": "legacy-card",
@@ -21,7 +29,15 @@
     "user_id": "owner-unknown",
     "access_mode": "private",
     "title": "Unknown block card",
-    "blocks": [{ "id": "calendar", "type": "calendar", "order": 0, "visible": false, "data": { "provider": "legacy-calendar" } }]
+    "blocks": [
+      {
+        "id": "calendar",
+        "type": "calendar",
+        "order": 0,
+        "visible": false,
+        "data": { "provider": "legacy-calendar" }
+      }
+    ]
   },
   {
     "id": "malformed-card",

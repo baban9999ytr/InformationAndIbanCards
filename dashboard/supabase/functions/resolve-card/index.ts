@@ -150,7 +150,11 @@ Deno.serve(async (request: Request) => {
     );
   }
   let palette = card.palette;
-  if (!palette || !palette.is_active || palette.moderation_status !== "approved") {
+  if (
+    !palette ||
+    !palette.is_active ||
+    palette.moderation_status !== "approved"
+  ) {
     const { data: defaultPalette, error: paletteError } = await admin
       .from("palette_definitions")
       .select("tokens,is_active,moderation_status,updated_at")
@@ -162,7 +166,10 @@ Deno.serve(async (request: Request) => {
       .maybeSingle();
     if (paletteError) {
       console.error("Default palette lookup failed", paletteError.message);
-      return new Response(JSON.stringify({ error: "Card lookup failed" }), { status: 500, headers });
+      return new Response(JSON.stringify({ error: "Card lookup failed" }), {
+        status: 500,
+        headers,
+      });
     }
     palette = defaultPalette;
   }
@@ -170,9 +177,7 @@ Deno.serve(async (request: Request) => {
   delete publicCard.user_id;
   delete publicCard.updated_at;
   delete publicCard.palette;
-  publicCard.palette = palette?.tokens
-    ? { tokens: palette.tokens }
-    : null;
+  publicCard.palette = palette?.tokens ? { tokens: palette.tokens } : null;
   const responseHeaders = {
     ...headers,
     "cache-control": "no-store, no-cache, must-revalidate",

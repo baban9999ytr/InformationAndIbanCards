@@ -112,9 +112,28 @@ test("legacy card survives normalize, edit, serialize, and reload", () => {
     whatsapp: "905551112233",
     email: "merhaba@example.com",
     blocks: [
-      { id: "note", type: "text_or_note", order: 8, visible: true, data: { text: "Merhaba" } },
-      { id: "pay", type: "payment", order: 3, visible: true, data: { iban: "TR120006100000000123456789", bank_name: "Eski Banka" } },
-      { id: "future", type: "appointment", order: 5, visible: false, data: { provider: "calendar", slot_length: 30 }, revision: 4 },
+      {
+        id: "note",
+        type: "text_or_note",
+        order: 8,
+        visible: true,
+        data: { text: "Merhaba" },
+      },
+      {
+        id: "pay",
+        type: "payment",
+        order: 3,
+        visible: true,
+        data: { iban: "TR120006100000000123456789", bank_name: "Eski Banka" },
+      },
+      {
+        id: "future",
+        type: "appointment",
+        order: 5,
+        visible: false,
+        data: { provider: "calendar", slot_length: 30 },
+        revision: 4,
+      },
     ],
   };
   const normalized = hydrateCardFromBlocks(source);
@@ -146,10 +165,18 @@ test("legacy card survives normalize, edit, serialize, and reload", () => {
 });
 
 test("hidden blocks do not clear legacy mirror fields during save", () => {
-  const source = { iban: "TR120006100000000123456789", bank_name: "Korunan Banka" };
+  const source = {
+    iban: "TR120006100000000123456789",
+    bank_name: "Korunan Banka",
+  };
   const fields = legacyFieldsForCardSave(source, [
     { id: "profile", type: "profile", visible: true, data: { name: "Kart" } },
-    { id: "iban", type: "payment_or_iban", visible: false, data: { iban: "", bank_name: "" } },
+    {
+      id: "iban",
+      type: "payment_or_iban",
+      visible: false,
+      data: { iban: "", bank_name: "" },
+    },
   ]);
   assert.equal(fields.iban, source.iban);
   assert.equal(fields.bank_name, source.bank_name);

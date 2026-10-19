@@ -87,19 +87,51 @@ const cardBlockLabels = {
 const palettePresets = {
   payment_or_iban: {
     name: "IBAN / ödeme",
-    tokens: { background: "#0F172A", surface: "#1E293B", text: "#F8FAFC", primary: "#38BDF8", accent: "#22C55E", muted: "#94A3B8", button_text: "#0F172A" },
+    tokens: {
+      background: "#0F172A",
+      surface: "#1E293B",
+      text: "#F8FAFC",
+      primary: "#38BDF8",
+      accent: "#22C55E",
+      muted: "#94A3B8",
+      button_text: "#0F172A",
+    },
   },
   sahibinden: {
     name: "Sahibinden",
-    tokens: { background: "#F7F7F7", surface: "#FFFFFF", text: "#1F2937", primary: "#F58220", accent: "#111827", muted: "#6B7280", button_text: "#FFFFFF" },
+    tokens: {
+      background: "#F7F7F7",
+      surface: "#FFFFFF",
+      text: "#1F2937",
+      primary: "#F58220",
+      accent: "#111827",
+      muted: "#6B7280",
+      button_text: "#FFFFFF",
+    },
   },
   instagram: {
     name: "Instagram",
-    tokens: { background: "#1F1028", surface: "#321743", text: "#FFF7FC", primary: "#E1306C", accent: "#FCAF45", muted: "#D8B4FE", button_text: "#FFFFFF" },
+    tokens: {
+      background: "#1F1028",
+      surface: "#321743",
+      text: "#FFF7FC",
+      primary: "#E1306C",
+      accent: "#FCAF45",
+      muted: "#D8B4FE",
+      button_text: "#FFFFFF",
+    },
   },
   linkedin: {
     name: "LinkedIn",
-    tokens: { background: "#0B1F33", surface: "#123454", text: "#F8FAFC", primary: "#0A66C2", accent: "#70B5F9", muted: "#B8C7D9", button_text: "#FFFFFF" },
+    tokens: {
+      background: "#0B1F33",
+      surface: "#123454",
+      text: "#F8FAFC",
+      primary: "#0A66C2",
+      accent: "#70B5F9",
+      muted: "#B8C7D9",
+      button_text: "#FFFFFF",
+    },
   },
 };
 const isAdminProfile = (profile) =>
@@ -115,7 +147,10 @@ function cardPaletteStyle(palette) {
       : palette && typeof palette === "object"
         ? palette
         : {};
-  const validColor = (value) => typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value : undefined;
+  const validColor = (value) =>
+    typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value)
+      ? value
+      : undefined;
   return {
     "--bg-color": validColor(tokens.background),
     "--surface-color": validColor(tokens.surface),
@@ -1255,8 +1290,12 @@ function PublicCard({ token, onReport }) {
     const google = blockOf("google_review");
     const socialData = blockOf("social").links;
     const customData = blockOf("custom_links").links;
-    const social = (Array.isArray(socialData) ? socialData : []).filter((item) => item && typeof item.url === "string");
-    const customLinks = (Array.isArray(customData) ? customData : []).filter((item) => item && typeof item.url === "string");
+    const social = (Array.isArray(socialData) ? socialData : []).filter(
+      (item) => item && typeof item.url === "string",
+    );
+    const customLinks = (Array.isArray(customData) ? customData : []).filter(
+      (item) => item && typeof item.url === "string",
+    );
     const customButton = blockOf("custom_button");
     const contact = blockOf("contact");
     const channels = contact.channels || {};
@@ -1358,9 +1397,27 @@ function PublicCard({ token, onReport }) {
 
   function downloadVCard() {
     const profile = links.profile;
-    const escapeVcard = (value) => String(value || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
-    const vcard = ["BEGIN:VCARD", "VERSION:3.0", `FN:${escapeVcard(profile.name || card.title)}`, links.contact.phone && `TEL;TYPE=CELL:${escapeVcard(links.contact.phone)}`, links.contact.email && `EMAIL:${escapeVcard(links.contact.email)}`, profile.company && `ORG:${escapeVcard(profile.company)}`, "END:VCARD"].filter(Boolean).join("\r\n");
-    const url = URL.createObjectURL(new Blob([vcard], { type: "text/vcard;charset=utf-8" }));
+    const escapeVcard = (value) =>
+      String(value || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/\n/g, "\\n")
+        .replace(/,/g, "\\,")
+        .replace(/;/g, "\\;");
+    const vcard = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      `FN:${escapeVcard(profile.name || card.title)}`,
+      links.contact.phone &&
+        `TEL;TYPE=CELL:${escapeVcard(links.contact.phone)}`,
+      links.contact.email && `EMAIL:${escapeVcard(links.contact.email)}`,
+      profile.company && `ORG:${escapeVcard(profile.company)}`,
+      "END:VCARD",
+    ]
+      .filter(Boolean)
+      .join("\r\n");
+    const url = URL.createObjectURL(
+      new Blob([vcard], { type: "text/vcard;charset=utf-8" }),
+    );
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = `${slugify(card.title) || "contact"}.vcf`;
@@ -1371,24 +1428,67 @@ function PublicCard({ token, onReport }) {
   function runPrimaryAction() {
     if (!card) return;
     const action = resolvePrimaryAction(card) || {};
-    const source = card.blocks?.find((block) => block.id === action.source_block_id && block.visible !== false);
+    const source = card.blocks?.find(
+      (block) => block.id === action.source_block_id && block.visible !== false,
+    );
     const data = source?.data || {};
-    const sourceItem = Array.isArray(data.links) ? data.links.find((item) => item && (item.id === action.source_item_id || item.url === action.source_item_id)) : null;
-    const destination = action.url || data.url || sourceItem?.url || data.maps_url || data.links?.[0]?.url || "";
+    const sourceItem = Array.isArray(data.links)
+      ? data.links.find(
+          (item) =>
+            item &&
+            (item.id === action.source_item_id ||
+              item.url === action.source_item_id),
+        )
+      : null;
+    const destination =
+      action.url ||
+      data.url ||
+      sourceItem?.url ||
+      data.maps_url ||
+      data.links?.[0]?.url ||
+      "";
     const phone = data.phone || links.contact.phone || "";
     const whatsapp = data.whatsapp || links.contact.whatsapp || "";
     const iban = sanitizeIban(data.iban || links.payment.iban || card.iban);
     switch (action.type) {
-      case "copy_iban": return iban ? copyCardValue(iban, "IBAN kopyalandı.") : setExternalLinkError(t("Bu işlem için IBAN yapılandırılmalıdır."));
-      case "copy_text": return action.text ? copyCardValue(action.text, "Metin kopyalandı.") : setExternalLinkError(t("Kopyalanacak metin yapılandırılmalıdır."));
+      case "copy_iban":
+        return iban
+          ? copyCardValue(iban, "IBAN kopyalandı.")
+          : setExternalLinkError(t("Bu işlem için IBAN yapılandırılmalıdır."));
+      case "copy_text":
+        return action.text
+          ? copyCardValue(action.text, "Metin kopyalandı.")
+          : setExternalLinkError(t("Kopyalanacak metin yapılandırılmalıdır."));
       case "save_contact": {
         return downloadVCard();
       }
-      case "call": return requestExternal({ label: "Telefon", url: `tel:${String(phone).replace(/[^+\d]/g, "")}` });
-      case "whatsapp": return requestExternal({ label: "WhatsApp", url: `https://wa.me/${String(whatsapp).replace(/\D/g, "")}` });
-      case "website": case "social": case "maps": case "google_review": case "custom_url":
-        return destination ? requestExternal({ label: action.label || t("Bağlantıyı aç"), url: destination }) : setExternalLinkError(t("Bu işlem için geçerli bir bağlantı yapılandırılmalıdır."));
-      default: return setExternalLinkError(t("Önce geçerli bir ana işlem seçilmelidir."));
+      case "call":
+        return requestExternal({
+          label: "Telefon",
+          url: `tel:${String(phone).replace(/[^+\d]/g, "")}`,
+        });
+      case "whatsapp":
+        return requestExternal({
+          label: "WhatsApp",
+          url: `https://wa.me/${String(whatsapp).replace(/\D/g, "")}`,
+        });
+      case "website":
+      case "social":
+      case "maps":
+      case "google_review":
+      case "custom_url":
+        return destination
+          ? requestExternal({
+              label: action.label || t("Bağlantıyı aç"),
+              url: destination,
+            })
+          : setExternalLinkError(
+              t("Bu işlem için geçerli bir bağlantı yapılandırılmalıdır."),
+            );
+      default:
+        return setExternalLinkError(
+          t("Önce geçerli bir ana işlem seçilmelidir."),
+        );
     }
   }
 
@@ -1397,9 +1497,10 @@ function PublicCard({ token, onReport }) {
   }
 
   const blockOrder = (type, fallback) => cardBlockOrder(card, type, fallback);
-  const presentationMode = import.meta.env.DEV && token === "demo" && demoMode
-    ? demoMode
-    : resolvePresentationMode(card);
+  const presentationMode =
+    import.meta.env.DEV && token === "demo" && demoMode
+      ? demoMode
+      : resolvePresentationMode(card);
   const actionWarning = validatePrimaryAction(card);
 
   return (
@@ -1421,9 +1522,28 @@ function PublicCard({ token, onReport }) {
           </button>
         </div>
       </header>
-      {import.meta.env.DEV && token === "demo" && <nav className="demo-mode-switcher" aria-label={t("Demo kart görünümü")}>
-        {[["classic", "Classic NFC"], ["smart", "Smart NFC"], ["showcase", "Showcase NFC"]].map(([mode, label]) => <button type="button" key={mode} aria-pressed={presentationMode === mode} className={presentationMode === mode ? "selected" : ""} onClick={() => setDemoMode(mode)}>{label}</button>)}
-      </nav>}
+      {import.meta.env.DEV && token === "demo" && (
+        <nav
+          className="demo-mode-switcher"
+          aria-label={t("Demo kart görünümü")}
+        >
+          {[
+            ["classic", "Classic NFC"],
+            ["smart", "Smart NFC"],
+            ["showcase", "Showcase NFC"],
+          ].map(([mode, label]) => (
+            <button
+              type="button"
+              key={mode}
+              aria-pressed={presentationMode === mode}
+              className={presentationMode === mode ? "selected" : ""}
+              onClick={() => setDemoMode(mode)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
       <article
         className={`public-card public-card-builder public-card-${presentationMode}`}
         data-presentation-mode={presentationMode}
@@ -1450,7 +1570,12 @@ function PublicCard({ token, onReport }) {
         ) : (
           <>
             {presentationMode === "showcase" && links.profile.cover_url && (
-              <img className="showcase-cover" src={links.profile.cover_url} alt="" loading="eager" />
+              <img
+                className="showcase-cover"
+                src={links.profile.cover_url}
+                alt=""
+                loading="eager"
+              />
             )}
             {presentationMode !== "showcase" && (
               <CompactCardPresentation
@@ -1472,585 +1597,752 @@ function PublicCard({ token, onReport }) {
                 t={t}
               />
             )}
-            {presentationMode === "showcase" && <div className="showcase-content">
-            {cardBlockVisibility(card, "profile") && (
-              <section
-                className="public-card-block public-identity"
-                style={{ order: blockOrder("profile", 0) }}
-              >
-                <div className="public-avatar">
-                  {card.blocks?.find((block) => block.type === "profile")?.data
-                    ?.avatar_url ? (
-                    <img
-                      src={
-                        card.blocks.find((block) => block.type === "profile")
-                          .data.avatar_url
-                      }
-                      alt=""
-                    />
-                  ) : (
-                    (card.title || "B").slice(0, 1).toLocaleUpperCase("tr")
-                  )}
-                </div>
-                <h1 className="public-name-heading">
-                  <button
-                    type="button"
-                    className="copyable-name"
-                    aria-label={`${t("Adı kopyala")}: ${card.title}`}
-                    onClick={() => copyCardValue(card.title, "Ad kopyalandı.")}
+            {presentationMode === "showcase" && (
+              <div className="showcase-content">
+                {cardBlockVisibility(card, "profile") && (
+                  <section
+                    className="public-card-block public-identity"
+                    style={{ order: blockOrder("profile", 0) }}
                   >
-                    <span>{card.title}</span>
-                    <Copy size={16} aria-hidden="true" />
-                  </button>
-                </h1>
-                {(links.profile.category || links.profile.title || links.profile.location || links.profile.company) && (
-                  <p className="public-subtitle">{[links.profile.category || links.profile.title, links.profile.location || links.profile.company].filter(Boolean).join(" · ")}</p>
+                    <div className="public-avatar">
+                      {card.blocks?.find((block) => block.type === "profile")
+                        ?.data?.avatar_url ? (
+                        <img
+                          src={
+                            card.blocks.find(
+                              (block) => block.type === "profile",
+                            ).data.avatar_url
+                          }
+                          alt=""
+                        />
+                      ) : (
+                        (card.title || "B").slice(0, 1).toLocaleUpperCase("tr")
+                      )}
+                    </div>
+                    <h1 className="public-name-heading">
+                      <button
+                        type="button"
+                        className="copyable-name"
+                        aria-label={`${t("Adı kopyala")}: ${card.title}`}
+                        onClick={() =>
+                          copyCardValue(card.title, "Ad kopyalandı.")
+                        }
+                      >
+                        <span>{card.title}</span>
+                        <Copy size={16} aria-hidden="true" />
+                      </button>
+                    </h1>
+                    {(links.profile.category ||
+                      links.profile.title ||
+                      links.profile.location ||
+                      links.profile.company) && (
+                      <p className="public-subtitle">
+                        {[
+                          links.profile.category || links.profile.title,
+                          links.profile.location || links.profile.company,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    )}
+                    {links.profile.bio && (
+                      <p className="public-profile-bio">{links.profile.bio}</p>
+                    )}
+                  </section>
                 )}
-                {links.profile.bio && (
-                  <p className="public-profile-bio">{links.profile.bio}</p>
-                )}
-              </section>
-            )}
-            {showcaseAction && !["copy_iban", "call", "whatsapp", "save_contact"].includes(showcaseAction.type) && <section className="showcase-primary-action" style={{ order: 0 }}><button type="button" className="button button-primary" disabled={Boolean(actionWarning)} onClick={runPrimaryAction}>{showcaseAction.label || ({ custom_url: t("Bağlantıyı aç"), copy_text: t("Metni kopyala"), website: t("Web sitesini aç"), social: t("Sosyal profili aç"), maps: t("Konumu aç"), google_review: t("Google'da yorum yap") }[showcaseAction.type] || t("Ana işlem"))}</button>{actionWarning && <small role="alert">{t(actionWarning)}</small>}</section>}
-            {Array.isArray(links.profile.gallery) && links.profile.gallery.some((src) => typeof src === "string" && src.trim()) && (
-              <section className="showcase-gallery" aria-label={t("Fotoğraf galerisi")} style={{ order: 5 }}>
-                {links.profile.gallery.filter((src) => typeof src === "string" && src.trim()).map((src, index) => <img key={`${src}-${index}`} src={src} alt={`${links.profile.name || card.title} · ${index + 1}`} loading="lazy" />)}
-              </section>
-            )}
-            {links.profile.address && (
-              <section className="showcase-detail" style={{ order: 6 }}><MapPin size={20} aria-hidden="true" /><div><h2>{t("Adres")}</h2><p>{links.profile.address}</p></div>{links.contact.maps_url && <button type="button" className="text-button" onClick={() => requestExternal({ label: t("Konum"), url: links.contact.maps_url })}>{t("Haritada aç")} <ExternalLink size={14}/></button>}</section>
-            )}
-            {Array.isArray(links.profile.hours) && links.profile.hours.some((row) => row && typeof row === "object") && (
-              <section className="showcase-detail" style={{ order: 7 }}><div><h2>{t("Çalışma saatleri")}</h2><div className="showcase-hours">{links.profile.hours.filter((row) => row && typeof row === "object").map((row, index) => <p key={`${row.days}-${index}`}><span>{row.days || ""}</span><span>{row.time || ""}</span></p>)}</div></div></section>
-            )}
-            {cardBlockVisibility(card, "payment") &&
-              (links.payment.bank_name ||
-                card.bank_name ||
-                links.payment.iban ||
-                card.iban) && (
-                <section
-                  className="public-card-block public-finance-block"
-                  style={{ order: blockOrder("payment", 1) }}
-                >
-                  {(links.payment.bank_name || card.bank_name) && (
-                    <p className="public-subtitle">
-                      {links.payment.bank_name || card.bank_name}
-                    </p>
+                {showcaseAction &&
+                  !["copy_iban", "call", "whatsapp", "save_contact"].includes(
+                    showcaseAction.type,
+                  ) && (
+                    <section
+                      className="showcase-primary-action"
+                      style={{ order: 0 }}
+                    >
+                      <button
+                        type="button"
+                        className="button button-primary"
+                        disabled={Boolean(actionWarning)}
+                        onClick={runPrimaryAction}
+                      >
+                        {showcaseAction.label ||
+                          {
+                            custom_url: t("Bağlantıyı aç"),
+                            copy_text: t("Metni kopyala"),
+                            website: t("Web sitesini aç"),
+                            social: t("Sosyal profili aç"),
+                            maps: t("Konumu aç"),
+                            google_review: t("Google'da yorum yap"),
+                          }[showcaseAction.type] ||
+                          t("Ana işlem")}
+                      </button>
+                      {actionWarning && (
+                        <small role="alert">{t(actionWarning)}</small>
+                      )}
+                    </section>
                   )}
-                  {(links.payment.iban || card.iban) &&
-                    sanitizeIban(links.payment.iban || card.iban) && (
-                      <div className="iban-box">
-                        {links.payment.recipient_name && (
-                          <div className="iban-recipient-row">
-                            <span className="iban-recipient-label">
-                              {t("HESAP SAHİBİ")}
-                            </span>
+                {Array.isArray(links.profile.gallery) &&
+                  links.profile.gallery.some(
+                    (src) => typeof src === "string" && src.trim(),
+                  ) && (
+                    <section
+                      className="showcase-gallery"
+                      aria-label={t("Fotoğraf galerisi")}
+                      style={{ order: 5 }}
+                    >
+                      {links.profile.gallery
+                        .filter((src) => typeof src === "string" && src.trim())
+                        .map((src, index) => (
+                          <img
+                            key={`${src}-${index}`}
+                            src={src}
+                            alt={`${links.profile.name || card.title} · ${index + 1}`}
+                            loading="lazy"
+                          />
+                        ))}
+                    </section>
+                  )}
+                {links.profile.address && (
+                  <section className="showcase-detail" style={{ order: 6 }}>
+                    <MapPin size={20} aria-hidden="true" />
+                    <div>
+                      <h2>{t("Adres")}</h2>
+                      <p>{links.profile.address}</p>
+                    </div>
+                    {links.contact.maps_url && (
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() =>
+                          requestExternal({
+                            label: t("Konum"),
+                            url: links.contact.maps_url,
+                          })
+                        }
+                      >
+                        {t("Haritada aç")} <ExternalLink size={14} />
+                      </button>
+                    )}
+                  </section>
+                )}
+                {Array.isArray(links.profile.hours) &&
+                  links.profile.hours.some(
+                    (row) => row && typeof row === "object",
+                  ) && (
+                    <section className="showcase-detail" style={{ order: 7 }}>
+                      <div>
+                        <h2>{t("Çalışma saatleri")}</h2>
+                        <div className="showcase-hours">
+                          {links.profile.hours
+                            .filter((row) => row && typeof row === "object")
+                            .map((row, index) => (
+                              <p key={`${row.days}-${index}`}>
+                                <span>{row.days || ""}</span>
+                                <span>{row.time || ""}</span>
+                              </p>
+                            ))}
+                        </div>
+                      </div>
+                    </section>
+                  )}
+                {cardBlockVisibility(card, "payment") &&
+                  (links.payment.bank_name ||
+                    card.bank_name ||
+                    links.payment.iban ||
+                    card.iban) && (
+                    <section
+                      className="public-card-block public-finance-block"
+                      style={{ order: blockOrder("payment", 1) }}
+                    >
+                      {(links.payment.bank_name || card.bank_name) && (
+                        <p className="public-subtitle">
+                          {links.payment.bank_name || card.bank_name}
+                        </p>
+                      )}
+                      {(links.payment.iban || card.iban) &&
+                        sanitizeIban(links.payment.iban || card.iban) && (
+                          <div className="iban-box">
+                            {links.payment.recipient_name && (
+                              <div className="iban-recipient-row">
+                                <span className="iban-recipient-label">
+                                  {t("HESAP SAHİBİ")}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="copyable-name iban-recipient-name"
+                                  aria-label={`${t("Hesap sahibini kopyala")}: ${
+                                    links.payment.recipient_name
+                                  }`}
+                                  onClick={() =>
+                                    copyCardValue(
+                                      links.payment.recipient_name,
+                                      "Hesap sahibi kopyalandı.",
+                                    )
+                                  }
+                                >
+                                  <span>{links.payment.recipient_name}</span>
+                                  <Copy size={16} aria-hidden="true" />
+                                </button>
+                              </div>
+                            )}
+                            <span className="iban-label">{t("IBAN")}</span>
                             <button
                               type="button"
-                              className="copyable-name iban-recipient-name"
-                              aria-label={`${t("Hesap sahibini kopyala")}: ${
-                                links.payment.recipient_name
-                              }`}
+                              className="iban-copy-value"
+                              aria-label={t("IBAN'ı kopyala")}
                               onClick={() =>
                                 copyCardValue(
-                                  links.payment.recipient_name,
-                                  "Hesap sahibi kopyalandı.",
+                                  sanitizeIban(links.payment.iban || card.iban),
+                                  "IBAN kopyalandı.",
                                 )
                               }
                             >
-                              <span>{links.payment.recipient_name}</span>
+                              <strong className="iban-text">
+                                {formatIban(
+                                  sanitizeIban(links.payment.iban || card.iban),
+                                )}
+                              </strong>
                               <Copy size={16} aria-hidden="true" />
                             </button>
                           </div>
                         )}
-                        <span className="iban-label">{t("IBAN")}</span>
+                      {links.payment.description && (
+                        <p className="public-profile-bio">
+                          {links.payment.description}
+                        </p>
+                      )}
+                    </section>
+                  )}
+                {copyFeedback && (
+                  <p
+                    className="copy-feedback"
+                    role="status"
+                    aria-live="polite"
+                    style={{ order: 20 }}
+                  >
+                    {copyFeedback}
+                  </p>
+                )}
+                {cardBlockVisibility(card, "contact") &&
+                  Object.values(links.contact).some(Boolean) && (
+                    <section
+                      className="public-card-block public-contact-block"
+                      style={{ order: blockOrder("contact", 3) }}
+                    >
+                      {links.contact.phone && (
                         <button
-                          type="button"
-                          className="iban-copy-value"
-                          aria-label={t("IBAN'ı kopyala")}
+                          className="contact-link contact-button"
+                          style={{
+                            order:
+                              showcaseAction?.type === "call" ? -1 : undefined,
+                          }}
                           onClick={() =>
-                            copyCardValue(
-                              sanitizeIban(links.payment.iban || card.iban),
-                              "IBAN kopyalandı.",
-                            )
+                            requestExternal({
+                              label: "Telefon",
+                              url: `tel:${links.contact.phone.replace(/\D/g, "")}`,
+                            })
                           }
                         >
-                          <strong className="iban-text">
-                            {formatIban(
-                              sanitizeIban(links.payment.iban || card.iban),
-                            )}
-                          </strong>
-                          <Copy size={16} aria-hidden="true" />
+                          <Phone size={17} />{" "}
+                          <span>
+                            {showcaseAction?.type === "call" &&
+                            showcaseAction.label
+                              ? showcaseAction.label
+                              : t("Ara")}
+                          </span>
                         </button>
-                      </div>
-                    )}
-                  {links.payment.description && (
-                    <p className="public-profile-bio">
-                      {links.payment.description}
+                      )}
+                      {links.contact.email && (
+                        <button
+                          className="contact-link contact-button"
+                          onClick={() =>
+                            requestExternal({
+                              label: "E-posta gönder",
+                              url: mailtoUrl(links.contact.email),
+                            })
+                          }
+                        >
+                          <Mail size={17} /> <span>{t("E-posta")}</span>
+                        </button>
+                      )}
+                      {links.contact.whatsapp && (
+                        <button
+                          className="contact-link contact-button"
+                          style={{
+                            order:
+                              showcaseAction?.type === "whatsapp"
+                                ? -1
+                                : undefined,
+                          }}
+                          onClick={() =>
+                            requestExternal({
+                              label: "WhatsApp",
+                              url: `https://wa.me/${links.contact.whatsapp.replace(/\D/g, "")}`,
+                            })
+                          }
+                        >
+                          <MessageCircle size={17} />{" "}
+                          <span>
+                            {showcaseAction?.type === "whatsapp" &&
+                            showcaseAction.label
+                              ? showcaseAction.label
+                              : t("WhatsApp")}
+                          </span>
+                        </button>
+                      )}
+                      {links.contact.sms && (
+                        <button
+                          className="contact-link contact-button"
+                          onClick={() =>
+                            requestExternal({
+                              label: "SMS",
+                              url: `sms:+${links.contact.sms.replace(/\D/g, "")}`,
+                            })
+                          }
+                        >
+                          <MessageCircle size={17} /> <span>{t("SMS")}</span>
+                        </button>
+                      )}
+                      {links.contact.maps_url && (
+                        <button
+                          className="contact-link contact-button"
+                          style={{
+                            order:
+                              showcaseAction?.type === "maps" ? -1 : undefined,
+                          }}
+                          onClick={() =>
+                            requestExternal({
+                              label: "Harita konumu",
+                              url: links.contact.maps_url,
+                            })
+                          }
+                        >
+                          <MapPin size={17} /> <span>{t("Konum")}</span>
+                        </button>
+                      )}
+                      {(links.contact.phone || links.contact.email) && (
+                        <button
+                          type="button"
+                          className="contact-link contact-button"
+                          style={{
+                            order:
+                              showcaseAction?.type === "save_contact"
+                                ? -1
+                                : undefined,
+                          }}
+                          onClick={downloadVCard}
+                        >
+                          <UserRound size={17} />
+                          <span>
+                            {showcaseAction?.type === "save_contact" &&
+                            showcaseAction.label
+                              ? showcaseAction.label
+                              : t("Kişiyi kaydet")}
+                          </span>
+                        </button>
+                      )}
+                      {links.contact.address && (
+                        <p className="public-profile-bio">
+                          {links.contact.address}
+                        </p>
+                      )}
+                    </section>
+                  )}
+                {card.blocks?.some(
+                  (block) =>
+                    block.type === "google_review" && block.visible !== false,
+                ) && (
+                  <section
+                    className="rating-section public-card-block"
+                    style={{ order: blockOrder("google_review", 2) }}
+                  >
+                    <h2>{t("Deneyiminiz nasıldı?")}</h2>
+                    <p>
+                      {t(
+                        "Geri bildiriminiz işletmenin hizmetini geliştirmesine yardımcı olur.",
+                      )}
                     </p>
-                  )}
-                </section>
-              )}
-            {copyFeedback && (
-              <p
-                className="copy-feedback"
-                role="status"
-                aria-live="polite"
-                style={{ order: 20 }}
-              >
-                {copyFeedback}
-              </p>
-            )}
-            {cardBlockVisibility(card, "contact") &&
-              Object.values(links.contact).some(Boolean) && (
-                <section
-                  className="public-card-block public-contact-block"
-                  style={{ order: blockOrder("contact", 3) }}
-                >
-                  {links.contact.phone && (
-                    <button
-                      className="contact-link contact-button"
-                      style={{ order: showcaseAction?.type === "call" ? -1 : undefined }}
-                      onClick={() =>
-                        requestExternal({
-                          label: "Telefon",
-                          url: `tel:${links.contact.phone.replace(/\D/g, "")}`,
-                        })
-                      }
+                    <div
+                      className="rating-buttons"
+                      role="group"
+                      aria-label={t("1 ile 5 arasında puan verin")}
                     >
-                      <Phone size={17} /> <span>{showcaseAction?.type === "call" && showcaseAction.label ? showcaseAction.label : t("Ara")}</span>
-                    </button>
-                  )}
-                  {links.contact.email && (
-                    <button
-                      className="contact-link contact-button"
-                      onClick={() =>
-                        requestExternal({
-                          label: "E-posta gönder",
-                          url: mailtoUrl(links.contact.email),
-                        })
-                      }
-                    >
-                      <Mail size={17} /> <span>{t("E-posta")}</span>
-                    </button>
-                  )}
-                  {links.contact.whatsapp && (
-                    <button
-                      className="contact-link contact-button"
-                      style={{ order: showcaseAction?.type === "whatsapp" ? -1 : undefined }}
-                      onClick={() =>
-                        requestExternal({
-                          label: "WhatsApp",
-                          url: `https://wa.me/${links.contact.whatsapp.replace(/\D/g, "")}`,
-                        })
-                      }
-                    >
-                      <MessageCircle size={17} /> <span>{showcaseAction?.type === "whatsapp" && showcaseAction.label ? showcaseAction.label : t("WhatsApp")}</span>
-                    </button>
-                  )}
-                  {links.contact.sms && (
-                    <button
-                      className="contact-link contact-button"
-                      onClick={() =>
-                        requestExternal({
-                          label: "SMS",
-                          url: `sms:+${links.contact.sms.replace(/\D/g, "")}`,
-                        })
-                      }
-                    >
-                      <MessageCircle size={17} /> <span>{t("SMS")}</span>
-                    </button>
-                  )}
-                  {links.contact.maps_url && (
-                    <button
-                      className="contact-link contact-button"
-                      style={{ order: showcaseAction?.type === "maps" ? -1 : undefined }}
-                      onClick={() =>
-                        requestExternal({
-                          label: "Harita konumu",
-                          url: links.contact.maps_url,
-                        })
-                      }
-                    >
-                      <MapPin size={17} /> <span>{t("Konum")}</span>
-                    </button>
-                  )}
-                  {(links.contact.phone || links.contact.email) && <button type="button" className="contact-link contact-button" style={{ order: showcaseAction?.type === "save_contact" ? -1 : undefined }} onClick={downloadVCard}><UserRound size={17}/><span>{showcaseAction?.type === "save_contact" && showcaseAction.label ? showcaseAction.label : t("Kişiyi kaydet")}</span></button>}
-                  {links.contact.address && (
-                    <p className="public-profile-bio">
-                      {links.contact.address}
-                    </p>
-                  )}
-                </section>
-              )}
-            {card.blocks?.some(
-              (block) =>
-                block.type === "google_review" && block.visible !== false,
-            ) && (
-              <section
-                className="rating-section public-card-block"
-                style={{ order: blockOrder("google_review", 2) }}
-              >
-                <h2>{t("Deneyiminiz nasıldı?")}</h2>
-                <p>
-                  {t(
-                    "Geri bildiriminiz işletmenin hizmetini geliştirmesine yardımcı olur.",
-                  )}
-                </p>
-                <div
-                  className="rating-buttons"
-                  role="group"
-                  aria-label={t("1 ile 5 arasında puan verin")}
-                >
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <button
-                      type="button"
-                      className={rating === value ? "rating-selected" : ""}
-                      aria-label={`${value} ${t("yıldız")}`}
-                      aria-pressed={rating === value}
-                      key={value}
-                      onClick={() => {
-                        setRating(value);
-                        setFeedbackSent(false);
-                      }}
-                    >
-                      {value} <span>★</span>
-                    </button>
-                  ))}
-                </div>
-                {rating >= 1 &&
-                  rating <= 3 &&
-                  (feedbackSent ? (
-                    <>
-                      <div className="inline-success" role="status">
-                        {t(
-                          "Geri bildiriminiz için teşekkür ederiz. İşletme sizinle iletişime geçebilir.",
-                        )}
-                      </div>
-                      {cardBlockVisibility(card, "contact") &&
-                        (card.whatsapp ||
-                          card.sms ||
-                          card.instagram_url ||
-                          card.email) && (
-                          <div className="direct-contact">
-                            <p>{t("İşletmeyle doğrudan iletişim kurun:")}</p>
-                            {card.whatsapp && (
-                              <button
-                                onClick={() =>
-                                  requestExternal({
-                                    label: "WhatsApp",
-                                    url: `https://wa.me/${card.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(t("Kartınız üzerinden geri bildirim paylaşmak istiyorum."))}`,
-                                  })
-                                }
-                              >
-                                {t("WhatsApp")} <ExternalLink size={13} />
-                              </button>
-                            )}
-                            {card.sms && (
-                              <button
-                                onClick={() =>
-                                  requestExternal({
-                                    label: "SMS",
-                                    url: `sms:+${card.sms.replace(/\D/g, "")}?body=${encodeURIComponent(t("Kartınız üzerinden geri bildirim paylaşmak istiyorum."))}`,
-                                  })
-                                }
-                              >
-                                {t("SMS")} <ExternalLink size={13} />
-                              </button>
-                            )}
-                            {cardBlockVisibility(card, "social") &&
-                              card.instagram_url && (
-                                <button
-                                  onClick={() =>
-                                    requestExternal({
-                                      label: "Instagram",
-                                      url: card.instagram_url,
-                                    })
-                                  }
-                                >
-                                  {t("Instagram")} <ExternalLink size={13} />
-                                </button>
-                              )}
-                            {card.email && (
-                              <button
-                                onClick={() =>
-                                  requestExternal({
-                                    label: "E-posta",
-                                    url: mailtoUrl(
-                                      card.email,
-                                      t("Kart üzerinden geri bildirim"),
-                                    ),
-                                  })
-                                }
-                              >
-                                {t("E-posta")} <ExternalLink size={13} />
-                              </button>
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <button
+                          type="button"
+                          className={rating === value ? "rating-selected" : ""}
+                          aria-label={`${value} ${t("yıldız")}`}
+                          aria-pressed={rating === value}
+                          key={value}
+                          onClick={() => {
+                            setRating(value);
+                            setFeedbackSent(false);
+                          }}
+                        >
+                          {value} <span>★</span>
+                        </button>
+                      ))}
+                    </div>
+                    {rating >= 1 &&
+                      rating <= 3 &&
+                      (feedbackSent ? (
+                        <>
+                          <div className="inline-success" role="status">
+                            {t(
+                              "Geri bildiriminiz için teşekkür ederiz. İşletme sizinle iletişime geçebilir.",
                             )}
                           </div>
-                        )}
-                    </>
-                  ) : (
-                    <form className="low-rating-form" onSubmit={submitFeedback}>
-                      <p>
-                        {t("Yaşadığınız deneyimi doğrudan işletmeye iletin.")}
-                      </p>
-                      <textarea
-                        value={message}
-                        onChange={(event) => setMessage(event.target.value)}
-                        maxLength={2000}
-                        required
-                        placeholder={t("Geri bildiriminizi buraya yazın...")}
-                      />
-                      <input
-                        value={customerName}
-                        onChange={(event) =>
-                          setCustomerName(event.target.value)
+                          {cardBlockVisibility(card, "contact") &&
+                            (card.whatsapp ||
+                              card.sms ||
+                              card.instagram_url ||
+                              card.email) && (
+                              <div className="direct-contact">
+                                <p>
+                                  {t("İşletmeyle doğrudan iletişim kurun:")}
+                                </p>
+                                {card.whatsapp && (
+                                  <button
+                                    onClick={() =>
+                                      requestExternal({
+                                        label: "WhatsApp",
+                                        url: `https://wa.me/${card.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(t("Kartınız üzerinden geri bildirim paylaşmak istiyorum."))}`,
+                                      })
+                                    }
+                                  >
+                                    {t("WhatsApp")} <ExternalLink size={13} />
+                                  </button>
+                                )}
+                                {card.sms && (
+                                  <button
+                                    onClick={() =>
+                                      requestExternal({
+                                        label: "SMS",
+                                        url: `sms:+${card.sms.replace(/\D/g, "")}?body=${encodeURIComponent(t("Kartınız üzerinden geri bildirim paylaşmak istiyorum."))}`,
+                                      })
+                                    }
+                                  >
+                                    {t("SMS")} <ExternalLink size={13} />
+                                  </button>
+                                )}
+                                {cardBlockVisibility(card, "social") &&
+                                  card.instagram_url && (
+                                    <button
+                                      onClick={() =>
+                                        requestExternal({
+                                          label: "Instagram",
+                                          url: card.instagram_url,
+                                        })
+                                      }
+                                    >
+                                      {t("Instagram")}{" "}
+                                      <ExternalLink size={13} />
+                                    </button>
+                                  )}
+                                {card.email && (
+                                  <button
+                                    onClick={() =>
+                                      requestExternal({
+                                        label: "E-posta",
+                                        url: mailtoUrl(
+                                          card.email,
+                                          t("Kart üzerinden geri bildirim"),
+                                        ),
+                                      })
+                                    }
+                                  >
+                                    {t("E-posta")} <ExternalLink size={13} />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                        </>
+                      ) : (
+                        <form
+                          className="low-rating-form"
+                          onSubmit={submitFeedback}
+                        >
+                          <p>
+                            {t(
+                              "Yaşadığınız deneyimi doğrudan işletmeye iletin.",
+                            )}
+                          </p>
+                          <textarea
+                            value={message}
+                            onChange={(event) => setMessage(event.target.value)}
+                            maxLength={2000}
+                            required
+                            placeholder={t(
+                              "Geri bildiriminizi buraya yazın...",
+                            )}
+                          />
+                          <input
+                            value={customerName}
+                            onChange={(event) =>
+                              setCustomerName(event.target.value)
+                            }
+                            maxLength={120}
+                            placeholder={t("Adınız (isteğe bağlı)")}
+                          />
+                          <input
+                            type="email"
+                            value={contactEmail}
+                            onChange={(event) =>
+                              setContactEmail(event.target.value)
+                            }
+                            placeholder={t("E-posta adresiniz (isteğe bağlı)")}
+                          />
+                          <label className="feedback-privacy-option">
+                            <input
+                              type="checkbox"
+                              checked={hideName}
+                              onChange={(event) =>
+                                setHideName(event.target.checked)
+                              }
+                            />
+                            {t("Adımı işletmeden gizle")}
+                          </label>
+                          <label className="feedback-privacy-option">
+                            <input
+                              type="checkbox"
+                              checked={hideEmail}
+                              onChange={(event) =>
+                                setHideEmail(event.target.checked)
+                              }
+                            />
+                            {t("E-postamı işletmeden gizle")}
+                          </label>
+                          <small>
+                            {t(
+                              "Gizlediğiniz bilgiler kart sahibine maskeli gösterilir; platform yöneticileri kötüye kullanımı önlemek için bunlara erişebilir.",
+                            )}
+                          </small>
+                          {feedbackError && (
+                            <div className="inline-error" role="alert">
+                              {t(feedbackError)}
+                            </div>
+                          )}
+                          <button
+                            className="button button-primary button-wide"
+                            disabled={feedbackBusy}
+                          >
+                            {feedbackBusy ? (
+                              <LoaderCircle className="spin" size={16} />
+                            ) : null}
+                            {t("Geri bildirimi gönder")}
+                          </button>
+                        </form>
+                      ))}
+                    {rating >= 1 && rating <= 3 && (
+                      <button
+                        className="neutral-review-link"
+                        onClick={() =>
+                          requestExternal({
+                            label: "Google Haritalar yorumu",
+                            url: card.google_review_url,
+                          })
                         }
-                        maxLength={120}
-                        placeholder={t("Adınız (isteğe bağlı)")}
-                      />
-                      <input
-                        type="email"
-                        value={contactEmail}
-                        onChange={(event) =>
-                          setContactEmail(event.target.value)
-                        }
-                        placeholder={t("E-posta adresiniz (isteğe bağlı)")}
-                      />
-                      <label className="feedback-privacy-option">
-                        <input
-                          type="checkbox"
-                          checked={hideName}
-                          onChange={(event) =>
-                            setHideName(event.target.checked)
-                          }
-                        />
-                        {t("Adımı işletmeden gizle")}
-                      </label>
-                      <label className="feedback-privacy-option">
-                        <input
-                          type="checkbox"
-                          checked={hideEmail}
-                          onChange={(event) =>
-                            setHideEmail(event.target.checked)
-                          }
-                        />
-                        {t("E-postamı işletmeden gizle")}
-                      </label>
-                      <small>
+                      >
                         {t(
-                          "Gizlediğiniz bilgiler kart sahibine maskeli gösterilir; platform yöneticileri kötüye kullanımı önlemek için bunlara erişebilir.",
+                          "Veya doğrudan Google Haritalar üzerinde yorum yapın",
                         )}
-                      </small>
-                      {feedbackError && (
-                        <div className="inline-error" role="alert">
-                          {t(feedbackError)}
-                        </div>
+                      </button>
+                    )}
+                    {rating >= 4 && (
+                      <div className="review-next-step">
+                        <p>
+                          {t("Google'da yorumunuzu paylaşmak ister misiniz?")}
+                        </p>
+                        <button
+                          className="button button-primary button-wide"
+                          onClick={() =>
+                            requestExternal({
+                              label: "Google Haritalar yorumu",
+                              url: card.google_review_url,
+                            })
+                          }
+                        >
+                          {t("Google'da Yorum Yap")} <ExternalLink size={15} />
+                        </button>
+                        <small>
+                          {t(
+                            "Devam etmeden önce açılacak hedef adresi görebilirsiniz.",
+                          )}
+                        </small>
+                      </div>
+                    )}
+                  </section>
+                )}
+                {cardBlockVisibility(card, "google_review") &&
+                  links.google.length > 0 && (
+                    <div
+                      className="public-links public-card-block"
+                      style={{ order: blockOrder("google_review", 2) }}
+                    >
+                      <p className="safe-notice">
+                        <ShieldCheck size={15} />{" "}
+                        {t(
+                          "Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.",
+                        )}
+                      </p>
+                      {links.google.map((link) => (
+                        <button
+                          className="public-link"
+                          onClick={() => requestExternal(link)}
+                          key={link.label}
+                        >
+                          <span>{link.label}</span>
+                          <ExternalLink size={16} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                {cardBlockVisibility(card, "social") &&
+                  links.social.length > 0 && (
+                    <div
+                      className="public-links public-card-block"
+                      style={{ order: blockOrder("social", 4) }}
+                    >
+                      <p className="safe-notice">
+                        <ShieldCheck size={15} />{" "}
+                        {t(
+                          "Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.",
+                        )}
+                      </p>
+                      {links.social.map((link) => (
+                        <button
+                          className="public-link"
+                          onClick={() => requestExternal(link)}
+                          key={link.label}
+                        >
+                          <span>{link.label}</span>
+                          <ExternalLink size={16} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                {cardBlockVisibility(card, "custom") &&
+                  links.custom.length > 0 && (
+                    <div
+                      className="public-links public-card-block"
+                      style={{ order: blockOrder("custom", 5) }}
+                    >
+                      <p className="safe-notice">
+                        <ShieldCheck size={15} />{" "}
+                        {t(
+                          "Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.",
+                        )}
+                      </p>
+                      {links.custom.map((link) => (
+                        <button
+                          className="public-link"
+                          onClick={() => requestExternal(link)}
+                          key={link.label}
+                        >
+                          <span>{link.label}</span>
+                          <ExternalLink size={16} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                {links.customButton &&
+                  cardBlockVisibility(card, "custom_button") && (
+                    <section
+                      className="public-card-block custom-button-block"
+                      style={{ order: blockOrder("custom_button", 6) }}
+                    >
+                      {links.customButton.title && (
+                        <h2>{links.customButton.title}</h2>
+                      )}
+                      {links.customButton.description && (
+                        <p>{links.customButton.description}</p>
                       )}
                       <button
-                        className="button button-primary button-wide"
-                        disabled={feedbackBusy}
+                        className="public-link"
+                        onClick={() =>
+                          requestExternal({
+                            label:
+                              links.customButton.button_text ||
+                              links.customButton.title ||
+                              t("Bağlantıyı aç"),
+                            url: links.customButton.url,
+                          })
+                        }
                       >
-                        {feedbackBusy ? (
-                          <LoaderCircle className="spin" size={16} />
-                        ) : null}
-                        {t("Geri bildirimi gönder")}
+                        <span>
+                          {links.customButton.button_text || t("Bağlantıyı aç")}
+                        </span>
+                        <ExternalLink size={16} />
                       </button>
-                    </form>
-                  ))}
-                {rating >= 1 && rating <= 3 && (
-                  <button
-                    className="neutral-review-link"
-                    onClick={() =>
-                      requestExternal({
-                        label: "Google Haritalar yorumu",
-                        url: card.google_review_url,
-                      })
-                    }
-                  >
-                    {t("Veya doğrudan Google Haritalar üzerinde yorum yapın")}
-                  </button>
-                )}
-                {rating >= 4 && (
-                  <div className="review-next-step">
-                    <p>{t("Google'da yorumunuzu paylaşmak ister misiniz?")}</p>
-                    <button
-                      className="button button-primary button-wide"
-                      onClick={() =>
-                        requestExternal({
-                          label: "Google Haritalar yorumu",
-                          url: card.google_review_url,
-                        })
-                      }
+                    </section>
+                  )}
+                {links.note.text &&
+                  cardBlockVisibility(card, "text_or_note") && (
+                    <section
+                      className="public-card-block text-note-block"
+                      style={{ order: blockOrder("text_or_note", 7) }}
                     >
-                      {t("Google'da Yorum Yap")} <ExternalLink size={15} />
-                    </button>
-                    <small>
+                      {links.note.title && <h2>{links.note.title}</h2>}
+                      <p>{links.note.text}</p>
+                    </section>
+                  )}
+                {card.blocks?.some(
+                  (block) =>
+                    block.visible !== false && !isSupportedCardBlock(block),
+                ) && (
+                  <section
+                    className="public-card-block legacy-block-fallback"
+                    role="status"
+                  >
+                    <strong>
+                      {t("Bu kartta eski bir içerik bölümü bulunuyor.")}
+                    </strong>
+                    <p>
                       {t(
-                        "Devam etmeden önce açılacak hedef adresi görebilirsiniz.",
+                        "Bu bölüm korunuyor; görüntüleme desteği yakında eklenecek.",
                       )}
-                    </small>
+                    </p>
+                  </section>
+                )}
+                {pendingExternal && (
+                  <section
+                    className="external-confirmation"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <div className="external-confirmation-title">
+                      <ShieldCheck size={16} />
+                      <strong>{t("Harici bağlantı")}</strong>
+                    </div>
+                    <p>
+                      <strong>{t(pendingExternal.label)}</strong>{" "}
+                      {t("bağlantısını açmak üzeresiniz. Hedef adres:")}
+                    </p>
+                    <code>{pendingExternal.url}</code>
+                    <div>
+                      <button
+                        className="button button-secondary"
+                        onClick={() => setPendingExternal(null)}
+                      >
+                        {t("Vazgeç")}
+                      </button>
+                      <a
+                        className="button button-primary"
+                        href={pendingExternal.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {t("Bağlantıya devam et")} <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </section>
+                )}
+                {externalLinkError && (
+                  <div className="inline-error" role="alert">
+                    {externalLinkError}
                   </div>
                 )}
-              </section>
-            )}
-            {cardBlockVisibility(card, "google_review") &&
-              links.google.length > 0 && (
-                <div
-                  className="public-links public-card-block"
-                  style={{ order: blockOrder("google_review", 2) }}
-                >
-                  <p className="safe-notice">
-                    <ShieldCheck size={15} />{" "}
-                    {t(
-                      "Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.",
-                    )}
-                  </p>
-                  {links.google.map((link) => (
-                    <button
-                      className="public-link"
-                      onClick={() => requestExternal(link)}
-                      key={link.label}
-                    >
-                      <span>{link.label}</span>
-                      <ExternalLink size={16} />
-                    </button>
-                  ))}
-                </div>
-              )}
-            {cardBlockVisibility(card, "social") && links.social.length > 0 && (
-              <div
-                className="public-links public-card-block"
-                style={{ order: blockOrder("social", 4) }}
-              >
-                <p className="safe-notice">
-                  <ShieldCheck size={15} />{" "}
-                  {t(
-                    "Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.",
-                  )}
-                </p>
-                {links.social.map((link) => (
-                  <button
-                    className="public-link"
-                    onClick={() => requestExternal(link)}
-                    key={link.label}
-                  >
-                    <span>{link.label}</span>
-                    <ExternalLink size={16} />
-                  </button>
-                ))}
               </div>
             )}
-            {cardBlockVisibility(card, "custom") && links.custom.length > 0 && (
-              <div
-                className="public-links public-card-block"
-                style={{ order: blockOrder("custom", 5) }}
-              >
-                <p className="safe-notice">
-                  <ShieldCheck size={15} />{" "}
-                  {t(
-                    "Harici bağlantıyı açmadan önce hedef adres onayınız için gösterilir.",
-                  )}
-                </p>
-                {links.custom.map((link) => (
-                  <button
-                    className="public-link"
-                    onClick={() => requestExternal(link)}
-                    key={link.label}
-                  >
-                    <span>{link.label}</span>
-                    <ExternalLink size={16} />
-                  </button>
-                ))}
-              </div>
-            )}
-            {links.customButton &&
-              cardBlockVisibility(card, "custom_button") && (
-                <section
-                  className="public-card-block custom-button-block"
-                  style={{ order: blockOrder("custom_button", 6) }}
-                >
-                  {links.customButton.title && (
-                    <h2>{links.customButton.title}</h2>
-                  )}
-                  {links.customButton.description && (
-                    <p>{links.customButton.description}</p>
-                  )}
-                  <button
-                    className="public-link"
-                    onClick={() =>
-                      requestExternal({
-                        label:
-                          links.customButton.button_text ||
-                          links.customButton.title ||
-                          t("Bağlantıyı aç"),
-                        url: links.customButton.url,
-                      })
-                    }
-                  >
-                    <span>
-                      {links.customButton.button_text || t("Bağlantıyı aç")}
-                    </span>
-                    <ExternalLink size={16} />
-                  </button>
-                </section>
-              )}
-            {links.note.text && cardBlockVisibility(card, "text_or_note") && (
-              <section
-                className="public-card-block text-note-block"
-                style={{ order: blockOrder("text_or_note", 7) }}
-              >
-                {links.note.title && <h2>{links.note.title}</h2>}
-                <p>{links.note.text}</p>
-              </section>
-            )}
-            {card.blocks?.some(
-              (block) => block.visible !== false && !isSupportedCardBlock(block),
-            ) && (
-              <section className="public-card-block legacy-block-fallback" role="status">
-                <strong>{t("Bu kartta eski bir içerik bölümü bulunuyor.")}</strong>
-                <p>{t("Bu bölüm korunuyor; görüntüleme desteği yakında eklenecek.")}</p>
-              </section>
-            )}
-            {pendingExternal && (
-              <section
-                className="external-confirmation"
-                role="status"
-                aria-live="polite"
-              >
-                <div className="external-confirmation-title">
-                  <ShieldCheck size={16} />
-                  <strong>{t("Harici bağlantı")}</strong>
-                </div>
-                <p>
-                  <strong>{t(pendingExternal.label)}</strong>{" "}
-                  {t("bağlantısını açmak üzeresiniz. Hedef adres:")}
-                </p>
-                <code>{pendingExternal.url}</code>
-                <div>
-                  <button
-                    className="button button-secondary"
-                    onClick={() => setPendingExternal(null)}
-                  >
-                    {t("Vazgeç")}
-                  </button>
-                  <a
-                    className="button button-primary"
-                    href={pendingExternal.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {t("Bağlantıya devam et")} <ExternalLink size={14} />
-                  </a>
-                </div>
-              </section>
-            )}
-            {externalLinkError && (
-              <div className="inline-error" role="alert">
-                {externalLinkError}
-              </div>
-            )}
-            </div>}
           </>
         )}
       </article>
@@ -2059,33 +2351,173 @@ function PublicCard({ token, onReport }) {
   );
 }
 
-function CompactCardPresentation({ card, mode, profile, payment, contact, social, note, copyFeedback, onPrimaryAction, actionWarning, onCopy, onExternal, pendingExternal, externalLinkError, onCancelExternal, t, preview = false }) {
+function CompactCardPresentation({
+  card,
+  mode,
+  profile,
+  payment,
+  contact,
+  social,
+  note,
+  copyFeedback,
+  onPrimaryAction,
+  actionWarning,
+  onCopy,
+  onExternal,
+  pendingExternal,
+  externalLinkError,
+  onCancelExternal,
+  t,
+  preview = false,
+}) {
   const actionLabels = {
-    copy_iban: "IBAN'ı Kopyala", copy_text: "Metni Kopyala", save_contact: "Kişiyi Kaydet",
-    call: "Ara", whatsapp: "WhatsApp'tan Ulaş", website: "Web sitesine git",
-    social: "Sosyal profili aç", maps: "Konumu aç", google_review: "Yorum yap", custom_url: "Bağlantıyı aç",
+    copy_iban: "IBAN'ı Kopyala",
+    copy_text: "Metni Kopyala",
+    save_contact: "Kişiyi Kaydet",
+    call: "Ara",
+    whatsapp: "WhatsApp'tan Ulaş",
+    website: "Web sitesine git",
+    social: "Sosyal profili aç",
+    maps: "Konumu aç",
+    google_review: "Yorum yap",
+    custom_url: "Bağlantıyı aç",
   };
-  const links = (Array.isArray(social?.links) ? social.links : []).filter((link) => link && typeof link.url === "string" && link.url).slice(0, 4);
+  const links = (Array.isArray(social?.links) ? social.links : [])
+    .filter((link) => link && typeof link.url === "string" && link.url)
+    .slice(0, 4);
   return (
     <div className={`compact-card-content compact-${mode}`}>
       <section className="compact-identity">
         {profile.avatar_url && <img src={profile.avatar_url} alt="" />}
-        <div><h1>{profile.name || card.title}</h1>
-          {(profile.category || profile.title || profile.location || profile.company) && <p>{[profile.category || profile.title, profile.location || profile.company].filter(Boolean).join(" · ")}</p>}
-          {mode === "smart" && profile.bio && <p className="compact-bio">{profile.bio}</p>}
+        <div>
+          <h1>{profile.name || card.title}</h1>
+          {(profile.category ||
+            profile.title ||
+            profile.location ||
+            profile.company) && (
+            <p>
+              {[
+                profile.category || profile.title,
+                profile.location || profile.company,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
+          {mode === "smart" && profile.bio && (
+            <p className="compact-bio">{profile.bio}</p>
+          )}
         </div>
       </section>
-      {mode === "classic" && resolvePrimaryAction(card)?.type === "copy_iban" && payment.iban && <section className="classic-payment"><p>{payment.bank_name}</p><strong>{formatIban(sanitizeIban(payment.iban))}</strong>{payment.recipient_name && <small>{payment.recipient_name}</small>}</section>}
-      <button className="compact-primary-action" type="button" onClick={onPrimaryAction} disabled={preview || Boolean(actionWarning)}>
-        {resolvePrimaryAction(card)?.label || actionLabels[resolvePrimaryAction(card)?.type] || t("Ana işlem")}
+      {mode === "classic" &&
+        resolvePrimaryAction(card)?.type === "copy_iban" &&
+        payment.iban && (
+          <section className="classic-payment">
+            <p>{payment.bank_name}</p>
+            <strong>{formatIban(sanitizeIban(payment.iban))}</strong>
+            {payment.recipient_name && <small>{payment.recipient_name}</small>}
+          </section>
+        )}
+      <button
+        className="compact-primary-action"
+        type="button"
+        onClick={onPrimaryAction}
+        disabled={preview || Boolean(actionWarning)}
+      >
+        {resolvePrimaryAction(card)?.label ||
+          actionLabels[resolvePrimaryAction(card)?.type] ||
+          t("Ana işlem")}
         <ArrowUpRight size={17} aria-hidden="true" />
       </button>
-      {actionWarning && <p className="compact-action-warning" role="status">{t("Bu kartın ana işlemi henüz yapılandırılmamış.")}</p>}
-      {copyFeedback && <p className="copy-feedback" role="status" aria-live="polite">{copyFeedback}</p>}
-      {mode === "smart" && <div className="smart-secondary-actions">{contact.phone && <a href={`tel:${contact.phone}`}>{t("Ara")}</a>}{contact.whatsapp && <button type="button" onClick={() => onExternal({ label: "WhatsApp", url: `https://wa.me/${contact.whatsapp.replace(/\D/g, "")}` })}>{t("WhatsApp")}</button>}{contact.maps_url && <button type="button" onClick={() => onExternal({ label: t("Konum"), url: contact.maps_url })}>{t("Konum")}</button>}{links.slice(0, 2).map((link) => <button type="button" key={link.url} onClick={() => onExternal(link)}>{link.label}</button>)}</div>}
-      {mode === "smart" && note?.text && <p className="smart-note">{note.text}</p>}
-      {pendingExternal && <section className="external-confirmation" role="status" aria-live="polite"><div className="external-confirmation-title"><ShieldCheck size={16}/><strong>{t("Harici bağlantı")}</strong></div><p><strong>{t(pendingExternal.label)}</strong> {t("bağlantısını açmak üzeresiniz. Hedef adres:")}</p><code>{pendingExternal.url}</code><div><button className="button button-secondary" type="button" onClick={onCancelExternal}>{t("Vazgeç")}</button><a className="button button-primary" href={pendingExternal.url} target="_blank" rel="noopener noreferrer">{t("Bağlantıya devam et")} <ExternalLink size={14}/></a></div></section>}
-      {externalLinkError && <div className="inline-error" role="alert">{externalLinkError}</div>}
+      {actionWarning && (
+        <p className="compact-action-warning" role="status">
+          {t("Bu kartın ana işlemi henüz yapılandırılmamış.")}
+        </p>
+      )}
+      {copyFeedback && (
+        <p className="copy-feedback" role="status" aria-live="polite">
+          {copyFeedback}
+        </p>
+      )}
+      {mode === "smart" && (
+        <div className="smart-secondary-actions">
+          {contact.phone && <a href={`tel:${contact.phone}`}>{t("Ara")}</a>}
+          {contact.whatsapp && (
+            <button
+              type="button"
+              onClick={() =>
+                onExternal({
+                  label: "WhatsApp",
+                  url: `https://wa.me/${contact.whatsapp.replace(/\D/g, "")}`,
+                })
+              }
+            >
+              {t("WhatsApp")}
+            </button>
+          )}
+          {contact.maps_url && (
+            <button
+              type="button"
+              onClick={() =>
+                onExternal({ label: t("Konum"), url: contact.maps_url })
+              }
+            >
+              {t("Konum")}
+            </button>
+          )}
+          {links.slice(0, 2).map((link) => (
+            <button
+              type="button"
+              key={link.url}
+              onClick={() => onExternal(link)}
+            >
+              {link.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {mode === "smart" && note?.text && (
+        <p className="smart-note">{note.text}</p>
+      )}
+      {pendingExternal && (
+        <section
+          className="external-confirmation"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="external-confirmation-title">
+            <ShieldCheck size={16} />
+            <strong>{t("Harici bağlantı")}</strong>
+          </div>
+          <p>
+            <strong>{t(pendingExternal.label)}</strong>{" "}
+            {t("bağlantısını açmak üzeresiniz. Hedef adres:")}
+          </p>
+          <code>{pendingExternal.url}</code>
+          <div>
+            <button
+              className="button button-secondary"
+              type="button"
+              onClick={onCancelExternal}
+            >
+              {t("Vazgeç")}
+            </button>
+            <a
+              className="button button-primary"
+              href={pendingExternal.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("Bağlantıya devam et")} <ExternalLink size={14} />
+            </a>
+          </div>
+        </section>
+      )}
+      {externalLinkError && (
+        <div className="inline-error" role="alert">
+          {externalLinkError}
+        </div>
+      )}
     </div>
   );
 }
@@ -2121,7 +2553,11 @@ function TextField({
         />
       </label>
       {counter ? <small className="field-counter">{counter}</small> : null}
-      {error ? <small className="field-error" role="alert">{error}</small> : null}
+      {error ? (
+        <small className="field-error" role="alert">
+          {error}
+        </small>
+      ) : null}
       {hint ? <small className="field-hint">{hint}</small> : null}
     </div>
   );
@@ -2169,14 +2605,17 @@ function ibanValidationMessage(value, t) {
     .toUpperCase();
   if (!normalized) return "";
   if (!normalized.startsWith("TR")) {
-    return t("Türkiye IBAN'ları 'TR' ile başlamalıdır. Örnek: TR12 0006 1000 0000 0123 4567 89");
+    return t(
+      "Türkiye IBAN'ları 'TR' ile başlamalıdır. Örnek: TR12 0006 1000 0000 0123 4567 89",
+    );
   }
   if (normalized.length < 26) {
-    return t(
-      "IBAN eksik girildi.",
-    ) + ` ${t("Şu an")} ${normalized.length} ${t("karakter girdiniz")}, ${t(
-      "TR dahil toplam 26 karakter olmalıdır.",
-    )} ${t("Örnek")}: TR12 0006 1000 0000 0123 4567 89`;
+    return (
+      t("IBAN eksik girildi.") +
+      ` ${t("Şu an")} ${normalized.length} ${t("karakter girdiniz")}, ${t(
+        "TR dahil toplam 26 karakter olmalıdır.",
+      )} ${t("Örnek")}: TR12 0006 1000 0000 0123 4567 89`
+    );
   }
   if (
     normalized.length !== 26 ||
@@ -2194,7 +2633,11 @@ function inlineFieldMessage(blockType, key, value, t) {
   const text = String(value || "").trim();
   if (!text) return "";
   if (key === "iban") return ibanValidationMessage(text, t);
-  if (["phone", "sms", "whatsapp"].includes(key) && !/^\d{7,15}$/.test(normalizePhone(text))) return "Telefon numarası eksik. Örnek: +90 5XX XXX XX XX";
+  if (
+    ["phone", "sms", "whatsapp"].includes(key) &&
+    !/^\d{7,15}$/.test(normalizePhone(text))
+  )
+    return "Telefon numarası eksik. Örnek: +90 5XX XXX XX XX";
   if (["url", "maps_url", "avatar_url"].includes(key)) {
     try {
       const parsed = new URL(text);
@@ -2203,8 +2646,13 @@ function inlineFieldMessage(blockType, key, value, t) {
       return "Geçerli bir web adresi girin. Örnek: https://instagram.com/kullaniciadi";
     }
   }
-  if (key === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return "Geçerli bir e-posta girin. Örnek: isim@sirket.com";
-  if (key === "rating" && (!Number.isFinite(Number(text)) || Number(text) < 0 || Number(text) > 5)) return "0 ile 5 arasında bir değer girin. Örnek: 4.8";
+  if (key === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text))
+    return "Geçerli bir e-posta girin. Örnek: isim@sirket.com";
+  if (
+    key === "rating" &&
+    (!Number.isFinite(Number(text)) || Number(text) < 0 || Number(text) > 5)
+  )
+    return "0 ile 5 arasında bir değer girin. Örnek: 4.8";
   return "";
 }
 
@@ -2227,8 +2675,12 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
   if (!isSupportedCardBlock(block)) {
     return (
       <div className="block-edit-fields unsupported-block-notice" role="status">
-        <strong>{t("Bu eski blok bu düzenleyicide henüz değiştirilemiyor.")}</strong>
-        <p>{t("Kartı kaydettiğinizde içerik ve görünürlük ayarı korunacaktır.")}</p>
+        <strong>
+          {t("Bu eski blok bu düzenleyicide henüz değiştirilemiyor.")}
+        </strong>
+        <p>
+          {t("Kartı kaydettiğinizde içerik ve görünürlük ayarı korunacaktır.")}
+        </p>
       </div>
     );
   }
@@ -2244,8 +2696,16 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
         ["bio", "Kısa biyografi"],
         ["company", "Şirket adı"],
         ["address", "Açık adres"],
-        ["gallery_urls", "Galeri fotoğrafı URL'leri (her satıra bir URL)", "textarea"],
-        ["hours_text", "Çalışma saatleri (Gün | saat, her satıra bir kayıt)", "textarea"],
+        [
+          "gallery_urls",
+          "Galeri fotoğrafı URL'leri (her satıra bir URL)",
+          "textarea",
+        ],
+        [
+          "hours_text",
+          "Çalışma saatleri (Gün | saat, her satıra bir kayıt)",
+          "textarea",
+        ],
       ],
       google_review: [
         ["business_name", "İşletme adı"],
@@ -2303,10 +2763,38 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
           <label className="field" key={key}>
             <span>{t(label)}</span>
             <textarea
-              value={key === "gallery_urls" ? (block.data.gallery || []).join("\n") : key === "hours_text" ? (block.data.hours || []).map((row) => `${row.days || ""} | ${row.time || ""}`).join("\n") : block.data[key] || ""}
+              value={
+                key === "gallery_urls"
+                  ? (block.data.gallery || []).join("\n")
+                  : key === "hours_text"
+                    ? (block.data.hours || [])
+                        .map((row) => `${row.days || ""} | ${row.time || ""}`)
+                        .join("\n")
+                    : block.data[key] || ""
+              }
               onChange={(event) => {
-                if (key === "gallery_urls") updateField("gallery", event.target.value.split("\n").map((value) => value.trim()).filter(Boolean));
-                else if (key === "hours_text") updateField("hours", event.target.value.split("\n").filter(Boolean).map((line) => { const [days, ...time] = line.split("|"); return { days: days.trim(), time: time.join("|").trim() }; }));
+                if (key === "gallery_urls")
+                  updateField(
+                    "gallery",
+                    event.target.value
+                      .split("\n")
+                      .map((value) => value.trim())
+                      .filter(Boolean),
+                  );
+                else if (key === "hours_text")
+                  updateField(
+                    "hours",
+                    event.target.value
+                      .split("\n")
+                      .filter(Boolean)
+                      .map((line) => {
+                        const [days, ...time] = line.split("|");
+                        return {
+                          days: days.trim(),
+                          time: time.join("|").trim(),
+                        };
+                      }),
+                  );
                 else updateField(key, event.target.value);
               }}
             />
@@ -2318,11 +2806,21 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
             type={key === "iban" ? "text" : type || "text"}
             inputMode={key === "iban" ? "numeric" : undefined}
             maxLength={key === "iban" ? 32 : undefined}
-            value={key === "iban" ? formatTurkishIban(block.data[key]) : block.data[key] || ""}
-            error={blurredFields[key] ? inlineFieldMessage(block.type, key, block.data[key], t) : ""}
+            value={
+              key === "iban"
+                ? formatTurkishIban(block.data[key])
+                : block.data[key] || ""
+            }
+            error={
+              blurredFields[key]
+                ? inlineFieldMessage(block.type, key, block.data[key], t)
+                : ""
+            }
             hint={
               key === "iban"
-                ? t("IBAN, 'TR' ile başlayıp ardından 24 haneli rakam içermelidir (Toplam 26 karakter). Harf veya boşluk yazmanıza gerek yoktur, otomatik biçimlendirilir.")
+                ? t(
+                    "IBAN, 'TR' ile başlayıp ardından 24 haneli rakam içermelidir (Toplam 26 karakter). Harf veya boşluk yazmanıza gerek yoktur, otomatik biçimlendirilir.",
+                  )
                 : ""
             }
             counter={
@@ -2331,16 +2829,30 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
                 : ""
             }
             placeholder={
-              key === "iban" ? "TR12 0006 1000 0000 0123 4567 89"
-                : key === "phone" || key === "sms" || key === "whatsapp" ? "+90 5XX XXX XX XX"
-                  : type === "url" ? "https://instagram.com/kullaniciadi"
-                    : type === "email" ? "isim@sirket.com" : undefined
+              key === "iban"
+                ? "TR12 0006 1000 0000 0123 4567 89"
+                : key === "phone" || key === "sms" || key === "whatsapp"
+                  ? "+90 5XX XXX XX XX"
+                  : type === "url"
+                    ? "https://instagram.com/kullaniciadi"
+                    : type === "email"
+                      ? "isim@sirket.com"
+                      : undefined
             }
-            onChange={(event) => updateField(
-              key,
-              key === "iban" ? formatTurkishIban(event.target.value) : event.target.value,
-            )}
-            onBlur={() => setBlurredFields((fieldsState) => ({ ...fieldsState, [key]: true }))}
+            onChange={(event) =>
+              updateField(
+                key,
+                key === "iban"
+                  ? formatTurkishIban(event.target.value)
+                  : event.target.value,
+              )
+            }
+            onBlur={() =>
+              setBlurredFields((fieldsState) => ({
+                ...fieldsState,
+                [key]: true,
+              }))
+            }
           />
         ),
       )}
@@ -2449,12 +2961,20 @@ function CardModal({
           user_id: startManaged && clients.length ? clients[0].id : user.id,
         };
     initial.presentation_mode = resolvePresentationMode(card);
-    initial.primary_action = resolvePrimaryAction(card) || { type: "", source_block_id: "", label: "", url: "", text: "" };
+    initial.primary_action = resolvePrimaryAction(card) || {
+      type: "",
+      source_block_id: "",
+      label: "",
+      url: "",
+      text: "",
+    };
     return savedDraft
       ? {
           ...initial,
           ...savedDraft.form,
-          palette_id: card ? card.palette_id || null : savedDraft.form.palette_id || null,
+          palette_id: card
+            ? card.palette_id || null
+            : savedDraft.form.palette_id || null,
           extra_links: Array.isArray(savedDraft.form.extra_links)
             ? savedDraft.form.extra_links
             : initial.extra_links,
@@ -2517,19 +3037,23 @@ function CardModal({
         console.error("Palette query failed:", loadError);
         setPaletteError(t("Renk temaları yüklenemedi."));
       } else {
-        setPalettes((data || []).filter((palette) => {
-          try {
-            validatePaletteTokens(palette.tokens);
-            return true;
-          } catch {
-            return false;
-          }
-        }));
+        setPalettes(
+          (data || []).filter((palette) => {
+            try {
+              validatePaletteTokens(palette.tokens);
+              return true;
+            } catch {
+              return false;
+            }
+          }),
+        );
       }
       setPaletteLoading(false);
     }
     loadPalettes();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [t]);
 
   function persistDraft() {
@@ -2572,9 +3096,11 @@ function CardModal({
     const name = customPaletteName.trim();
     if (!name) throw new Error(t("Özel palet adı zorunludur."));
     const savedPalette = await saveCustomPalette(supabase, {
-      id: palettes.find((palette) => palette.id === form.palette_id)?.kind === "custom"
-        ? form.palette_id
-        : undefined,
+      id:
+        palettes.find((palette) => palette.id === form.palette_id)?.kind ===
+        "custom"
+          ? form.palette_id
+          : undefined,
       name,
       tokens,
       owner_user_id: user.id,
@@ -2676,13 +3202,25 @@ function CardModal({
       (block) => block.id === id && block.type === "profile",
     );
     if (profile && data.name !== undefined) update("title", data.name);
-    if (profile?.type === "social" || blocks.find((block) => block.id === id)?.type === "social") {
-      const text = (data.links || []).map((link) => `${link.label || ""} ${link.url || ""}`).join(" ").toLocaleLowerCase("tr");
-      const presetKey = /linkedin/.test(text) ? "linkedin" : /instagram/.test(text) ? "instagram" : null;
+    if (
+      profile?.type === "social" ||
+      blocks.find((block) => block.id === id)?.type === "social"
+    ) {
+      const text = (data.links || [])
+        .map((link) => `${link.label || ""} ${link.url || ""}`)
+        .join(" ")
+        .toLocaleLowerCase("tr");
+      const presetKey = /linkedin/.test(text)
+        ? "linkedin"
+        : /instagram/.test(text)
+          ? "instagram"
+          : null;
       if (presetKey) {
         setSuggestedPalette(palettePresets[presetKey]);
         const matchingPalette = palettes.find((palette) =>
-          palette.name.toLocaleLowerCase("tr").includes(palettePresets[presetKey].name.toLocaleLowerCase("tr")),
+          palette.name
+            .toLocaleLowerCase("tr")
+            .includes(palettePresets[presetKey].name.toLocaleLowerCase("tr")),
         );
         if (matchingPalette) update("palette_id", matchingPalette.id);
       }
@@ -2691,7 +3229,9 @@ function CardModal({
 
   function addBlock(type) {
     setIsDirty(true);
-    const existing = blocks.find((block) => block.type === normalizeBlockType(type));
+    const existing = blocks.find(
+      (block) => block.type === normalizeBlockType(type),
+    );
     if (existing) {
       setExpandedBlockId(existing.id);
       if (["social", "custom_links"].includes(existing.type)) {
@@ -2706,7 +3246,9 @@ function CardModal({
     if (preset) {
       setSuggestedPalette(preset);
       const matchingPalette = palettes.find((palette) =>
-        palette.name.toLocaleLowerCase("tr").includes(preset.name.toLocaleLowerCase("tr")),
+        palette.name
+          .toLocaleLowerCase("tr")
+          .includes(preset.name.toLocaleLowerCase("tr")),
       );
       if (matchingPalette) update("palette_id", matchingPalette.id);
     }
@@ -2794,21 +3336,22 @@ function CardModal({
       }
       if (card?.compatibility?.errors?.length) {
         throw new Error(
-          t("Bu kartın eski blok verisi geçersiz olduğu için güvenle kaydedilemiyor."),
+          t(
+            "Bu kartın eski blok verisi geçersiz olduğu için güvenle kaydedilemiyor.",
+          ),
         );
       }
-      const normalizedBlocks = serializeCardBlocks(blocks)
-        .map((block) =>
-          block.type === "profile"
-            ? {
-                ...block,
-                data: {
-                  ...block.data,
-                  name: block.data.name?.trim() || form.title.trim(),
-                },
-              }
-            : block,
-        );
+      const normalizedBlocks = serializeCardBlocks(blocks).map((block) =>
+        block.type === "profile"
+          ? {
+              ...block,
+              data: {
+                ...block.data,
+                name: block.data.name?.trim() || form.title.trim(),
+              },
+            }
+          : block,
+      );
       if (
         !normalizedBlocks.some(
           (block) => block.type === "profile" || block.type === "header",
@@ -2825,9 +3368,7 @@ function CardModal({
         (block) => block.type === "payment_or_iban",
       );
       if (paymentBlock?.data.iban && !isValidIban(paymentBlock.data.iban))
-        throw new Error(
-          ibanValidationMessage(paymentBlock.data.iban, t),
-        );
+        throw new Error(ibanValidationMessage(paymentBlock.data.iban, t));
       if (
         [form.whatsapp, form.sms].some(
           (phone) => phone && !/^\d{7,15}$/.test(normalizePhone(phone)),
@@ -2884,20 +3425,43 @@ function CardModal({
           data.maps_url = await checkUrl(data.maps_url);
         scannedBlocks.push({ ...block, data });
       }
-      const configuredAction = form.primary_action?.type ? { ...form.primary_action } : null;
+      const configuredAction = form.primary_action?.type
+        ? { ...form.primary_action }
+        : null;
       if (configuredAction) {
-        const actionError = validatePrimaryAction({ ...card, blocks: scannedBlocks }, configuredAction);
+        const actionError = validatePrimaryAction(
+          { ...card, blocks: scannedBlocks },
+          configuredAction,
+        );
         if (actionError) throw new Error(t(actionError));
-        if (configuredAction.url?.trim()) configuredAction.url = await checkUrl(configuredAction.url.trim());
-        if (configuredAction.type === "copy_text" && !configuredAction.text?.trim()) throw new Error(t("Kopyalanacak metin zorunludur."));
+        if (configuredAction.url?.trim())
+          configuredAction.url = await checkUrl(configuredAction.url.trim());
+        if (
+          configuredAction.type === "copy_text" &&
+          !configuredAction.text?.trim()
+        )
+          throw new Error(t("Kopyalanacak metin zorunludur."));
       }
-      const profileSettings = scannedBlocks.find((block) => block.type === "profile");
+      const profileSettings = scannedBlocks.find(
+        (block) => block.type === "profile",
+      );
       if (profileSettings) {
-        profileSettings.data.presentation_mode = form.presentation_mode || "showcase";
-        if (configuredAction) profileSettings.data.primary_action = configuredAction;
+        profileSettings.data.presentation_mode =
+          form.presentation_mode || "showcase";
+        if (configuredAction)
+          profileSettings.data.primary_action = configuredAction;
         else delete profileSettings.data.primary_action;
-        if (profileSettings.data.cover_url?.trim()) profileSettings.data.cover_url = validateHttpsUrl(profileSettings.data.cover_url.trim());
-        profileSettings.data.gallery = (Array.isArray(profileSettings.data.gallery) ? profileSettings.data.gallery : []).map((url) => validateHttpsUrl(String(url).trim())).filter(Boolean);
+        if (profileSettings.data.cover_url?.trim())
+          profileSettings.data.cover_url = validateHttpsUrl(
+            profileSettings.data.cover_url.trim(),
+          );
+        profileSettings.data.gallery = (
+          Array.isArray(profileSettings.data.gallery)
+            ? profileSettings.data.gallery
+            : []
+        )
+          .map((url) => validateHttpsUrl(String(url).trim()))
+          .filter(Boolean);
       }
       setScanning(false);
       let paletteId = form.palette_id || null;
@@ -2957,12 +3521,27 @@ function CardModal({
     }
   }
 
-  const profilePreview = blocks.find((block) => block.type === "profile" && block.visible)?.data || {};
-  const paymentPreview = blocks.find((block) => block.type === "payment_or_iban" && block.visible)?.data || {};
-  const contactPreview = blocks.find((block) => block.type === "contact" && block.visible)?.data || {};
-  const socialPreview = blocks.find((block) => block.type === "social" && block.visible)?.data || {};
-  const notePreview = blocks.find((block) => block.type === "text_or_note" && block.visible)?.data || {};
-  const previewCard = { ...form, title: form.title || t("Kart / işletme adı"), blocks, primary_action: form.primary_action };
+  const profilePreview =
+    blocks.find((block) => block.type === "profile" && block.visible)?.data ||
+    {};
+  const paymentPreview =
+    blocks.find((block) => block.type === "payment_or_iban" && block.visible)
+      ?.data || {};
+  const contactPreview =
+    blocks.find((block) => block.type === "contact" && block.visible)?.data ||
+    {};
+  const socialPreview =
+    blocks.find((block) => block.type === "social" && block.visible)?.data ||
+    {};
+  const notePreview =
+    blocks.find((block) => block.type === "text_or_note" && block.visible)
+      ?.data || {};
+  const previewCard = {
+    ...form,
+    title: form.title || t("Kart / işletme adı"),
+    blocks,
+    primary_action: form.primary_action,
+  };
   return (
     <div
       className="modal-backdrop"
@@ -3012,7 +3591,9 @@ function CardModal({
               </button>
               {devToolsOpen && (
                 <div className="dev-tools-panel">
-                  <p>{t("Yalnızca yönetici testleri için örnek veri doldurur.")}</p>
+                  <p>
+                    {t("Yalnızca yönetici testleri için örnek veri doldurur.")}
+                  </p>
                   <button
                     type="button"
                     className="button button-secondary"
@@ -3021,7 +3602,9 @@ function CardModal({
                     {t("Geçerli test IBAN'ı ve alıcı adı doldur")}
                   </button>
                   <small>
-                    {t("Üretim doğrulamaları atlanmaz; yalnızca güvenli test verisi eklenir.")}
+                    {t(
+                      "Üretim doğrulamaları atlanmaz; yalnızca güvenli test verisi eklenir.",
+                    )}
                   </small>
                 </div>
               )}
@@ -3076,36 +3659,237 @@ function CardModal({
             )}
           </div>
           <section className="form-section presentation-mode-editor">
-            <div className="section-heading-row"><h3>02 <span>{t("Kart Görünümü")}</span></h3></div>
-            <div className="presentation-mode-options" role="radiogroup" aria-label={t("Kart görünümü")}>
+            <div className="section-heading-row">
+              <h3>
+                02 <span>{t("Kart Görünümü")}</span>
+              </h3>
+            </div>
+            <div
+              className="presentation-mode-options"
+              role="radiogroup"
+              aria-label={t("Kart görünümü")}
+            >
               {[
-                ["classic", "Classic NFC", "Hızlı ve tek amaçlı", "En uygun: ödeme, kişi veya tek bağlantı"],
-                ["smart", "Smart NFC", "Kompakt dijital kart", "En uygun: birkaç önemli iletişim seçeneği"],
-                ["showcase", "Showcase NFC", "Detaylı işletme profili", "En uygun: zengin işletme vitrini"],
-              ].map(([mode, title, description, useCase]) => <button key={mode} type="button" role="radio" aria-checked={form.presentation_mode === mode} className={`presentation-mode-option ${form.presentation_mode === mode ? "selected" : ""}`} onClick={() => update("presentation_mode", mode)}>
-                <span className={`mode-mini-preview mode-mini-${mode}`} aria-hidden="true"><i/><i/><i/></span><strong>{title}</strong><span>{t(description)}</span><small>{t(useCase)}</small>
-              </button>)}
+                [
+                  "classic",
+                  "Classic NFC",
+                  "Hızlı ve tek amaçlı",
+                  "En uygun: ödeme, kişi veya tek bağlantı",
+                ],
+                [
+                  "smart",
+                  "Smart NFC",
+                  "Kompakt dijital kart",
+                  "En uygun: birkaç önemli iletişim seçeneği",
+                ],
+                [
+                  "showcase",
+                  "Showcase NFC",
+                  "Detaylı işletme profili",
+                  "En uygun: zengin işletme vitrini",
+                ],
+              ].map(([mode, title, description, useCase]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.presentation_mode === mode}
+                  className={`presentation-mode-option ${form.presentation_mode === mode ? "selected" : ""}`}
+                  onClick={() => update("presentation_mode", mode)}
+                >
+                  <span
+                    className={`mode-mini-preview mode-mini-${mode}`}
+                    aria-hidden="true"
+                  >
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <strong>{title}</strong>
+                  <span>{t(description)}</span>
+                  <small>{t(useCase)}</small>
+                </button>
+              ))}
             </div>
             <div className="primary-action-editor">
               <h4>{t("Ana işlem")}</h4>
-              <p className="field-hint">{t("Ziyaretçinin kartı açtığında yapmasını istediğiniz işlemi seçin.")}</p>
-              <label className="field"><span>{t("İşlem türü")}</span><select value={form.primary_action?.type || ""} onChange={(event) => update("primary_action", { ...form.primary_action, type: event.target.value, source_block_id: "" })}>
-                <option value="">{t("İşlem seçin")}</option>
-                {[["copy_iban", "IBAN kopyala"], ["save_contact", "Kişiyi kaydet"], ["call", "Telefon et"], ["whatsapp", "WhatsApp aç"], ["website", "Web sitesi aç"], ["social", "Sosyal profil aç"], ["maps", "Konumu aç"], ["google_review", "Google yorumu aç"], ["custom_url", "Özel bağlantı"], ["copy_text", "Metni kopyala"]].map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
-              </select></label>
-              {form.primary_action?.type && <>
-                {! ["custom_url", "copy_text"].includes(form.primary_action.type) && <label className="field"><span>{t("İçerik kaynağı")}</span><select value={form.primary_action.source_block_id || ""} onChange={(event) => update("primary_action", { ...form.primary_action, source_block_id: event.target.value, source_item_id: "" })}><option value="">{t("Kaynak seçin")}</option>{blocks.filter((block) => ({ copy_iban: ["payment_or_iban"], save_contact: ["profile", "contact"], call: ["contact"], whatsapp: ["contact"], website: ["social", "custom_links", "custom_button"], social: ["social"], maps: ["contact"], google_review: ["google_review"] }[form.primary_action.type] || CARD_BLOCK_TYPES).includes(block.type)).map((block) => <option key={block.id} value={block.id}>{t(cardBlockLabels[block.type] || block.type)}{block.visible === false ? ` · ${t("gizli")}` : ""}</option>)}</select></label>}
-                {(() => { const sourceBlock = blocks.find((block) => block.id === form.primary_action.source_block_id); const items = Array.isArray(sourceBlock?.data?.links) ? sourceBlock.data.links.filter((item) => item && item.url) : []; return items.length ? <label className="field"><span>{t("Bağlantı seçin")}</span><select value={form.primary_action.source_item_id || ""} onChange={(event) => update("primary_action", { ...form.primary_action, source_item_id: event.target.value })}><option value="">{t("İlk uygun bağlantı")}</option>{items.map((item) => { const value = item.id || item.url; return <option key={value} value={value}>{item.label || item.url}</option>; })}</select></label> : null; })()}
-                {form.primary_action.type === "custom_url" && <TextField label={t("Güvenli hedef URL") } type="url" value={form.primary_action.url} placeholder="https://example.com" onChange={(event) => update("primary_action", { ...form.primary_action, url: event.target.value })}/>}
-                {form.primary_action.type === "copy_text" && <label className="field"><span>{t("Kopyalanacak metin")}</span><textarea value={form.primary_action.text || ""} onChange={(event) => update("primary_action", { ...form.primary_action, text: event.target.value })}/></label>}
-                <TextField label={t("Özel buton etiketi (isteğe bağlı)")} value={form.primary_action.label || ""} onChange={(event) => update("primary_action", { ...form.primary_action, label: event.target.value })}/>
-                {form.primary_action.source_block_id && validatePrimaryAction({ blocks }, form.primary_action) && <div className="inline-warning" role="alert">{t(validatePrimaryAction({ blocks }, form.primary_action))}</div>}
-              </>}
+              <p className="field-hint">
+                {t(
+                  "Ziyaretçinin kartı açtığında yapmasını istediğiniz işlemi seçin.",
+                )}
+              </p>
+              <label className="field">
+                <span>{t("İşlem türü")}</span>
+                <select
+                  value={form.primary_action?.type || ""}
+                  onChange={(event) =>
+                    update("primary_action", {
+                      ...form.primary_action,
+                      type: event.target.value,
+                      source_block_id: "",
+                    })
+                  }
+                >
+                  <option value="">{t("İşlem seçin")}</option>
+                  {[
+                    ["copy_iban", "IBAN kopyala"],
+                    ["save_contact", "Kişiyi kaydet"],
+                    ["call", "Telefon et"],
+                    ["whatsapp", "WhatsApp aç"],
+                    ["website", "Web sitesi aç"],
+                    ["social", "Sosyal profil aç"],
+                    ["maps", "Konumu aç"],
+                    ["google_review", "Google yorumu aç"],
+                    ["custom_url", "Özel bağlantı"],
+                    ["copy_text", "Metni kopyala"],
+                  ].map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {t(label)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {form.primary_action?.type && (
+                <>
+                  {!["custom_url", "copy_text"].includes(
+                    form.primary_action.type,
+                  ) && (
+                    <label className="field">
+                      <span>{t("İçerik kaynağı")}</span>
+                      <select
+                        value={form.primary_action.source_block_id || ""}
+                        onChange={(event) =>
+                          update("primary_action", {
+                            ...form.primary_action,
+                            source_block_id: event.target.value,
+                            source_item_id: "",
+                          })
+                        }
+                      >
+                        <option value="">{t("Kaynak seçin")}</option>
+                        {blocks
+                          .filter((block) =>
+                            (
+                              ({
+                                copy_iban: ["payment_or_iban"],
+                                save_contact: ["profile", "contact"],
+                                call: ["contact"],
+                                whatsapp: ["contact"],
+                                website: [
+                                  "social",
+                                  "custom_links",
+                                  "custom_button",
+                                ],
+                                social: ["social"],
+                                maps: ["contact"],
+                                google_review: ["google_review"],
+                              })[form.primary_action.type] || CARD_BLOCK_TYPES
+                            ).includes(block.type),
+                          )
+                          .map((block) => (
+                            <option key={block.id} value={block.id}>
+                              {t(cardBlockLabels[block.type] || block.type)}
+                              {block.visible === false
+                                ? ` · ${t("gizli")}`
+                                : ""}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  )}
+                  {(() => {
+                    const sourceBlock = blocks.find(
+                      (block) =>
+                        block.id === form.primary_action.source_block_id,
+                    );
+                    const items = Array.isArray(sourceBlock?.data?.links)
+                      ? sourceBlock.data.links.filter(
+                          (item) => item && item.url,
+                        )
+                      : [];
+                    return items.length ? (
+                      <label className="field">
+                        <span>{t("Bağlantı seçin")}</span>
+                        <select
+                          value={form.primary_action.source_item_id || ""}
+                          onChange={(event) =>
+                            update("primary_action", {
+                              ...form.primary_action,
+                              source_item_id: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="">{t("İlk uygun bağlantı")}</option>
+                          {items.map((item) => {
+                            const value = item.id || item.url;
+                            return (
+                              <option key={value} value={value}>
+                                {item.label || item.url}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </label>
+                    ) : null;
+                  })()}
+                  {form.primary_action.type === "custom_url" && (
+                    <TextField
+                      label={t("Güvenli hedef URL")}
+                      type="url"
+                      value={form.primary_action.url}
+                      placeholder="https://example.com"
+                      onChange={(event) =>
+                        update("primary_action", {
+                          ...form.primary_action,
+                          url: event.target.value,
+                        })
+                      }
+                    />
+                  )}
+                  {form.primary_action.type === "copy_text" && (
+                    <label className="field">
+                      <span>{t("Kopyalanacak metin")}</span>
+                      <textarea
+                        value={form.primary_action.text || ""}
+                        onChange={(event) =>
+                          update("primary_action", {
+                            ...form.primary_action,
+                            text: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  )}
+                  <TextField
+                    label={t("Özel buton etiketi (isteğe bağlı)")}
+                    value={form.primary_action.label || ""}
+                    onChange={(event) =>
+                      update("primary_action", {
+                        ...form.primary_action,
+                        label: event.target.value,
+                      })
+                    }
+                  />
+                  {form.primary_action.source_block_id &&
+                    validatePrimaryAction({ blocks }, form.primary_action) && (
+                      <div className="inline-warning" role="alert">
+                        {t(
+                          validatePrimaryAction(
+                            { blocks },
+                            form.primary_action,
+                          ),
+                        )}
+                      </div>
+                    )}
+                </>
+              )}
             </div>
           </section>
           <div className="form-section card-builder-section">
             <div className="section-heading-row">
-              <h3><span>{t("Kart blokları")}</span></h3>
+              <h3>
+                <span>{t("Kart blokları")}</span>
+              </h3>
               <label className="field add-block-field">
                 <span>{t("Blok ekle")}</span>
                 <select
@@ -3154,17 +3938,25 @@ function CardModal({
                     >
                       <div
                         className="block-item-heading"
-                        onClick={() => setExpandedBlockId(
-                          expandedBlockId === block.id ? null : block.id,
-                        )}
+                        onClick={() =>
+                          setExpandedBlockId(
+                            expandedBlockId === block.id ? null : block.id,
+                          )
+                        }
                       >
                         <button
                           type="button"
                           className="block-expand-button"
                           aria-expanded={expandedBlockId === block.id}
                         >
-                          <strong>{t(cardBlockLabels[block.type] || block.type)}</strong>
-                          <span>{expandedBlockId === block.id ? t("Kapat") : t("Düzenle")}</span>
+                          <strong>
+                            {t(cardBlockLabels[block.type] || block.type)}
+                          </strong>
+                          <span>
+                            {expandedBlockId === block.id
+                              ? t("Kapat")
+                              : t("Düzenle")}
+                          </span>
                         </button>
                         <label className="check-row">
                           <input
@@ -3208,7 +4000,10 @@ function CardModal({
                         <button
                           type="button"
                           className="text-button danger-text"
-                          disabled={block.type === "profile" || !isSupportedCardBlock(block)}
+                          disabled={
+                            block.type === "profile" ||
+                            !isSupportedCardBlock(block)
+                          }
                           onClick={() => removeBlock(block.id)}
                         >
                           {t("Sil")}
@@ -3248,22 +4043,105 @@ function CardModal({
                   style={paletteTokensStyle(
                     customPaletteOpen
                       ? customPaletteTokens
-                      : palettes.find((palette) => palette.id === form.palette_id)?.tokens
-                      || suggestedPalette?.tokens
-                      || palettes.find((palette) => palette.is_default)?.tokens,
+                      : palettes.find(
+                          (palette) => palette.id === form.palette_id,
+                        )?.tokens ||
+                          suggestedPalette?.tokens ||
+                          palettes.find((palette) => palette.is_default)
+                            ?.tokens,
                   )}
                 >
                   <span className="phone-speaker" />
-                  {form.presentation_mode === "showcase" ? <div className="preview-showcase">
-                    {profilePreview.cover_url && <img className="preview-showcase-cover" src={profilePreview.cover_url} alt=""/>}
-                    <div className="preview-showcase-identity">{profilePreview.avatar_url && <img src={profilePreview.avatar_url} alt=""/>}<div><strong>{profilePreview.name || previewCard.title}</strong><small>{[profilePreview.category || profilePreview.title, profilePreview.location || profilePreview.company].filter(Boolean).join(" · ")}</small></div></div>
-                    {profilePreview.bio && <p>{profilePreview.bio}</p>}
-                    {paymentPreview.iban && <div className="preview-showcase-block"><b>{paymentPreview.bank_name || t("IBAN")}</b><small>{formatIban(sanitizeIban(paymentPreview.iban))}</small></div>}
-                    {[...blocks].sort((a, b) => a.order - b.order).filter((block) => block.visible && ["contact", "social", "text_or_note"].includes(block.type)).map((block) => <div className="preview-showcase-block" key={block.id}><b>{t(cardBlockLabels[block.type])}</b><small>{cardBlockPreviewText(block)}</small></div>)}
-                    {profilePreview.gallery?.length > 0 && <div className="preview-showcase-gallery">{profilePreview.gallery.slice(0, 3).map((src) => <img src={src} key={src} alt=""/>)}</div>}
-                  </div> : <CompactCardPresentation card={previewCard} mode={form.presentation_mode} profile={profilePreview} payment={paymentPreview} contact={contactPreview} social={socialPreview} note={notePreview} copyFeedback="" actionWarning={validatePrimaryAction(previewCard)} onPrimaryAction={() => {}} onCopy={() => {}} onExternal={() => {}} t={t} preview/>}
+                  {form.presentation_mode === "showcase" ? (
+                    <div className="preview-showcase">
+                      {profilePreview.cover_url && (
+                        <img
+                          className="preview-showcase-cover"
+                          src={profilePreview.cover_url}
+                          alt=""
+                        />
+                      )}
+                      <div className="preview-showcase-identity">
+                        {profilePreview.avatar_url && (
+                          <img src={profilePreview.avatar_url} alt="" />
+                        )}
+                        <div>
+                          <strong>
+                            {profilePreview.name || previewCard.title}
+                          </strong>
+                          <small>
+                            {[
+                              profilePreview.category || profilePreview.title,
+                              profilePreview.location || profilePreview.company,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </small>
+                        </div>
+                      </div>
+                      {profilePreview.bio && <p>{profilePreview.bio}</p>}
+                      {paymentPreview.iban && (
+                        <div className="preview-showcase-block">
+                          <b>{paymentPreview.bank_name || t("IBAN")}</b>
+                          <small>
+                            {formatIban(sanitizeIban(paymentPreview.iban))}
+                          </small>
+                        </div>
+                      )}
+                      {[...blocks]
+                        .sort((a, b) => a.order - b.order)
+                        .filter(
+                          (block) =>
+                            block.visible &&
+                            ["contact", "social", "text_or_note"].includes(
+                              block.type,
+                            ),
+                        )
+                        .map((block) => (
+                          <div
+                            className="preview-showcase-block"
+                            key={block.id}
+                          >
+                            <b>{t(cardBlockLabels[block.type])}</b>
+                            <small>{cardBlockPreviewText(block)}</small>
+                          </div>
+                        ))}
+                      {profilePreview.gallery?.length > 0 && (
+                        <div className="preview-showcase-gallery">
+                          {profilePreview.gallery.slice(0, 3).map((src) => (
+                            <img src={src} key={src} alt="" />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <CompactCardPresentation
+                      card={previewCard}
+                      mode={form.presentation_mode}
+                      profile={profilePreview}
+                      payment={paymentPreview}
+                      contact={contactPreview}
+                      social={socialPreview}
+                      note={notePreview}
+                      copyFeedback=""
+                      actionWarning={validatePrimaryAction(previewCard)}
+                      onPrimaryAction={() => {}}
+                      onCopy={() => {}}
+                      onExternal={() => {}}
+                      t={t}
+                      preview
+                    />
+                  )}
                 </div>
-                <small>{t("Canlı önizleme")} · {form.presentation_mode === "classic" ? "Classic NFC" : form.presentation_mode === "smart" ? "Smart NFC" : "Showcase NFC"}{isDirty ? ` · ${t("Kaydedilmemiş değişiklikler")}` : ""}</small>
+                <small>
+                  {t("Canlı önizleme")} ·{" "}
+                  {form.presentation_mode === "classic"
+                    ? "Classic NFC"
+                    : form.presentation_mode === "smart"
+                      ? "Smart NFC"
+                      : "Showcase NFC"}
+                  {isDirty ? ` · ${t("Kaydedilmemiş değişiklikler")}` : ""}
+                </small>
               </div>
             </div>
           </div>
@@ -3274,19 +4152,37 @@ function CardModal({
               </h3>
             </div>
             <p className="field-hint">
-              {t("Kartınız için bir tema seçin. Renkler canlı önizlemede hemen uygulanır.")}
+              {t(
+                "Kartınız için bir tema seçin. Renkler canlı önizlemede hemen uygulanır.",
+              )}
             </p>
-            {paletteError && <div className="inline-warning" role="alert">{paletteError}</div>}
+            {paletteError && (
+              <div className="inline-warning" role="alert">
+                {paletteError}
+              </div>
+            )}
             {suggestedPalette && !form.palette_id && (
               <div className="palette-suggestion" role="status">
-                {t("Bu blok için önerilen tema")}: <strong>{t(suggestedPalette.name)}</strong>
-                <button type="button" className="text-button" onClick={() => {
-                  const matchingPalette = palettes.find((palette) =>
-                    palette.name.toLocaleLowerCase("tr").includes(suggestedPalette.name.toLocaleLowerCase("tr")),
-                  );
-                  if (matchingPalette) update("palette_id", matchingPalette.id);
-                  else setSuggestedPalette(null);
-                }}>{t("Uygula")}</button>
+                {t("Bu blok için önerilen tema")}:{" "}
+                <strong>{t(suggestedPalette.name)}</strong>
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    const matchingPalette = palettes.find((palette) =>
+                      palette.name
+                        .toLocaleLowerCase("tr")
+                        .includes(
+                          suggestedPalette.name.toLocaleLowerCase("tr"),
+                        ),
+                    );
+                    if (matchingPalette)
+                      update("palette_id", matchingPalette.id);
+                    else setSuggestedPalette(null);
+                  }}
+                >
+                  {t("Uygula")}
+                </button>
               </div>
             )}
             <div className="palette-grid" aria-label={t("Renk paletleri")}>
@@ -3308,12 +4204,20 @@ function CardModal({
                         }}
                       >
                         <span className="palette-swatches" aria-hidden="true">
-                          <i style={{ backgroundColor: palette.tokens?.background }} />
-                          <i style={{ backgroundColor: palette.tokens?.primary }} />
+                          <i
+                            style={{
+                              backgroundColor: palette.tokens?.background,
+                            }}
+                          />
+                          <i
+                            style={{ backgroundColor: palette.tokens?.primary }}
+                          />
                         </span>
                         <span>
                           <strong>{palette.name}</strong>
-                          {palette.moderation_status === "pending" && <small>{t("İnceleniyor")}</small>}
+                          {palette.moderation_status === "pending" && (
+                            <small>{t("İnceleniyor")}</small>
+                          )}
                         </span>
                       </button>
                     );
@@ -3331,7 +4235,10 @@ function CardModal({
                       <i style={{ backgroundColor: "#0F172A" }} />
                       <i style={{ backgroundColor: "#38BDF8" }} />
                     </span>
-                    <span><strong>{t("Sistem varsayılanı")}</strong><small>{t("Otomatik tema")}</small></span>
+                    <span>
+                      <strong>{t("Sistem varsayılanı")}</strong>
+                      <small>{t("Otomatik tema")}</small>
+                    </span>
                   </button>
                 </>
               )}
@@ -3348,13 +4255,19 @@ function CardModal({
               {t("Özel Renk Paleti Oluştur")}
             </button>
             {customPaletteOpen && (
-              <div className="custom-palette-editor" role="group" aria-label={t("Özel renk paleti")}>
+              <div
+                className="custom-palette-editor"
+                role="group"
+                aria-label={t("Özel renk paleti")}
+              >
                 <label className="field">
                   <span>{t("Palet adı")}</span>
                   <input
                     value={customPaletteName}
                     maxLength={80}
-                    onChange={(event) => setCustomPaletteName(event.target.value)}
+                    onChange={(event) =>
+                      setCustomPaletteName(event.target.value)
+                    }
                     placeholder={t("Örn. Marka renklerim")}
                   />
                 </label>
@@ -3372,7 +4285,9 @@ function CardModal({
                       <input
                         type="color"
                         value={customPaletteTokens[token]}
-                        onChange={(event) => updateCustomPaletteToken(token, event.target.value)}
+                        onChange={(event) =>
+                          updateCustomPaletteToken(token, event.target.value)
+                        }
                         aria-label={t(label)}
                       />
                       <input
@@ -3380,7 +4295,9 @@ function CardModal({
                         value={customPaletteTokens[token]}
                         maxLength={7}
                         pattern="#[0-9A-Fa-f]{6}"
-                        onChange={(event) => updateCustomPaletteToken(token, event.target.value)}
+                        onChange={(event) =>
+                          updateCustomPaletteToken(token, event.target.value)
+                        }
                         aria-label={`${t(label)} hex`}
                       />
                     </label>
@@ -3391,7 +4308,12 @@ function CardModal({
                   <input
                     type="color"
                     value={customPaletteTokens.button_text}
-                    onChange={(event) => updateCustomPaletteToken("button_text", event.target.value)}
+                    onChange={(event) =>
+                      updateCustomPaletteToken(
+                        "button_text",
+                        event.target.value,
+                      )
+                    }
                     aria-label={t("Buton yazısı")}
                   />
                   <input
@@ -3399,7 +4321,12 @@ function CardModal({
                     value={customPaletteTokens.button_text}
                     maxLength={7}
                     pattern="#[0-9A-Fa-f]{6}"
-                    onChange={(event) => updateCustomPaletteToken("button_text", event.target.value)}
+                    onChange={(event) =>
+                      updateCustomPaletteToken(
+                        "button_text",
+                        event.target.value,
+                      )
+                    }
                     aria-label={`${t("Buton yazısı")} hex`}
                   />
                 </label>
@@ -3411,7 +4338,10 @@ function CardModal({
                       try {
                         await saveEditedPalette();
                       } catch (paletteSaveError) {
-                        setPaletteError(paletteSaveError.message || t("Özel palet kaydedilemedi."));
+                        setPaletteError(
+                          paletteSaveError.message ||
+                            t("Özel palet kaydedilemedi."),
+                        );
                       }
                     }}
                   >

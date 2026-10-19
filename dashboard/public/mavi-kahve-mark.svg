@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="Mavi Kahve cup mark">
+  <circle cx="120" cy="120" r="120" fill="#0c2b46"/>
+  <g fill="none" stroke="#f5f7f8" stroke-linecap="round" stroke-linejoin="round" stroke-width="5">
+    <path d="M111 62c-9-12 10-15 2-28m18 28c-9-12 10-15 2-28"/>
+    <path d="M71 94h91l-8 58c-2 17-16 29-33 29h-9c-17 0-31-12-33-29z"/>
+    <path d="M162 107h13c13 0 19 8 16 19-3 12-14 20-32 20"/>
+    <path d="M84 203h69m-64-8h59"/>
+    <path d="M91 117c10 9 18 9 28 0s18-9 28 0m-52 18c8 7 16 7 24 0s16-7 24 0"/>
+  </g>
+</svg>

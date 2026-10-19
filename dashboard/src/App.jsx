@@ -15,6 +15,9 @@ import {
   LoaderCircle,
   LogOut,
   Menu,
+  MessageCircle,
+  Mail,
+  MapPin,
   Moon,
   MoreHorizontal,
   Plus,
@@ -25,6 +28,7 @@ import {
   Sun,
   Trash2,
   UserRound,
+  Phone,
   Users,
   X,
 } from "lucide-react";
@@ -39,10 +43,18 @@ import {
   createCardBlock,
   hydrateCardFromBlocks,
   isValidIban,
+  isSupportedCardBlock,
+  legacyFieldsForCardSave,
   makeCardBlocks,
   normalizeBlockType,
-  toLegacyCardFields,
+  serializeCardBlocks,
 } from "./cardBlocks.js";
+import {
+  demoCard,
+  resolvePrimaryAction,
+  resolvePresentationMode,
+  validatePrimaryAction,
+} from "./cardExperience.js";
 
 const initialCard = {
   title: "",
@@ -1167,9 +1179,16 @@ function PublicCard({ token, onReport }) {
   const [copyFeedback, setCopyFeedback] = useState("");
   const [copyTimeout, setCopyTimeout] = useState(null);
   const [cardId, setCardId] = useState(null);
+  const [demoMode, setDemoMode] = useState(null);
   useEffect(() => {
     let alive = true;
     async function resolve() {
+      if (import.meta.env.DEV && token === "demo") {
+        setCard(hydrateCardFromBlocks(demoCard));
+        setCardId(demoCard.id);
+        setLoading(false);
+        return;
+      }
       if (!supabase) {
         setError(t("Bu kart şu anda görüntülenemiyor."));
         setLoading(false);
@@ -1234,8 +1253,10 @@ function PublicCard({ token, onReport }) {
           normalizeBlockType(block.type) === type && block.visible !== false,
       )?.data || {};
     const google = blockOf("google_review");
-    const social = blockOf("social").links || [];
-    const customLinks = blockOf("custom_links").links || [];
+    const socialData = blockOf("social").links;
+    const customData = blockOf("custom_links").links;
+    const social = (Array.isArray(socialData) ? socialData : []).filter((item) => item && typeof item.url === "string");
+    const customLinks = (Array.isArray(customData) ? customData : []).filter((item) => item && typeof item.url === "string");
     const customButton = blockOf("custom_button");
     const contact = blockOf("contact");
     const channels = contact.channels || {};
@@ -1335,11 +1356,51 @@ function PublicCard({ token, onReport }) {
     setPendingExternal(destination);
   }
 
+  function downloadVCard() {
+    const profile = links.profile;
+    const escapeVcard = (value) => String(value || "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+    const vcard = ["BEGIN:VCARD", "VERSION:3.0", `FN:${escapeVcard(profile.name || card.title)}`, links.contact.phone && `TEL;TYPE=CELL:${escapeVcard(links.contact.phone)}`, links.contact.email && `EMAIL:${escapeVcard(links.contact.email)}`, profile.company && `ORG:${escapeVcard(profile.company)}`, "END:VCARD"].filter(Boolean).join("\r\n");
+    const url = URL.createObjectURL(new Blob([vcard], { type: "text/vcard;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${slugify(card.title) || "contact"}.vcf`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function runPrimaryAction() {
+    if (!card) return;
+    const action = resolvePrimaryAction(card) || {};
+    const source = card.blocks?.find((block) => block.id === action.source_block_id && block.visible !== false);
+    const data = source?.data || {};
+    const sourceItem = Array.isArray(data.links) ? data.links.find((item) => item && (item.id === action.source_item_id || item.url === action.source_item_id)) : null;
+    const destination = action.url || data.url || sourceItem?.url || data.maps_url || data.links?.[0]?.url || "";
+    const phone = data.phone || links.contact.phone || "";
+    const whatsapp = data.whatsapp || links.contact.whatsapp || "";
+    const iban = sanitizeIban(data.iban || links.payment.iban || card.iban);
+    switch (action.type) {
+      case "copy_iban": return iban ? copyCardValue(iban, "IBAN kopyalandı.") : setExternalLinkError(t("Bu işlem için IBAN yapılandırılmalıdır."));
+      case "copy_text": return action.text ? copyCardValue(action.text, "Metin kopyalandı.") : setExternalLinkError(t("Kopyalanacak metin yapılandırılmalıdır."));
+      case "save_contact": {
+        return downloadVCard();
+      }
+      case "call": return requestExternal({ label: "Telefon", url: `tel:${String(phone).replace(/[^+\d]/g, "")}` });
+      case "whatsapp": return requestExternal({ label: "WhatsApp", url: `https://wa.me/${String(whatsapp).replace(/\D/g, "")}` });
+      case "website": case "social": case "maps": case "google_review": case "custom_url":
+        return destination ? requestExternal({ label: action.label || t("Bağlantıyı aç"), url: destination }) : setExternalLinkError(t("Bu işlem için geçerli bir bağlantı yapılandırılmalıdır."));
+      default: return setExternalLinkError(t("Önce geçerli bir ana işlem seçilmelidir."));
+    }
+  }
+
   if (!loading && error) {
     return <PublicNotFound onReport={onReport} message={t(error)} />;
   }
 
   const blockOrder = (type, fallback) => cardBlockOrder(card, type, fallback);
+  const presentationMode = import.meta.env.DEV && token === "demo" && demoMode
+    ? demoMode
+    : resolvePresentationMode(card);
+  const actionWarning = validatePrimaryAction(card);
 
   return (
     <main className="public-page" style={cardPaletteStyle(card?.palette)}>
@@ -1360,8 +1421,12 @@ function PublicCard({ token, onReport }) {
           </button>
         </div>
       </header>
+      {import.meta.env.DEV && token === "demo" && <nav className="demo-mode-switcher" aria-label={t("Demo kart görünümü")}>
+        {[["classic", "Classic NFC"], ["smart", "Smart NFC"], ["showcase", "Showcase NFC"]].map(([mode, label]) => <button type="button" key={mode} aria-pressed={presentationMode === mode} className={presentationMode === mode ? "selected" : ""} onClick={() => setDemoMode(mode)}>{label}</button>)}
+      </nav>}
       <article
-        className="public-card public-card-builder"
+        className={`public-card public-card-builder public-card-${presentationMode}`}
+        data-presentation-mode={presentationMode}
         style={cardPaletteStyle(card?.palette)}
       >
         {loading ? (
@@ -1384,9 +1449,33 @@ function PublicCard({ token, onReport }) {
           </div>
         ) : (
           <>
+            {presentationMode === "showcase" && links.profile.cover_url && (
+              <img className="showcase-cover" src={links.profile.cover_url} alt="" loading="eager" />
+            )}
+            {presentationMode !== "showcase" && (
+              <CompactCardPresentation
+                card={card}
+                mode={presentationMode}
+                profile={links.profile}
+                payment={links.payment}
+                contact={links.contact}
+                social={links.social}
+                note={links.note}
+                copyFeedback={copyFeedback}
+                onPrimaryAction={runPrimaryAction}
+                actionWarning={actionWarning}
+                onCopy={copyCardValue}
+                onExternal={requestExternal}
+                pendingExternal={pendingExternal}
+                externalLinkError={externalLinkError}
+                onCancelExternal={() => setPendingExternal(null)}
+                t={t}
+              />
+            )}
+            {presentationMode === "showcase" && <div className="showcase-content">
             {cardBlockVisibility(card, "profile") && (
               <section
-                className="public-card-block"
+                className="public-card-block public-identity"
                 style={{ order: blockOrder("profile", 0) }}
               >
                 <div className="public-avatar">
@@ -1403,9 +1492,6 @@ function PublicCard({ token, onReport }) {
                     (card.title || "B").slice(0, 1).toLocaleUpperCase("tr")
                   )}
                 </div>
-                <p className="eyebrow">
-                  {links.profile.title || t("DİJİTAL KART")}
-                </p>
                 <h1 className="public-name-heading">
                   <button
                     type="button"
@@ -1417,13 +1503,25 @@ function PublicCard({ token, onReport }) {
                     <Copy size={16} aria-hidden="true" />
                   </button>
                 </h1>
-                {links.profile.company && (
-                  <p className="public-subtitle">{links.profile.company}</p>
+                {(links.profile.category || links.profile.title || links.profile.location || links.profile.company) && (
+                  <p className="public-subtitle">{[links.profile.category || links.profile.title, links.profile.location || links.profile.company].filter(Boolean).join(" · ")}</p>
                 )}
                 {links.profile.bio && (
                   <p className="public-profile-bio">{links.profile.bio}</p>
                 )}
               </section>
+            )}
+            {showcaseAction && !["copy_iban", "call", "whatsapp", "save_contact"].includes(showcaseAction.type) && <section className="showcase-primary-action" style={{ order: 0 }}><button type="button" className="button button-primary" disabled={Boolean(actionWarning)} onClick={runPrimaryAction}>{showcaseAction.label || ({ custom_url: t("Bağlantıyı aç"), copy_text: t("Metni kopyala"), website: t("Web sitesini aç"), social: t("Sosyal profili aç"), maps: t("Konumu aç"), google_review: t("Google'da yorum yap") }[showcaseAction.type] || t("Ana işlem"))}</button>{actionWarning && <small role="alert">{t(actionWarning)}</small>}</section>}
+            {Array.isArray(links.profile.gallery) && links.profile.gallery.some((src) => typeof src === "string" && src.trim()) && (
+              <section className="showcase-gallery" aria-label={t("Fotoğraf galerisi")} style={{ order: 5 }}>
+                {links.profile.gallery.filter((src) => typeof src === "string" && src.trim()).map((src, index) => <img key={`${src}-${index}`} src={src} alt={`${links.profile.name || card.title} · ${index + 1}`} loading="lazy" />)}
+              </section>
+            )}
+            {links.profile.address && (
+              <section className="showcase-detail" style={{ order: 6 }}><MapPin size={20} aria-hidden="true" /><div><h2>{t("Adres")}</h2><p>{links.profile.address}</p></div>{links.contact.maps_url && <button type="button" className="text-button" onClick={() => requestExternal({ label: t("Konum"), url: links.contact.maps_url })}>{t("Haritada aç")} <ExternalLink size={14}/></button>}</section>
+            )}
+            {Array.isArray(links.profile.hours) && links.profile.hours.some((row) => row && typeof row === "object") && (
+              <section className="showcase-detail" style={{ order: 7 }}><div><h2>{t("Çalışma saatleri")}</h2><div className="showcase-hours">{links.profile.hours.filter((row) => row && typeof row === "object").map((row, index) => <p key={`${row.days}-${index}`}><span>{row.days || ""}</span><span>{row.time || ""}</span></p>)}</div></div></section>
             )}
             {cardBlockVisibility(card, "payment") &&
               (links.payment.bank_name ||
@@ -1431,7 +1529,7 @@ function PublicCard({ token, onReport }) {
                 links.payment.iban ||
                 card.iban) && (
                 <section
-                  className="public-card-block"
+                  className="public-card-block public-finance-block"
                   style={{ order: blockOrder("payment", 1) }}
                 >
                   {(links.payment.bank_name || card.bank_name) && (
@@ -1512,6 +1610,7 @@ function PublicCard({ token, onReport }) {
                   {links.contact.phone && (
                     <button
                       className="contact-link contact-button"
+                      style={{ order: showcaseAction?.type === "call" ? -1 : undefined }}
                       onClick={() =>
                         requestExternal({
                           label: "Telefon",
@@ -1519,7 +1618,7 @@ function PublicCard({ token, onReport }) {
                         })
                       }
                     >
-                      <UserRound size={16} /> {links.contact.phone}
+                      <Phone size={17} /> <span>{showcaseAction?.type === "call" && showcaseAction.label ? showcaseAction.label : t("Ara")}</span>
                     </button>
                   )}
                   {links.contact.email && (
@@ -1532,12 +1631,13 @@ function PublicCard({ token, onReport }) {
                         })
                       }
                     >
-                      <UserRound size={16} /> {t("E-posta gönder")}
+                      <Mail size={17} /> <span>{t("E-posta")}</span>
                     </button>
                   )}
                   {links.contact.whatsapp && (
                     <button
                       className="contact-link contact-button"
+                      style={{ order: showcaseAction?.type === "whatsapp" ? -1 : undefined }}
                       onClick={() =>
                         requestExternal({
                           label: "WhatsApp",
@@ -1545,7 +1645,7 @@ function PublicCard({ token, onReport }) {
                         })
                       }
                     >
-                      {t("WhatsApp")} <ExternalLink size={13} />
+                      <MessageCircle size={17} /> <span>{showcaseAction?.type === "whatsapp" && showcaseAction.label ? showcaseAction.label : t("WhatsApp")}</span>
                     </button>
                   )}
                   {links.contact.sms && (
@@ -1558,12 +1658,13 @@ function PublicCard({ token, onReport }) {
                         })
                       }
                     >
-                      {t("SMS")} <ExternalLink size={13} />
+                      <MessageCircle size={17} /> <span>{t("SMS")}</span>
                     </button>
                   )}
                   {links.contact.maps_url && (
                     <button
                       className="contact-link contact-button"
+                      style={{ order: showcaseAction?.type === "maps" ? -1 : undefined }}
                       onClick={() =>
                         requestExternal({
                           label: "Harita konumu",
@@ -1571,9 +1672,10 @@ function PublicCard({ token, onReport }) {
                         })
                       }
                     >
-                      {t("Harita konumu")} <ExternalLink size={13} />
+                      <MapPin size={17} /> <span>{t("Konum")}</span>
                     </button>
                   )}
+                  {(links.contact.phone || links.contact.email) && <button type="button" className="contact-link contact-button" style={{ order: showcaseAction?.type === "save_contact" ? -1 : undefined }} onClick={downloadVCard}><UserRound size={17}/><span>{showcaseAction?.type === "save_contact" && showcaseAction.label ? showcaseAction.label : t("Kişiyi kaydet")}</span></button>}
                   {links.contact.address && (
                     <p className="public-profile-bio">
                       {links.contact.address}
@@ -1902,6 +2004,14 @@ function PublicCard({ token, onReport }) {
                 <p>{links.note.text}</p>
               </section>
             )}
+            {card.blocks?.some(
+              (block) => block.visible !== false && !isSupportedCardBlock(block),
+            ) && (
+              <section className="public-card-block legacy-block-fallback" role="status">
+                <strong>{t("Bu kartta eski bir içerik bölümü bulunuyor.")}</strong>
+                <p>{t("Bu bölüm korunuyor; görüntüleme desteği yakında eklenecek.")}</p>
+              </section>
+            )}
             {pendingExternal && (
               <section
                 className="external-confirmation"
@@ -1940,11 +2050,43 @@ function PublicCard({ token, onReport }) {
                 {externalLinkError}
               </div>
             )}
+            </div>}
           </>
         )}
       </article>
       <Footer onReport={onReport} />
     </main>
+  );
+}
+
+function CompactCardPresentation({ card, mode, profile, payment, contact, social, note, copyFeedback, onPrimaryAction, actionWarning, onCopy, onExternal, pendingExternal, externalLinkError, onCancelExternal, t, preview = false }) {
+  const actionLabels = {
+    copy_iban: "IBAN'ı Kopyala", copy_text: "Metni Kopyala", save_contact: "Kişiyi Kaydet",
+    call: "Ara", whatsapp: "WhatsApp'tan Ulaş", website: "Web sitesine git",
+    social: "Sosyal profili aç", maps: "Konumu aç", google_review: "Yorum yap", custom_url: "Bağlantıyı aç",
+  };
+  const links = (Array.isArray(social?.links) ? social.links : []).filter((link) => link && typeof link.url === "string" && link.url).slice(0, 4);
+  return (
+    <div className={`compact-card-content compact-${mode}`}>
+      <section className="compact-identity">
+        {profile.avatar_url && <img src={profile.avatar_url} alt="" />}
+        <div><h1>{profile.name || card.title}</h1>
+          {(profile.category || profile.title || profile.location || profile.company) && <p>{[profile.category || profile.title, profile.location || profile.company].filter(Boolean).join(" · ")}</p>}
+          {mode === "smart" && profile.bio && <p className="compact-bio">{profile.bio}</p>}
+        </div>
+      </section>
+      {mode === "classic" && resolvePrimaryAction(card)?.type === "copy_iban" && payment.iban && <section className="classic-payment"><p>{payment.bank_name}</p><strong>{formatIban(sanitizeIban(payment.iban))}</strong>{payment.recipient_name && <small>{payment.recipient_name}</small>}</section>}
+      <button className="compact-primary-action" type="button" onClick={onPrimaryAction} disabled={preview || Boolean(actionWarning)}>
+        {resolvePrimaryAction(card)?.label || actionLabels[resolvePrimaryAction(card)?.type] || t("Ana işlem")}
+        <ArrowUpRight size={17} aria-hidden="true" />
+      </button>
+      {actionWarning && <p className="compact-action-warning" role="status">{t("Bu kartın ana işlemi henüz yapılandırılmamış.")}</p>}
+      {copyFeedback && <p className="copy-feedback" role="status" aria-live="polite">{copyFeedback}</p>}
+      {mode === "smart" && <div className="smart-secondary-actions">{contact.phone && <a href={`tel:${contact.phone}`}>{t("Ara")}</a>}{contact.whatsapp && <button type="button" onClick={() => onExternal({ label: "WhatsApp", url: `https://wa.me/${contact.whatsapp.replace(/\D/g, "")}` })}>{t("WhatsApp")}</button>}{contact.maps_url && <button type="button" onClick={() => onExternal({ label: t("Konum"), url: contact.maps_url })}>{t("Konum")}</button>}{links.slice(0, 2).map((link) => <button type="button" key={link.url} onClick={() => onExternal(link)}>{link.label}</button>)}</div>}
+      {mode === "smart" && note?.text && <p className="smart-note">{note.text}</p>}
+      {pendingExternal && <section className="external-confirmation" role="status" aria-live="polite"><div className="external-confirmation-title"><ShieldCheck size={16}/><strong>{t("Harici bağlantı")}</strong></div><p><strong>{t(pendingExternal.label)}</strong> {t("bağlantısını açmak üzeresiniz. Hedef adres:")}</p><code>{pendingExternal.url}</code><div><button className="button button-secondary" type="button" onClick={onCancelExternal}>{t("Vazgeç")}</button><a className="button button-primary" href={pendingExternal.url} target="_blank" rel="noopener noreferrer">{t("Bağlantıya devam et")} <ExternalLink size={14}/></a></div></section>}
+      {externalLinkError && <div className="inline-error" role="alert">{externalLinkError}</div>}
+    </div>
   );
 }
 
@@ -2082,14 +2224,28 @@ function formatTurkishIban(value) {
 function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
   const { t } = useTranslation();
   const [blurredFields, setBlurredFields] = useState({});
+  if (!isSupportedCardBlock(block)) {
+    return (
+      <div className="block-edit-fields unsupported-block-notice" role="status">
+        <strong>{t("Bu eski blok bu düzenleyicide henüz değiştirilemiyor.")}</strong>
+        <p>{t("Kartı kaydettiğinizde içerik ve görünürlük ayarı korunacaktır.")}</p>
+      </div>
+    );
+  }
   const fields =
     {
       profile: [
         ["avatar_url", "Profil fotoğrafı veya logo URL'si", "url"],
+        ["cover_url", "Kapak fotoğrafı URL'si", "url"],
         ["name", "İsim"],
         ["title", "Unvan"],
+        ["category", "Kategori"],
+        ["location", "Şehir / konum"],
         ["bio", "Kısa biyografi"],
         ["company", "Şirket adı"],
+        ["address", "Açık adres"],
+        ["gallery_urls", "Galeri fotoğrafı URL'leri (her satıra bir URL)", "textarea"],
+        ["hours_text", "Çalışma saatleri (Gün | saat, her satıra bir kayıt)", "textarea"],
       ],
       google_review: [
         ["business_name", "İşletme adı"],
@@ -2147,8 +2303,12 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
           <label className="field" key={key}>
             <span>{t(label)}</span>
             <textarea
-              value={block.data[key] || ""}
-              onChange={(event) => updateField(key, event.target.value)}
+              value={key === "gallery_urls" ? (block.data.gallery || []).join("\n") : key === "hours_text" ? (block.data.hours || []).map((row) => `${row.days || ""} | ${row.time || ""}`).join("\n") : block.data[key] || ""}
+              onChange={(event) => {
+                if (key === "gallery_urls") updateField("gallery", event.target.value.split("\n").map((value) => value.trim()).filter(Boolean));
+                else if (key === "hours_text") updateField("hours", event.target.value.split("\n").filter(Boolean).map((line) => { const [days, ...time] = line.split("|"); return { days: days.trim(), time: time.join("|").trim() }; }));
+                else updateField(key, event.target.value);
+              }}
             />
           </label>
         ) : (
@@ -2288,6 +2448,8 @@ function CardModal({
           managed_by_admin: startManaged,
           user_id: startManaged && clients.length ? clients[0].id : user.id,
         };
+    initial.presentation_mode = resolvePresentationMode(card);
+    initial.primary_action = resolvePrimaryAction(card) || { type: "", source_block_id: "", label: "", url: "", text: "" };
     return savedDraft
       ? {
           ...initial,
@@ -2630,12 +2792,12 @@ function CardModal({
           t("Herkese açık kart için geçerli bir kısa bağlantı yazın."),
         );
       }
-      const normalizedBlocks = blocks
-        .map((block, order) => ({
-          ...block,
-          type: normalizeBlockType(block.type),
-          order,
-        }))
+      if (card?.compatibility?.errors?.length) {
+        throw new Error(
+          t("Bu kartın eski blok verisi geçersiz olduğu için güvenle kaydedilemiyor."),
+        );
+      }
+      const normalizedBlocks = serializeCardBlocks(blocks)
         .map((block) =>
           block.type === "profile"
             ? {
@@ -2722,13 +2884,28 @@ function CardModal({
           data.maps_url = await checkUrl(data.maps_url);
         scannedBlocks.push({ ...block, data });
       }
+      const configuredAction = form.primary_action?.type ? { ...form.primary_action } : null;
+      if (configuredAction) {
+        const actionError = validatePrimaryAction({ ...card, blocks: scannedBlocks }, configuredAction);
+        if (actionError) throw new Error(t(actionError));
+        if (configuredAction.url?.trim()) configuredAction.url = await checkUrl(configuredAction.url.trim());
+        if (configuredAction.type === "copy_text" && !configuredAction.text?.trim()) throw new Error(t("Kopyalanacak metin zorunludur."));
+      }
+      const profileSettings = scannedBlocks.find((block) => block.type === "profile");
+      if (profileSettings) {
+        profileSettings.data.presentation_mode = form.presentation_mode || "showcase";
+        if (configuredAction) profileSettings.data.primary_action = configuredAction;
+        else delete profileSettings.data.primary_action;
+        if (profileSettings.data.cover_url?.trim()) profileSettings.data.cover_url = validateHttpsUrl(profileSettings.data.cover_url.trim());
+        profileSettings.data.gallery = (Array.isArray(profileSettings.data.gallery) ? profileSettings.data.gallery : []).map((url) => validateHttpsUrl(String(url).trim())).filter(Boolean);
+      }
       setScanning(false);
       let paletteId = form.palette_id || null;
       if (customPaletteDirty) {
         const savedPalette = await saveEditedPalette();
         paletteId = savedPalette.id;
       }
-      const legacyFields = toLegacyCardFields(scannedBlocks);
+      const legacyFields = legacyFieldsForCardSave(card || {}, scannedBlocks);
       const profile = scannedBlocks.find((block) => block.type === "profile");
       if (profile?.data.avatar_url?.trim())
         profile.data.avatar_url = validateHttpsUrl(profile.data.avatar_url);
@@ -2780,6 +2957,12 @@ function CardModal({
     }
   }
 
+  const profilePreview = blocks.find((block) => block.type === "profile" && block.visible)?.data || {};
+  const paymentPreview = blocks.find((block) => block.type === "payment_or_iban" && block.visible)?.data || {};
+  const contactPreview = blocks.find((block) => block.type === "contact" && block.visible)?.data || {};
+  const socialPreview = blocks.find((block) => block.type === "social" && block.visible)?.data || {};
+  const notePreview = blocks.find((block) => block.type === "text_or_note" && block.visible)?.data || {};
+  const previewCard = { ...form, title: form.title || t("Kart / işletme adı"), blocks, primary_action: form.primary_action };
   return (
     <div
       className="modal-backdrop"
@@ -2892,11 +3075,37 @@ function CardModal({
               </p>
             )}
           </div>
+          <section className="form-section presentation-mode-editor">
+            <div className="section-heading-row"><h3>02 <span>{t("Kart Görünümü")}</span></h3></div>
+            <div className="presentation-mode-options" role="radiogroup" aria-label={t("Kart görünümü")}>
+              {[
+                ["classic", "Classic NFC", "Hızlı ve tek amaçlı", "En uygun: ödeme, kişi veya tek bağlantı"],
+                ["smart", "Smart NFC", "Kompakt dijital kart", "En uygun: birkaç önemli iletişim seçeneği"],
+                ["showcase", "Showcase NFC", "Detaylı işletme profili", "En uygun: zengin işletme vitrini"],
+              ].map(([mode, title, description, useCase]) => <button key={mode} type="button" role="radio" aria-checked={form.presentation_mode === mode} className={`presentation-mode-option ${form.presentation_mode === mode ? "selected" : ""}`} onClick={() => update("presentation_mode", mode)}>
+                <span className={`mode-mini-preview mode-mini-${mode}`} aria-hidden="true"><i/><i/><i/></span><strong>{title}</strong><span>{t(description)}</span><small>{t(useCase)}</small>
+              </button>)}
+            </div>
+            <div className="primary-action-editor">
+              <h4>{t("Ana işlem")}</h4>
+              <p className="field-hint">{t("Ziyaretçinin kartı açtığında yapmasını istediğiniz işlemi seçin.")}</p>
+              <label className="field"><span>{t("İşlem türü")}</span><select value={form.primary_action?.type || ""} onChange={(event) => update("primary_action", { ...form.primary_action, type: event.target.value, source_block_id: "" })}>
+                <option value="">{t("İşlem seçin")}</option>
+                {[["copy_iban", "IBAN kopyala"], ["save_contact", "Kişiyi kaydet"], ["call", "Telefon et"], ["whatsapp", "WhatsApp aç"], ["website", "Web sitesi aç"], ["social", "Sosyal profil aç"], ["maps", "Konumu aç"], ["google_review", "Google yorumu aç"], ["custom_url", "Özel bağlantı"], ["copy_text", "Metni kopyala"]].map(([value, label]) => <option key={value} value={value}>{t(label)}</option>)}
+              </select></label>
+              {form.primary_action?.type && <>
+                {! ["custom_url", "copy_text"].includes(form.primary_action.type) && <label className="field"><span>{t("İçerik kaynağı")}</span><select value={form.primary_action.source_block_id || ""} onChange={(event) => update("primary_action", { ...form.primary_action, source_block_id: event.target.value, source_item_id: "" })}><option value="">{t("Kaynak seçin")}</option>{blocks.filter((block) => ({ copy_iban: ["payment_or_iban"], save_contact: ["profile", "contact"], call: ["contact"], whatsapp: ["contact"], website: ["social", "custom_links", "custom_button"], social: ["social"], maps: ["contact"], google_review: ["google_review"] }[form.primary_action.type] || CARD_BLOCK_TYPES).includes(block.type)).map((block) => <option key={block.id} value={block.id}>{t(cardBlockLabels[block.type] || block.type)}{block.visible === false ? ` · ${t("gizli")}` : ""}</option>)}</select></label>}
+                {(() => { const sourceBlock = blocks.find((block) => block.id === form.primary_action.source_block_id); const items = Array.isArray(sourceBlock?.data?.links) ? sourceBlock.data.links.filter((item) => item && item.url) : []; return items.length ? <label className="field"><span>{t("Bağlantı seçin")}</span><select value={form.primary_action.source_item_id || ""} onChange={(event) => update("primary_action", { ...form.primary_action, source_item_id: event.target.value })}><option value="">{t("İlk uygun bağlantı")}</option>{items.map((item) => { const value = item.id || item.url; return <option key={value} value={value}>{item.label || item.url}</option>; })}</select></label> : null; })()}
+                {form.primary_action.type === "custom_url" && <TextField label={t("Güvenli hedef URL") } type="url" value={form.primary_action.url} placeholder="https://example.com" onChange={(event) => update("primary_action", { ...form.primary_action, url: event.target.value })}/>}
+                {form.primary_action.type === "copy_text" && <label className="field"><span>{t("Kopyalanacak metin")}</span><textarea value={form.primary_action.text || ""} onChange={(event) => update("primary_action", { ...form.primary_action, text: event.target.value })}/></label>}
+                <TextField label={t("Özel buton etiketi (isteğe bağlı)")} value={form.primary_action.label || ""} onChange={(event) => update("primary_action", { ...form.primary_action, label: event.target.value })}/>
+                {form.primary_action.source_block_id && validatePrimaryAction({ blocks }, form.primary_action) && <div className="inline-warning" role="alert">{t(validatePrimaryAction({ blocks }, form.primary_action))}</div>}
+              </>}
+            </div>
+          </section>
           <div className="form-section card-builder-section">
             <div className="section-heading-row">
-              <h3>
-                02 <span>{t("Kart blokları")}</span>
-              </h3>
+              <h3><span>{t("Kart blokları")}</span></h3>
               <label className="field add-block-field">
                 <span>{t("Blok ekle")}</span>
                 <select
@@ -2991,6 +3200,7 @@ function CardModal({
                         <button
                           type="button"
                           className="text-button"
+                          disabled={!isSupportedCardBlock(block)}
                           onClick={() => duplicateBlock(block)}
                         >
                           {t("Kopyala")}
@@ -2998,7 +3208,7 @@ function CardModal({
                         <button
                           type="button"
                           className="text-button danger-text"
-                          disabled={block.type === "profile"}
+                          disabled={block.type === "profile" || !isSupportedCardBlock(block)}
                           onClick={() => removeBlock(block.id)}
                         >
                           {t("Sil")}
@@ -3044,23 +3254,16 @@ function CardModal({
                   )}
                 >
                   <span className="phone-speaker" />
-                  <strong>{form.title || t("Kart / işletme adı")}</strong>
-                  <span className="phone-height-marker">
-                    {t("Tipik telefon ekranı sınırı (700 px)")}
-                  </span>
-                  <div className="phone-preview-blocks">
-                    {[...blocks]
-                      .sort((a, b) => a.order - b.order)
-                      .filter((block) => block.visible)
-                      .map((block) => (
-                        <span key={block.id}>
-                          <strong>{t(cardBlockLabels[block.type])}</strong>
-                          <small>{cardBlockPreviewText(block)}</small>
-                        </span>
-                      ))}
-                  </div>
+                  {form.presentation_mode === "showcase" ? <div className="preview-showcase">
+                    {profilePreview.cover_url && <img className="preview-showcase-cover" src={profilePreview.cover_url} alt=""/>}
+                    <div className="preview-showcase-identity">{profilePreview.avatar_url && <img src={profilePreview.avatar_url} alt=""/>}<div><strong>{profilePreview.name || previewCard.title}</strong><small>{[profilePreview.category || profilePreview.title, profilePreview.location || profilePreview.company].filter(Boolean).join(" · ")}</small></div></div>
+                    {profilePreview.bio && <p>{profilePreview.bio}</p>}
+                    {paymentPreview.iban && <div className="preview-showcase-block"><b>{paymentPreview.bank_name || t("IBAN")}</b><small>{formatIban(sanitizeIban(paymentPreview.iban))}</small></div>}
+                    {[...blocks].sort((a, b) => a.order - b.order).filter((block) => block.visible && ["contact", "social", "text_or_note"].includes(block.type)).map((block) => <div className="preview-showcase-block" key={block.id}><b>{t(cardBlockLabels[block.type])}</b><small>{cardBlockPreviewText(block)}</small></div>)}
+                    {profilePreview.gallery?.length > 0 && <div className="preview-showcase-gallery">{profilePreview.gallery.slice(0, 3).map((src) => <img src={src} key={src} alt=""/>)}</div>}
+                  </div> : <CompactCardPresentation card={previewCard} mode={form.presentation_mode} profile={profilePreview} payment={paymentPreview} contact={contactPreview} social={socialPreview} note={notePreview} copyFeedback="" actionWarning={validatePrimaryAction(previewCard)} onPrimaryAction={() => {}} onCopy={() => {}} onExternal={() => {}} t={t} preview/>}
                 </div>
-                <small>{t("Canlı önizleme")}</small>
+                <small>{t("Canlı önizleme")} · {form.presentation_mode === "classic" ? "Classic NFC" : form.presentation_mode === "smart" ? "Smart NFC" : "Showcase NFC"}{isDirty ? ` · ${t("Kaydedilmemiş değişiklikler")}` : ""}</small>
               </div>
             </div>
           </div>
@@ -4155,7 +4358,7 @@ function App() {
     }
     if (cardsResult.error)
       setError(`Kartlar yüklenemedi: ${cardsResult.error.message}`);
-    else setCards(cardsResult.data || []);
+    else setCards((cardsResult.data || []).map(hydrateCardFromBlocks));
     if (feedbackResult.error) {
       if (feedbackResult.error.code !== "42883") {
         setError((previous) =>
@@ -4568,7 +4771,9 @@ function App() {
       return;
     }
     updateCardsState((current) =>
-      current.map((item) => (item.id === data.id ? data : item)),
+      current.map((item) =>
+        item.id === data.id ? hydrateCardFromBlocks(data) : item,
+      ),
     );
     setToast({ message: t("Kart onaylandı ve yayınlandı.") });
   }
@@ -4595,7 +4800,9 @@ function App() {
       return;
     }
     updateCardsState((current) =>
-      current.map((item) => (item.id === data.id ? data : item)),
+      current.map((item) =>
+        item.id === data.id ? hydrateCardFromBlocks(data) : item,
+      ),
     );
     setToast({
       message: t(
@@ -5871,8 +6078,10 @@ function App() {
           onSaved={(saved) => {
             updateCardsState((items) =>
               modalCard
-                ? items.map((item) => (item.id === saved.id ? saved : item))
-                : [saved, ...items],
+                ? items.map((item) =>
+                    item.id === saved.id ? hydrateCardFromBlocks(saved) : item,
+                  )
+                : [hydrateCardFromBlocks(saved), ...items],
             );
             setModalCard(undefined);
             setStartManagedCard(false);

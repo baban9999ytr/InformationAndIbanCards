@@ -9,6 +9,8 @@ export const CARD_BLOCK_TYPES = [
   "text_or_note",
 ];
 
+export const CARD_CONFIG_VERSION = 2;
+
 const legacyBlockTypes = {
   payment: "payment_or_iban",
   custom: "custom_links",
@@ -56,6 +58,37 @@ export function normalizeBlockType(type) {
   return legacyBlockTypes[type] || type;
 }
 
+export function isSupportedCardBlock(block) {
+  return Boolean(block) && CARD_BLOCK_TYPES.includes(normalizeBlockType(block.type));
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+export function inspectCardCompatibility(card) {
+  const errors = [];
+  const warnings = [];
+  if (!isPlainObject(card)) {
+    return { errors: ["Card must be an object"], warnings: [] };
+  }
+  if (card.blocks !== undefined && !Array.isArray(card.blocks)) {
+    errors.push("blocks must be an array when present");
+  }
+  if (Array.isArray(card.blocks)) {
+    card.blocks.forEach((block, index) => {
+      if (!isPlainObject(block) || typeof block.type !== "string") {
+        errors.push(`blocks[${index}] is not a valid block object`);
+      } else if (!isPlainObject(block.data) && block.data !== undefined) {
+        errors.push(`blocks[${index}].data must be an object when present`);
+      } else if (!isSupportedCardBlock(block)) {
+        warnings.push(`Unsupported block type: ${block.type}`);
+      }
+    });
+  }
+  return { errors, warnings };
+}
+
 export function createCardBlock(type, order = 0, data = {}) {
   const normalizedType = normalizeBlockType(type);
   if (!CARD_BLOCK_TYPES.includes(normalizedType)) {
@@ -75,23 +108,22 @@ export function createCardBlock(type, order = 0, data = {}) {
 export function makeCardBlocks(existing = [], legacyCard = {}) {
   const blocks = Array.isArray(existing)
     ? existing
-        .filter(
-          (block) =>
-            block && CARD_BLOCK_TYPES.includes(normalizeBlockType(block.type)),
-        )
+        .filter((block) => isPlainObject(block) && typeof block.type === "string")
         .map((block, order) => {
           const type = normalizeBlockType(block.type);
-          const data =
-            block.data &&
-            typeof block.data === "object" &&
-            !Array.isArray(block.data)
-              ? block.data
-              : {};
+          const data = isPlainObject(block.data) ? block.data : {};
+          const supported = CARD_BLOCK_TYPES.includes(type);
           return {
-            ...createCardBlock(type, order, data),
+            // Keep the complete legacy object. Unknown fields are intentionally
+            // round-tripped so opening the redesigned editor never destroys data
+            // owned by a newer or older client.
+            ...block,
             id: block.id || `legacy-${type}-${order}`,
+            type,
             order: Number.isFinite(block.order) ? block.order : order,
             visible: block.visible !== false,
+            data: supported ? { ...blockDefaults[type], ...data } : data,
+            unsupported: !supported,
           };
         })
     : [];
@@ -128,6 +160,26 @@ export function makeCardBlocks(existing = [], legacyCard = {}) {
     .sort((left, right) => left.order - right.order)
     .map((block, order) => ({ ...block, order }));
 }
+
+/**
+ * Produces the in-memory configuration used by the public renderer and editor.
+ * It deliberately performs no persistence: legacy cards are readable before any
+ * migration is approved, and all unknown card/block fields remain available.
+ */
+export function normalizeCardConfiguration(card = {}) {
+  const compatibility = inspectCardCompatibility(card);
+  const hasStoredBlocks = Array.isArray(card.blocks) && card.blocks.length > 0;
+  return {
+    ...card,
+    schema_version: Number.isInteger(card.schema_version)
+      ? card.schema_version
+      : hasStoredBlocks
+        ? 1
+        : 0,
+    compatibility,
+    blocks: makeCardBlocks(card.blocks || [], card),
+  };
+}
 //export function RemoveInformationAbouttHEcARDS(card)
 //{
 // const Id = makeCardBlocks(card.Id || [])
@@ -137,13 +189,14 @@ export function makeCardBlocks(existing = [], legacyCard = {}) {
 
 export function hydrateCardFromBlocks(card) {
   if (!card) return card;
-  const blocks = makeCardBlocks(card.blocks || [], card);
+  const normalized = normalizeCardConfiguration(card);
+  const blocks = normalized.blocks;
   const fields = toLegacyCardFields(blocks);
   const profile = blocks.find((block) => block.type === "profile")?.data || {};
   const review =
     blocks.find((block) => block.type === "google_review")?.data || {};
   return {
-    ...card,
+    ...normalized,
     blocks,
     title: profile.name || card.title,
     google_review_url: review.url || fields.google_review_url,
@@ -200,4 +253,45 @@ export function toLegacyCardFields(blocks) {
       url: String(link.url || "").trim(),
     })),
   };
+}
+
+/**
+ * Mirrors editable blocks back to the legacy columns without clearing data from
+ * a hidden or unsupported block. This preserves old readers while the new
+ * renderer honours block visibility from the JSON configuration.
+ */
+export function legacyFieldsForCardSave(existingCard = {}, blocks = []) {
+  const fromBlocks = toLegacyCardFields(blocks);
+  const visible = (type) =>
+    blocks.some(
+      (block) => normalizeBlockType(block.type) === type && block.visible !== false,
+    );
+  return {
+    google_review_url: visible("google_review")
+      ? fromBlocks.google_review_url
+      : existingCard.google_review_url ?? null,
+    iban: visible("payment_or_iban") ? fromBlocks.iban : existingCard.iban ?? null,
+    bank_name: visible("payment_or_iban")
+      ? fromBlocks.bank_name
+      : existingCard.bank_name ?? null,
+    whatsapp: visible("contact")
+      ? fromBlocks.whatsapp
+      : existingCard.whatsapp ?? null,
+    sms: visible("contact") ? fromBlocks.sms : existingCard.sms ?? null,
+    email: visible("contact") ? fromBlocks.email : existingCard.email ?? null,
+    instagram_url: visible("social")
+      ? fromBlocks.instagram_url
+      : existingCard.instagram_url ?? null,
+    extra_links: visible("custom_links")
+      ? fromBlocks.extra_links
+      : existingCard.extra_links ?? [],
+  };
+}
+
+export function serializeCardBlocks(blocks = []) {
+  return blocks.map(({ unsupported, ...block }, order) => ({
+    ...block,
+    type: normalizeBlockType(block.type),
+    order,
+  }));
 }

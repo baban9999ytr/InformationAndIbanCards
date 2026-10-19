@@ -1400,6 +1400,7 @@ function PublicCard({ token, onReport }) {
   const presentationMode = import.meta.env.DEV && token === "demo" && demoMode
     ? demoMode
     : resolvePresentationMode(card);
+  const showcaseAction = resolvePrimaryAction(card);
   const actionWarning = validatePrimaryAction(card);
 
   return (

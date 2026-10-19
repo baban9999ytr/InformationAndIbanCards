@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   demoCard,
@@ -10,6 +11,16 @@ import {
 test("legacy cards without a presentation setting remain Showcase", () => {
   assert.equal(resolvePresentationMode({ title: "Existing" }), "showcase");
   assert.equal(resolvePresentationMode({ blocks: [{ type: "profile", data: {} }] }), "showcase");
+});
+
+test("legacy cards without a primary action resolve safely to no action", () => {
+  assert.equal(resolvePrimaryAction({ title: "Existing", blocks: [] }), null);
+  assert.equal(validatePrimaryAction({ title: "Existing", blocks: [] }), "Choose a primary action.");
+});
+
+test("public Showcase renderer binds the optional action before rendering it", async () => {
+  const source = await readFile(new URL("./App.jsx", import.meta.url), "utf8");
+  assert.match(source, /const showcaseAction = resolvePrimaryAction\(card\);/);
 });
 
 test("presentation mode is compatible when stored in the profile block", () => {

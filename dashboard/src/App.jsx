@@ -37,7 +37,11 @@ import { signInWithGoogle } from "./auth.js";
 import { supabase, supabaseConfigured } from "./supabaseClient.js";
 import { LanguageSwitcher, useTranslation } from "./i18n.jsx";
 import { invalidateCachedQueries, queryCached } from "./queryCache.js";
-import { saveCustomPalette, validatePaletteTokens } from "./paletteApi.js";
+import {
+  paletteContrastIssues,
+  saveCustomPalette,
+  validatePaletteTokens,
+} from "./paletteApi.js";
 import {
   CARD_BLOCK_TYPES,
   createCardBlock,
@@ -1195,10 +1199,12 @@ function AuthScreen({ onAuthenticated, onReport, initialNotice = "" }) {
   );
 }
 
-function PublicCard({ token, onReport }) {
+function PublicCard({ token, onReport, previewCard = null }) {
   const { t } = useTranslation();
-  const [card, setCard] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [card, setCard] = useState(() =>
+    previewCard ? hydrateCardFromBlocks(previewCard) : null,
+  );
+  const [loading, setLoading] = useState(!previewCard);
   const [error, setError] = useState("");
   const [rating, setRating] = useState(0);
   const [message, setMessage] = useState("");
@@ -1217,6 +1223,15 @@ function PublicCard({ token, onReport }) {
   const [demoMode, setDemoMode] = useState(null);
   useEffect(() => {
     let alive = true;
+    if (previewCard) {
+      setCard(hydrateCardFromBlocks(previewCard));
+      setCardId(previewCard.id || "editor-preview");
+      setLoading(false);
+      setError("");
+      return () => {
+        alive = false;
+      };
+    }
     async function resolve() {
       if (import.meta.env.DEV && token === "demo") {
         setCard(hydrateCardFromBlocks(demoCard));
@@ -1248,7 +1263,7 @@ function PublicCard({ token, onReport }) {
     return () => {
       alive = false;
     };
-  }, [token, t]);
+  }, [token, t, previewCard]);
 
   useEffect(
     () => () => {
@@ -1515,8 +1530,8 @@ const showcaseAction = resolvePrimaryAction(card);
 const actionWarning = validatePrimaryAction(card);
 
   return (
-    <main className="public-page" style={cardPaletteStyle(card?.palette)}>
-      <header className="public-header">
+    <main className={`public-page ${previewCard ? "editor-render-preview" : ""}`} style={cardPaletteStyle(card?.palette)}>
+      {!previewCard && <header className="public-header">
         <a className="brand public-brand" href="/">
           <span className="brand-symbol">b.</span>
           <span>bilgi</span>
@@ -1532,8 +1547,8 @@ const actionWarning = validatePrimaryAction(card);
             {t("Kötüye kullanım bildirimi")}
           </button>
         </div>
-      </header>
-      {import.meta.env.DEV && token === "demo" && (
+      </header>}
+      {!previewCard && import.meta.env.DEV && token === "demo" && (
         <nav
           className="demo-mode-switcher"
           aria-label={t("Demo kart görünümü")}
@@ -2357,7 +2372,7 @@ const actionWarning = validatePrimaryAction(card);
           </>
         )}
       </article>
-      <Footer onReport={onReport} />
+      {!previewCard && <Footer onReport={onReport} />}
     </main>
   );
 }
@@ -2962,6 +2977,15 @@ function CardModal({
   startManaged = false,
 }) {
   const { t } = useTranslation();
+  const [activeEditorSection, setActiveEditorSection] = useState("content");
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  useEffect(() => {
+    if (mobilePreviewOpen)
+      document.querySelector(".card-editor-workspace .editor-form")?.scrollTo({
+        top: 0,
+        behavior: "auto",
+      });
+  }, [mobilePreviewOpen]);
   const [savedDraft] = useState(() => readCardDraft(user.id, card?.id));
   const [form, setForm] = useState(() => {
     const initial = card
@@ -3104,6 +3128,11 @@ function CardModal({
   async function saveEditedPalette() {
     setPaletteError("");
     const tokens = validatePaletteTokens(customPaletteTokens);
+    if (paletteContrastIssues(tokens).length) {
+      throw new Error(
+        t("Özel temada metin ve düğme renkleri en az 4,5:1 kontrast sağlamalıdır."),
+      );
+    }
     const name = customPaletteName.trim();
     if (!name) throw new Error(t("Özel palet adı zorunludur."));
     const savedPalette = await saveCustomPalette(supabase, {
@@ -3134,6 +3163,14 @@ function CardModal({
 
   useEffect(() => {
     if (!isDirty) return undefined;
+    const persistBeforeHistoryNavigation = () => persistDraft();
+    window.addEventListener("popstate", persistBeforeHistoryNavigation);
+    return () =>
+      window.removeEventListener("popstate", persistBeforeHistoryNavigation);
+  }, [blocks, card?.id, form, isDirty, slugManuallyEdited, user.id]);
+
+  useEffect(() => {
+    if (!isDirty) return undefined;
     const warnBeforeUnload = (event) => {
       persistDraft();
       event.preventDefault();
@@ -3143,7 +3180,7 @@ function CardModal({
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [blocks, card?.id, form, isDirty, slugManuallyEdited, user.id]);
 
-  function requestClose() {
+  function requestClose(nextSection = "cards") {
     if (
       isDirty &&
       !window.confirm(
@@ -3154,7 +3191,24 @@ function CardModal({
     )
       return;
     if (isDirty) persistDraft();
-    onClose();
+    onClose(nextSection);
+  }
+
+  function navigateEditorSection(section) {
+    setActiveEditorSection(section);
+    const targetId = {
+      content: "editor-content",
+      appearance: "editor-appearance",
+      action: "editor-primary-action",
+      nfc: "editor-nfc",
+      settings: "editor-settings",
+    }[section];
+    document.getElementById(targetId)?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
   }
 
   function update(key, value) {
@@ -3552,21 +3606,37 @@ function CardModal({
     title: form.title || t("Kart / işletme adı"),
     blocks,
     primary_action: form.primary_action,
+    palette:
+      palettes.find((palette) => palette.id === form.palette_id)?.tokens ||
+      suggestedPalette?.tokens ||
+      palettes.find((palette) => palette.is_default)?.tokens,
   };
   return (
     <div
-      className="modal-backdrop"
+      className={`modal-backdrop ${card ? "editor-backdrop" : "quick-create-backdrop"}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) requestClose();
       }}
     >
       <section
-        className="modal card-modal"
+        className={`modal card-modal ${card ? "card-editor-workspace" : "quick-create"} ${startManaged ? "managed-create" : ""} ${mobilePreviewOpen ? "preview-open" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="card-modal-title"
       >
-        <header className="modal-header">
+        {card && (
+          <nav className="editor-sidebar" aria-label={t("Dashboard navigation")}>
+            <a className="editor-brand" href="/dashboard" onClick={(event) => { event.preventDefault(); requestClose("overview"); }}>
+              <span className="brand-symbol">b.</span><span>bilgi</span>
+            </a>
+            <span className="editor-workspace-label">{t("Çalışma alanı")}</span>
+            <button type="button" onClick={() => requestClose("overview")}>{t("Genel Bakış")}</button>
+            <button type="button" className="selected" aria-current="page" onClick={() => requestClose("cards")}>{t("Kartlarım")}</button>
+            <button type="button" onClick={() => requestClose("feedback")}>{t("Geri bildirimler")}</button>
+            <button type="button" onClick={() => requestClose("settings")}>{t("Hesap ayarları")}</button>
+          </nav>
+        )}
+        <header className="modal-header editor-topbar">
           <div>
             <p className="eyebrow">
               {card ? t("KART AYARLARI") : t("YENİ KART")}
@@ -3578,8 +3648,25 @@ function CardModal({
           <IconButton label={t("Pencereyi kapat")} onClick={requestClose}>
             <X size={19} />
           </IconButton>
+          {card && (
+            <div className="editor-topbar-actions">
+              <span className="editor-save-state" role="status">
+                {busy ? t("Kaydediliyor…") : isDirty ? t("Kaydedilmemiş değişiklikler") : t("Tüm değişiklikler kaydedildi")}
+              </span>
+              <button
+                type="button"
+                className="button button-secondary editor-preview-toggle"
+                onClick={() => setMobilePreviewOpen((open) => !open)}
+              >
+                {mobilePreviewOpen ? t("Düzenlemeye dön") : t("Önizleme")}
+              </button>
+              <button type="submit" form="card-editor-form" className="button button-primary" disabled={busy || !supabaseConfigured}>
+                {busy ? <LoaderCircle className="spin" size={16} /> : null} {t("Değişiklikleri kaydet")}
+              </button>
+            </div>
+          )}
         </header>
-        <form className="modal-body" onSubmit={save}>
+        <form id="card-editor-form" className="modal-body editor-form" onSubmit={save}>
           {error && (
             <div className="inline-error" role="alert">
               {error}
@@ -3589,6 +3676,32 @@ function CardModal({
             <div className="inline-warning" role="status">
               {scanNotice}
             </div>
+          )}
+          {card && (
+            <nav
+              className="editor-section-nav"
+              aria-label={t("Kart düzenleme bölümleri")}
+            >
+              {[
+                ["content", "İçerik"],
+                ["appearance", "Görünüm"],
+                ["action", "Ana işlem"],
+                ["nfc", "NFC"],
+                ["settings", "Ayarlar"],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={activeEditorSection === key ? "active" : ""}
+                  aria-current={
+                    activeEditorSection === key ? "step" : undefined
+                  }
+                  onClick={() => navigateEditorSection(key)}
+                >
+                  {t(label)}
+                </button>
+              ))}
+            </nav>
           )}
           {isAdmin && (
             <div className="dev-tools">
@@ -3621,7 +3734,7 @@ function CardModal({
               )}
             </div>
           )}
-          <div className="form-section">
+          <div className="form-section quick-create-basics" id="editor-settings">
             <h3>
               01 <span>{t("Temel bilgiler")}</span>
             </h3>
@@ -3669,7 +3782,7 @@ function CardModal({
               </p>
             )}
           </div>
-          <section className="form-section presentation-mode-editor">
+          <section className="form-section presentation-mode-editor" id="editor-appearance">
             <div className="section-heading-row">
               <h3>
                 02 <span>{t("Kart Görünümü")}</span>
@@ -3722,7 +3835,7 @@ function CardModal({
                 </button>
               ))}
             </div>
-            <div className="primary-action-editor">
+            <div className="primary-action-editor" id="editor-primary-action">
               <h4>{t("Ana işlem")}</h4>
               <p className="field-hint">
                 {t(
@@ -3896,7 +4009,7 @@ function CardModal({
               )}
             </div>
           </section>
-          <div className="form-section card-builder-section">
+          <div className="form-section card-builder-section" id="editor-content">
             <div className="section-heading-row">
               <h3>
                 <span>{t("Kart blokları")}</span>
@@ -4049,101 +4162,11 @@ function CardModal({
                 className="card-builder-preview"
                 aria-label={t("Canlı önizleme")}
               >
-                <div
-                  className="phone-preview"
-                  style={paletteTokensStyle(
-                    customPaletteOpen
-                      ? customPaletteTokens
-                      : palettes.find(
-                          (palette) => palette.id === form.palette_id,
-                        )?.tokens ||
-                          suggestedPalette?.tokens ||
-                          palettes.find((palette) => palette.is_default)
-                            ?.tokens,
-                  )}
-                >
-                  <span className="phone-speaker" />
-                  {form.presentation_mode === "showcase" ? (
-                    <div className="preview-showcase">
-                      {profilePreview.cover_url && (
-                        <img
-                          className="preview-showcase-cover"
-                          src={profilePreview.cover_url}
-                          alt=""
-                        />
-                      )}
-                      <div className="preview-showcase-identity">
-                        {profilePreview.avatar_url && (
-                          <img src={profilePreview.avatar_url} alt="" />
-                        )}
-                        <div>
-                          <strong>
-                            {profilePreview.name || previewCard.title}
-                          </strong>
-                          <small>
-                            {[
-                              profilePreview.category || profilePreview.title,
-                              profilePreview.location || profilePreview.company,
-                            ]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </small>
-                        </div>
-                      </div>
-                      {profilePreview.bio && <p>{profilePreview.bio}</p>}
-                      {paymentPreview.iban && (
-                        <div className="preview-showcase-block">
-                          <b>{paymentPreview.bank_name || t("IBAN")}</b>
-                          <small>
-                            {formatIban(sanitizeIban(paymentPreview.iban))}
-                          </small>
-                        </div>
-                      )}
-                      {[...blocks]
-                        .sort((a, b) => a.order - b.order)
-                        .filter(
-                          (block) =>
-                            block.visible &&
-                            ["contact", "social", "text_or_note"].includes(
-                              block.type,
-                            ),
-                        )
-                        .map((block) => (
-                          <div
-                            className="preview-showcase-block"
-                            key={block.id}
-                          >
-                            <b>{t(cardBlockLabels[block.type])}</b>
-                            <small>{cardBlockPreviewText(block)}</small>
-                          </div>
-                        ))}
-                      {profilePreview.gallery?.length > 0 && (
-                        <div className="preview-showcase-gallery">
-                          {profilePreview.gallery.slice(0, 3).map((src) => (
-                            <img src={src} key={src} alt="" />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <CompactCardPresentation
-                      card={previewCard}
-                      mode={form.presentation_mode}
-                      profile={profilePreview}
-                      payment={paymentPreview}
-                      contact={contactPreview}
-                      social={socialPreview}
-                      note={notePreview}
-                      copyFeedback=""
-                      actionWarning={validatePrimaryAction(previewCard)}
-                      onPrimaryAction={() => {}}
-                      onCopy={() => {}}
-                      onExternal={() => {}}
-                      t={t}
-                      preview
-                    />
-                  )}
-                </div>
+                <PublicCard
+                  token="editor-preview"
+                  onReport={() => {}}
+                  previewCard={previewCard}
+                />
                 <small>
                   {t("Canlı önizleme")} ·{" "}
                   {form.presentation_mode === "classic"
@@ -4226,9 +4249,13 @@ function CardModal({
                         </span>
                         <span>
                           <strong>{palette.name}</strong>
-                          {palette.moderation_status === "pending" && (
-                            <small>{t("İnceleniyor")}</small>
-                          )}
+                          <small>
+                            {palette.moderation_status === "pending"
+                              ? t("İnceleniyor")
+                              : paletteContrastIssues(palette.tokens).length
+                                ? t("Kontrastı düşük")
+                                : t("Erişilebilir kontrast")}
+                          </small>
                         </span>
                       </button>
                     );
@@ -4428,7 +4455,7 @@ function CardModal({
               )}
             </div>
           )}
-          <div className="form-section">
+          <div className="form-section" id="editor-nfc">
             <h3>
               05 <span>{t("NFC")}</span>
             </h3>
@@ -4992,7 +5019,8 @@ function GoogleConsentModal({ status, error, onRetry, onConfirm }) {
 
 function App() {
   const { t, language } = useTranslation();
-  const pathname = window.location.pathname;
+  const [routeLocation, setRouteLocation] = useState(window.location.pathname);
+  const pathname = routeLocation;
   const normalizedPath = pathname.replace(/\/+$/, "") || "/";
   const publicMatch = normalizedPath.match(/^\/(c|p)\/([^/]+)$/);
   const legacyCardRoute = normalizedPath === "/informationpage";
@@ -5015,6 +5043,12 @@ function App() {
     : null;
   const loginRoute = normalizedPath === "/login";
   const createRoute = normalizedPath === "/create";
+  const devEditorPreviewRoute =
+    import.meta.env.DEV &&
+    ["/__dev/card-editor", "/__dev/card-create"].includes(normalizedPath);
+  const editorRouteMatch = normalizedPath.match(/^\/dashboard\/cards\/([^/]+)\/edit$/);
+  const editorCardId = editorRouteMatch ? decodeRouteSegment(editorRouteMatch[1]) : null;
+  const editorRoute = Boolean(editorCardId);
   const adminRoute = normalizedPath === "/admin";
   const dashboardRoute = /^\/dashboard(?:\/.*)?$/.test(normalizedPath);
   const settingsRoute = /^\/settings(?:\/.*)?$/.test(normalizedPath);
@@ -5072,6 +5106,24 @@ function App() {
   const [dark, setDark] = useState(
     () => localStorage.getItem("bilgi-theme") !== "light",
   );
+  useEffect(() => {
+    const syncRoute = () => {
+      const nextPath = window.location.pathname;
+      setRouteLocation(nextPath);
+      if (!/^\/dashboard\/cards\/[^/]+\/edit\/?$/.test(nextPath))
+        setModalCard(undefined);
+    };
+    window.addEventListener("popstate", syncRoute);
+    return () => window.removeEventListener("popstate", syncRoute);
+  }, []);
+
+  useEffect(() => {
+    if (!editorRoute || loading) return;
+    const matchingCard = cards.find((item) => item.id === editorCardId);
+    if (matchingCard) {
+      setModalCard((current) => current?.id === matchingCard.id ? current : matchingCard);
+    }
+  }, [cards, editorCardId, editorRoute, loading]);
   function openReport(context = {}) {
     setReportContext({
       ...context,
@@ -5082,6 +5134,23 @@ function App() {
   function updateCardsState(updater) {
     invalidateCachedQueries(["cards", "list"]);
     setCards(updater);
+  }
+
+  function setAppPath(path, replace = false) {
+    window.history[replace ? "replaceState" : "pushState"]({}, "", path);
+    setRouteLocation(window.location.pathname);
+  }
+
+  function openCardEditor(card) {
+    setModalCard(card);
+    setStartManagedCard(false);
+    setAppPath(`/dashboard/cards/${encodeURIComponent(card.id)}/edit`);
+  }
+
+  function closeCardEditor(nextSection = "cards") {
+    setModalCard(undefined);
+    setSection(nextSection);
+    setAppPath("/dashboard", true);
   }
 
   useEffect(() => {
@@ -5867,6 +5936,23 @@ function App() {
     setError("");
   }
 
+  if (devEditorPreviewRoute)
+    return (
+      <CardModal
+        card={
+          normalizedPath === "/__dev/card-create"
+            ? null
+            : hydrateCardFromBlocks(demoCard)
+        }
+        isAdmin={false}
+        canSkipScan={false}
+        accessToken=""
+        user={{ id: "local-editor-preview", email: "preview@example.test" }}
+        clients={[]}
+        onClose={() => setAppPath("/c/demo", true)}
+        onSaved={() => {}}
+      />
+    );
   if (legalRouteTarget) return <LegalRouteRedirect target={legalRouteTarget} />;
   if (normalizedPath === "/")
     return (
@@ -6271,7 +6357,7 @@ function App() {
                         <CardRow
                           key={card.id}
                           card={card}
-                          onEdit={setModalCard}
+                          onEdit={openCardEditor}
                           onDelete={setDeleteCardTarget}
                           onViewFeedback={(selectedCard) => {
                             setFeedbackCardId(selectedCard.id);
@@ -6376,7 +6462,7 @@ function App() {
                       <CardRow
                         key={card.id}
                         card={card}
-                        onEdit={setModalCard}
+                        onEdit={openCardEditor}
                         onDelete={setDeleteCardTarget}
                         onViewFeedback={(selectedCard) => {
                           setFeedbackCardId(selectedCard.id);
@@ -7015,7 +7101,8 @@ function App() {
           user={user}
           clients={clients}
           startManaged={startManagedCard}
-          onClose={() => setModalCard(undefined)}
+          key={modalCard?.id || "quick-create"}
+          onClose={closeCardEditor}
           onSaved={(saved) => {
             updateCardsState((items) =>
               modalCard
@@ -7024,8 +7111,12 @@ function App() {
                   )
                 : [hydrateCardFromBlocks(saved), ...items],
             );
-            setModalCard(undefined);
-            setStartManagedCard(false);
+            if (!modalCard) {
+              const savedCard = hydrateCardFromBlocks(saved);
+              setModalCard(savedCard);
+              setStartManagedCard(false);
+              setAppPath(`/dashboard/cards/${encodeURIComponent(saved.id)}/edit`, true);
+            }
             setToast({
               message:
                 saved.status === "pending_approval"

@@ -11,6 +11,34 @@ const tokenNames = [
 ];
 const safeColor = /^#[0-9a-f]{6}$/i;
 
+function relativeLuminance(hex) {
+  const channels = hex.slice(1).match(/.{2}/g).map((channel) => {
+    const value = parseInt(channel, 16) / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+}
+
+export function contrastRatio(first, second) {
+  if (!safeColor.test(first || "") || !safeColor.test(second || "")) return 0;
+  const luminance = [relativeLuminance(first), relativeLuminance(second)].sort(
+    (a, b) => b - a,
+  );
+  return (luminance[0] + 0.05) / (luminance[1] + 0.05);
+}
+
+export function paletteContrastIssues(tokens) {
+  const valid = validatePaletteTokens(tokens);
+  return [
+    ["text", "background"],
+    ["text", "surface"],
+    ["button_text", "primary"],
+  ].flatMap(([foreground, background]) => {
+    const ratio = contrastRatio(valid[foreground], valid[background]);
+    return ratio < 4.5 ? [{ foreground, background, ratio }] : [];
+  });
+}
+
 export function validatePaletteTokens(tokens) {
   if (!tokens || typeof tokens !== "object" || Array.isArray(tokens)) {
     throw new Error("Palette tokens must be an object");

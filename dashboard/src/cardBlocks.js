@@ -59,7 +59,9 @@ export function normalizeBlockType(type) {
 }
 
 export function isSupportedCardBlock(block) {
-  return Boolean(block) && CARD_BLOCK_TYPES.includes(normalizeBlockType(block.type));
+  return (
+    Boolean(block) && CARD_BLOCK_TYPES.includes(normalizeBlockType(block.type))
+  );
 }
 
 function isPlainObject(value) {
@@ -108,7 +110,9 @@ export function createCardBlock(type, order = 0, data = {}) {
 export function makeCardBlocks(existing = [], legacyCard = {}) {
   const blocks = Array.isArray(existing)
     ? existing
-        .filter((block) => isPlainObject(block) && typeof block.type === "string")
+        .filter(
+          (block) => isPlainObject(block) && typeof block.type === "string",
+        )
         .map((block, order) => {
           const type = normalizeBlockType(block.type);
           const data = isPlainObject(block.data) ? block.data : {};
@@ -208,11 +212,7 @@ export function isValidIban(value) {
   const iban = String(value || "")
     .replace(/\s+/g, "")
     .toUpperCase();
-  if (
-    !/^TR\d{24}$/.test(iban) ||
-    iban.length !== 26
-  )
-    return false;
+  if (!/^TR\d{24}$/.test(iban) || iban.length !== 26) return false;
   const rearranged = iban.slice(4) + iban.slice(0, 4);
   let remainder = 0;
   for (const char of rearranged) {
@@ -264,27 +264,30 @@ export function legacyFieldsForCardSave(existingCard = {}, blocks = []) {
   const fromBlocks = toLegacyCardFields(blocks);
   const visible = (type) =>
     blocks.some(
-      (block) => normalizeBlockType(block.type) === type && block.visible !== false,
+      (block) =>
+        normalizeBlockType(block.type) === type && block.visible !== false,
     );
   return {
     google_review_url: visible("google_review")
       ? fromBlocks.google_review_url
-      : existingCard.google_review_url ?? null,
-    iban: visible("payment_or_iban") ? fromBlocks.iban : existingCard.iban ?? null,
+      : (existingCard.google_review_url ?? null),
+    iban: visible("payment_or_iban")
+      ? fromBlocks.iban
+      : (existingCard.iban ?? null),
     bank_name: visible("payment_or_iban")
       ? fromBlocks.bank_name
-      : existingCard.bank_name ?? null,
+      : (existingCard.bank_name ?? null),
     whatsapp: visible("contact")
       ? fromBlocks.whatsapp
-      : existingCard.whatsapp ?? null,
-    sms: visible("contact") ? fromBlocks.sms : existingCard.sms ?? null,
-    email: visible("contact") ? fromBlocks.email : existingCard.email ?? null,
+      : (existingCard.whatsapp ?? null),
+    sms: visible("contact") ? fromBlocks.sms : (existingCard.sms ?? null),
+    email: visible("contact") ? fromBlocks.email : (existingCard.email ?? null),
     instagram_url: visible("social")
       ? fromBlocks.instagram_url
-      : existingCard.instagram_url ?? null,
+      : (existingCard.instagram_url ?? null),
     extra_links: visible("custom_links")
       ? fromBlocks.extra_links
-      : existingCard.extra_links ?? [],
+      : (existingCard.extra_links ?? []),
   };
 }
 

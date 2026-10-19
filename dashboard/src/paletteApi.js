@@ -1,5 +1,14 @@
-const paletteColumns = "id,owner_user_id,name,description,kind,tokens,is_default,is_active,moderation_status,moderation_note,created_at,updated_at";
-const tokenNames = ["background", "surface", "text", "primary", "accent", "muted", "button_text"];
+const paletteColumns =
+  "id,owner_user_id,name,description,kind,tokens,is_default,is_active,moderation_status,moderation_note,created_at,updated_at";
+const tokenNames = [
+  "background",
+  "surface",
+  "text",
+  "primary",
+  "accent",
+  "muted",
+  "button_text",
+];
 const safeColor = /^#[0-9a-f]{6}$/i;
 
 export function validatePaletteTokens(tokens) {
@@ -7,7 +16,10 @@ export function validatePaletteTokens(tokens) {
     throw new Error("Palette tokens must be an object");
   }
   const keys = Object.keys(tokens);
-  if (keys.length !== tokenNames.length || keys.some((key) => !tokenNames.includes(key))) {
+  if (
+    keys.length !== tokenNames.length ||
+    keys.some((key) => !tokenNames.includes(key))
+  ) {
     throw new Error("Palette tokens contain unsupported fields");
   }
   for (const name of tokenNames) {
@@ -15,7 +27,9 @@ export function validatePaletteTokens(tokens) {
       throw new Error(`Invalid color token: ${name}`);
     }
   }
-  return Object.fromEntries(tokenNames.map((name) => [name, tokens[name].toUpperCase()]));
+  return Object.fromEntries(
+    tokenNames.map((name) => [name, tokens[name].toUpperCase()]),
+  );
 }
 
 function requireClient(client) {
@@ -58,7 +72,10 @@ export async function saveCustomPalette(client, palette) {
     is_default: false,
   };
   const query = palette.id
-    ? requireClient(client).from("palette_definitions").update(payload).eq("id", palette.id)
+    ? requireClient(client)
+        .from("palette_definitions")
+        .update(payload)
+        .eq("id", palette.id)
     : requireClient(client).from("palette_definitions").insert(payload);
   const { data, error } = await query.select(paletteColumns).single();
   if (error) throw error;
@@ -88,7 +105,8 @@ export async function listPalettesForAdmin(client, { status } = {}) {
 }
 
 export async function moderatePalette(client, paletteId, changes) {
-  if (changes.tokens) changes = { ...changes, tokens: validatePaletteTokens(changes.tokens) };
+  if (changes.tokens)
+    changes = { ...changes, tokens: validatePaletteTokens(changes.tokens) };
   const { data, error } = await requireClient(client)
     .from("palette_definitions")
     .update(changes)

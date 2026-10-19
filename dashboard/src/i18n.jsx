@@ -301,13 +301,16 @@ const english = {
   "IBAN kopyalandı.": "IBAN copied.",
   "Hesap sahibi": "Account holder",
   "HESAP SAHİBİ": "ACCOUNT HOLDER",
-  "Banka": "Bank",
+  Banka: "Bank",
   "Hesap sahibini kopyala": "Copy account holder",
   "Hesap sahibi kopyalandı.": "Account holder copied.",
   "DevTools / Test verisi": "DevTools / Test data",
-  "Yalnızca yönetici testleri için örnek veri doldurur.": "Fills sample data for administrator testing only.",
-  "Geçerli test IBAN'ı ve alıcı adı doldur": "Fill valid test IBAN and account holder",
-  "Üretim doğrulamaları atlanmaz; yalnızca güvenli test verisi eklenir.": "Production validation is not bypassed; safe test data is added only.",
+  "Yalnızca yönetici testleri için örnek veri doldurur.":
+    "Fills sample data for administrator testing only.",
+  "Geçerli test IBAN'ı ve alıcı adı doldur":
+    "Fill valid test IBAN and account holder",
+  "Üretim doğrulamaları atlanmaz; yalnızca güvenli test verisi eklenir.":
+    "Production validation is not bypassed; safe test data is added only.",
   "Ad kopyalandı.": "Name copied.",
   "Panoya kopyalanamadı.": "Could not copy to clipboard.",
   Kopyalandı: "Copied",
@@ -318,7 +321,8 @@ const english = {
   "IBAN eksik girildi.": "The IBAN is incomplete.",
   "Şu an": "You have entered",
   "karakter girdiniz": "characters",
-  "TR dahil toplam 26 karakter olmalıdır.": "characters; 26 characters including TR are required.",
+  "TR dahil toplam 26 karakter olmalıdır.":
+    "characters; 26 characters including TR are required.",
   Örnek: "Example",
   "Türkiye IBAN'ları 'TR' ile başlamalıdır. Örnek: TR12 0006 1000 0000 0123 4567 89":
     "Turkish IBANs must start with 'TR'. Example: TR12 0006 1000 0000 0123 4567 89",

@@ -3,6 +3,32 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 const LanguageContext = createContext(null);
 
 const english = {
+  "Alıcı adı": "Account holder",
+  "Alıcı adını kopyala": "Copy account holder",
+  "Alıcı adı kopyalandı.": "Account holder copied.",
+  "Banka hesabı": "Bank account",
+  "Bu işlem için kullanılabilir bir içerik kaynağı yok. İlgili bloğu ekleyin veya gerekli alanlarını doldurun ve görünür yapın.":
+    "No usable content source is available for this action. Add the relevant block, complete its fields, and make it visible.",
+  "İçeriğe git": "Go to content",
+  "İçerik kaynağı seçin.": "Choose a content source.",
+  "İçerik ekleyin": "Add content",
+  "Önceki kaynak artık kullanılamıyor": "Previous source is no longer available",
+  "Analitik": "Analytics",
+  "Kart analitiği": "Card analytics",
+  "Kart başına geri bildirim": "Feedback by card",
+  "Kartlarınıza gelen gerçek geri bildirimlerin özeti.": "A summary of feedback actually received by your cards.",
+  "Yalnızca alınan geri bildirimler ve puanlar gösterilir.": "Only received feedback and ratings are shown.",
+  "Puan yok": "No rating",
+  "Geri bildirimleri gör": "View feedback",
+  "Henüz kart yok. Yeni kart oluşturduğunuzda geri bildirim özetleri burada görünür.":
+    "No cards yet. Feedback summaries will appear here after you create one.",
+  "YÖNETİM": "MANAGEMENT",
+  "Yönetim menüsü": "Management menu",
+  "Mod seçimi önce canlı önizlemeyi değiştirir; ziyaretçilere yansıtmak için değişiklikleri kaydedin. Diğer kart içeriği korunur.":
+    "Mode selection first updates the live preview. Save changes to publish it; other card content is retained.",
+  "Modu seçin; kartı oluşturduğunuzda bu görünüm kaydedilir.":
+    "Choose a mode; it will be saved when you create the card.",
+  "Dashboard navigasyonu": "Dashboard navigation",
   "Ana site": "Main site",
   "KVKK Aydınlatma Metni": "Privacy & GDPR Notice",
   "Çerez Politikası": "Cookie Policy",
@@ -580,6 +606,15 @@ const english = {
     "and consent to the processing of my personal data as described in the Privacy Notice.",
 };
 
+const turkishFromEnglish = {
+  "Choose a primary action.": "Bir ana işlem seçin.",
+  "The selected source block is missing or hidden.": "Seçilen kaynak bloğu silinmiş veya gizlenmiş.",
+  "The selected source is incompatible or incomplete.": "Seçilen kaynak bu işlem için uygun değil veya eksik.",
+  "The selected link is no longer available.": "Seçilen bağlantı artık kullanılamıyor.",
+  "The selected action has no valid destination or content.": "Seçilen işlemin geçerli hedefi veya içeriği yok.",
+  "Choose a content source.": "İçerik kaynağı seçin.",
+};
+
 export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(() => {
     try {
@@ -603,7 +638,7 @@ export function LanguageProvider({ children }) {
       language,
       setLanguage,
       t: (key, values = {}) => {
-        let result = language === "en" ? english[key] || key : key;
+        let result = language === "en" ? english[key] || key : turkishFromEnglish[key] || key;
         for (const [name, replacement] of Object.entries(values)) {
           result = result.replaceAll(`{${name}}`, String(replacement));
         }

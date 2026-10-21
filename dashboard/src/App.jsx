@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpRight,
+  BarChart3,
   Bell,
   Check,
   ChevronDown,
   CircleHelp,
   Copy,
+  CreditCard,
   ExternalLink,
   FileText,
   Globe2,
@@ -54,7 +56,9 @@ import {
   serializeCardBlocks,
 } from "./cardBlocks.js";
 import {
+  copyPublicCardValue,
   demoCard,
+  getEligiblePrimaryActionSources,
   resolvePrimaryAction,
   resolvePresentationMode,
   validatePrimaryAction,
@@ -87,6 +91,16 @@ const cardBlockLabels = {
   custom_button: "Özel buton",
   custom_links: "Ek bağlantılar",
   text_or_note: "Metin / not",
+};
+const cardBlockIcons = {
+  profile: UserRound,
+  payment_or_iban: CreditCard,
+  google_review: MessageCircle,
+  contact: Phone,
+  social: Globe2,
+  custom_button: ArrowUpRight,
+  custom_links: Link2,
+  text_or_note: FileText,
 };
 const palettePresets = {
   payment_or_iban: {
@@ -225,14 +239,14 @@ function cardBlockPreviewText(block) {
         .join(" · ");
     case "social":
     case "custom_links":
-      return (data.links || [])
-        .map((link) => link.label)
+      return (Array.isArray(data.links) ? data.links : [])
+        .map((link) => link?.label)
         .filter(Boolean)
         .join(", ");
     case "custom_button":
-      return data.button_text || data.title || data.url || "";
+      return [data.button_text, data.title, data.url].find((value) => typeof value === "string" && value) || "";
     case "text_or_note":
-      return data.text || data.title || "";
+      return [data.text, data.title].find((value) => typeof value === "string" && value) || "";
     default:
       return "";
   }
@@ -1221,6 +1235,17 @@ function PublicCard({ token, onReport, previewCard = null }) {
   const [copyTimeout, setCopyTimeout] = useState(null);
   const [cardId, setCardId] = useState(null);
   const [demoMode, setDemoMode] = useState(null);
+  const modeCommentRef = useRef(null);
+  const presentationMode =
+    import.meta.env.DEV && token === "demo" && demoMode
+      ? demoMode
+      : resolvePresentationMode(card);
+  useEffect(() => {
+    if (!import.meta.env.DEV || !card || loading || error || !modeCommentRef.current) return undefined;
+    const marker = document.createComment(` Note By Dev: ${presentationMode} `);
+    modeCommentRef.current.appendChild(marker);
+    return () => marker.remove();
+  }, [card, error, loading, presentationMode]);
   useEffect(() => {
     let alive = true;
     if (previewCard) {
@@ -1234,7 +1259,30 @@ function PublicCard({ token, onReport, previewCard = null }) {
     }
     async function resolve() {
       if (import.meta.env.DEV && token === "demo") {
-        setCard(hydrateCardFromBlocks(demoCard));
+        const params = new URLSearchParams(window.location.search);
+        const fixture = params.get("fixture");
+        const sample = fixture === "classic-iban"
+          ? {
+              ...demoCard,
+              presentation_mode: "classic",
+              palette: params.get("palette") === "dark-brown"
+                ? { tokens: {
+                    background: "#1B1410",
+                    surface: "#2A1D18",
+                    text: "#FFF4E8",
+                    muted: "#D3B4A3",
+                    primary: "#B9382D",
+                    accent: "#F58A35",
+                    button_text: "#FFF7F1",
+                  } }
+                : demoCard.palette,
+              primary_action: {
+                type: "copy_iban",
+                source_block_id: "demo-payment",
+              },
+            }
+          : demoCard;
+        setCard(hydrateCardFromBlocks(sample));
         setCardId(demoCard.id);
         setLoading(false);
         return;
@@ -1274,7 +1322,7 @@ function PublicCard({ token, onReport, previewCard = null }) {
 
   async function copyCardValue(value, feedback) {
     try {
-      await navigator.clipboard.writeText(value);
+      await copyPublicCardValue(navigator.clipboard, value);
       setCopyFeedback(t(feedback));
       if (copyTimeout) window.clearTimeout(copyTimeout);
       setCopyTimeout(window.setTimeout(() => setCopyFeedback(""), 2000));
@@ -1460,7 +1508,9 @@ function PublicCard({ token, onReport, previewCard = null }) {
       data.url ||
       sourceItem?.url ||
       data.maps_url ||
-      data.links?.[0]?.url ||
+      (action.type === "maps" ? links.contact.maps_url : "") ||
+      (action.type === "google_review" ? card.google_review_url : "") ||
+      data.links?.find((item) => item?.url)?.url ||
       "";
     const phone = data.phone || links.contact.phone || "";
     const whatsapp = data.whatsapp || links.contact.whatsapp || "";
@@ -1511,23 +1561,13 @@ function PublicCard({ token, onReport, previewCard = null }) {
     return <PublicNotFound onReport={onReport} message={t(error)} />;
   }
 
-  // const blockOrder = (type, fallback) => cardBlockOrder(card, type, fallback);
-  // const presentationMode = import.meta.env.DEV && token === "demo" && demoMode
-  //   ? demoMode
-  //   : resolvePresentationMode(card);
-  // const actionWarning = validatePrimaryAction(card);
-  
-
 const blockOrder = (type, fallback) => cardBlockOrder(card, type, fallback);
-
-const presentationMode =
-  import.meta.env.DEV && token === "demo" && demoMode
-    ? demoMode
-    : resolvePresentationMode(card);
-
 const showcaseAction = resolvePrimaryAction(card);
 
-const actionWarning = validatePrimaryAction(card);
+const actionWarning = validatePrimaryAction(card) ||
+  (previewCard?.primary_action_requires_source && !resolvePrimaryAction(card)?.source_block_id
+    ? "Choose a content source."
+    : "");
 
   return (
     <main className={`public-page ${previewCard ? "editor-render-preview" : ""}`} style={cardPaletteStyle(card?.palette)}>
@@ -1575,6 +1615,7 @@ const actionWarning = validatePrimaryAction(card);
         data-presentation-mode={presentationMode}
         style={cardPaletteStyle(card?.palette)}
       >
+        <span ref={modeCommentRef} hidden aria-hidden="true" />
         {loading ? (
           <LoaderCircle className="spin" />
         ) : error ? (
@@ -2439,9 +2480,23 @@ function CompactCardPresentation({
         resolvePrimaryAction(card)?.type === "copy_iban" &&
         payment.iban && (
           <section className="classic-payment">
-            <p>{payment.bank_name}</p>
-            <strong>{formatIban(sanitizeIban(payment.iban))}</strong>
-            {payment.recipient_name && <small>{payment.recipient_name}</small>}
+            <div className="classic-payment-bank">{payment.bank_name || t("Banka hesabı")}</div>
+            <strong className="classic-payment-iban">{formatIban(sanitizeIban(payment.iban))}</strong>
+            {payment.recipient_name && (
+              <div className="classic-payment-recipient">
+                <span>{t("Alıcı adı")}</span>
+                <button
+                  type="button"
+                  className="classic-recipient-copy"
+                  aria-label={`${t("Alıcı adını kopyala")}: ${payment.recipient_name}`}
+                  onClick={() => onCopy(payment.recipient_name, "Alıcı adı kopyalandı.")}
+                  disabled={preview}
+                >
+                  <span>{payment.recipient_name}</span>
+                  <Copy size={14} aria-hidden="true" />
+                </button>
+              </div>
+            )}
           </section>
         )}
       <button
@@ -2592,7 +2647,8 @@ function TextField({
 function readCardDraft(userId, cardId) {
   try {
     const draft = JSON.parse(
-      localStorage.getItem("card_builder_draft") ||
+      localStorage.getItem(cardDraftKey(userId, cardId)) ||
+        localStorage.getItem("card_builder_draft") ||
         localStorage.getItem("card_form_draft") ||
         "null",
     );
@@ -2613,6 +2669,10 @@ function readCardDraft(userId, cardId) {
     console.error("Could not read saved card draft:", error);
     return null;
   }
+}
+
+function cardDraftKey(userId, cardId) {
+  return `card_builder_draft:${userId}:${cardId || "new"}`;
 }
 
 function serializableCardDraft(form) {
@@ -3094,7 +3154,7 @@ function CardModal({
   function persistDraft() {
     try {
       localStorage.setItem(
-        "card_builder_draft",
+        cardDraftKey(user.id, card?.id),
         JSON.stringify({
           userId: user.id,
           cardId: card?.id || null,
@@ -3494,6 +3554,8 @@ function CardModal({
         ? { ...form.primary_action }
         : null;
       if (configuredAction) {
+        if (requiresSourceForAction && !configuredAction.source_block_id)
+          throw new Error(t("İçerik kaynağı seçin."));
         const actionError = validatePrimaryAction(
           { ...card, blocks: scannedBlocks },
           configuredAction,
@@ -3571,8 +3633,12 @@ function CardModal({
       const { data, error: saveError } = await query;
       if (saveError) throw saveError;
       try {
-        localStorage.removeItem("card_builder_draft");
-        localStorage.removeItem("card_form_draft");
+        localStorage.removeItem(cardDraftKey(user.id, card?.id));
+        const legacyDraft = readCardDraft(user.id, card?.id);
+        if (legacyDraft) {
+          localStorage.removeItem("card_builder_draft");
+          localStorage.removeItem("card_form_draft");
+        }
       } catch (draftError) {
         console.error("Could not remove saved card draft:", draftError);
       }
@@ -3601,11 +3667,28 @@ function CardModal({
   const notePreview =
     blocks.find((block) => block.type === "text_or_note" && block.visible)
       ?.data || {};
+  const eligibleActionSources = getEligiblePrimaryActionSources(
+    { blocks },
+    form.primary_action?.type,
+  );
+  const invalidActionSource = Boolean(
+    form.primary_action?.source_block_id &&
+      !eligibleActionSources.some(
+        (block) => block.id === form.primary_action.source_block_id,
+      ),
+  );
+  const savedAction = resolvePrimaryAction(card);
+  const requiresSourceForAction = Boolean(
+    form.primary_action?.type &&
+      !["custom_url", "copy_text"].includes(form.primary_action.type) &&
+      !(savedAction?.type === form.primary_action.type && !savedAction.source_block_id),
+  );
   const previewCard = {
     ...form,
     title: form.title || t("Kart / işletme adı"),
     blocks,
     primary_action: form.primary_action,
+    primary_action_requires_source: requiresSourceForAction,
     palette:
       palettes.find((palette) => palette.id === form.palette_id)?.tokens ||
       suggestedPalette?.tokens ||
@@ -3625,25 +3708,32 @@ function CardModal({
         aria-labelledby="card-modal-title"
       >
         {card && (
-          <nav className="editor-sidebar" aria-label={t("Dashboard navigation")}>
+          <nav className="editor-sidebar" aria-label={t("Dashboard navigasyonu")}>
             <a className="editor-brand" href="/dashboard" onClick={(event) => { event.preventDefault(); requestClose("overview"); }}>
               <span className="brand-symbol">b.</span><span>bilgi</span>
             </a>
             <span className="editor-workspace-label">{t("Çalışma alanı")}</span>
-            <button type="button" onClick={() => requestClose("overview")}>{t("Genel Bakış")}</button>
-            <button type="button" className="selected" aria-current="page" onClick={() => requestClose("cards")}>{t("Kartlarım")}</button>
-            <button type="button" onClick={() => requestClose("feedback")}>{t("Geri bildirimler")}</button>
-            <button type="button" onClick={() => requestClose("settings")}>{t("Hesap ayarları")}</button>
+            <button type="button" onClick={() => requestClose("overview")}><LayoutDashboard size={17} />{t("Genel Bakış")}</button>
+            <button type="button" className="selected" aria-current="page" onClick={() => requestClose("cards")}><Smartphone size={17} />{t("Kartlarım")}</button>
+            <button type="button" onClick={() => requestClose("analytics")}><BarChart3 size={17} />{t("Analitik")}</button>
+            <button type="button" onClick={() => requestClose("feedback")}><FileText size={17} />{t("Geri bildirimler")}</button>
+            <button type="button" onClick={() => requestClose("settings")}><Settings size={17} />{t("Hesap ayarları")}</button>
           </nav>
         )}
         <header className="modal-header editor-topbar">
           <div>
             <p className="eyebrow">
-              {card ? t("KART AYARLARI") : t("YENİ KART")}
+              {card ? t("Kartı düzenle") : t("YENİ KART")}
             </p>
             <h2 id="card-modal-title">
-              {card ? t("Kartı düzenle") : t("Yeni dijital kart oluştur")}
+              {card ? form.title || card.title : t("Yeni dijital kart oluştur")}
             </h2>
+            {card && (
+              <div className="editor-identity-meta">
+                <span>{card.is_active ? t("Etkin") : t("Devre dışı")}</span>
+                <span>{form.access_mode === "public" ? `/c/${form.slug}` : t("Gizli bağlantı")}</span>
+              </div>
+            )}
           </div>
           <IconButton label={t("Pencereyi kapat")} onClick={requestClose}>
             <X size={19} />
@@ -3835,6 +3925,11 @@ function CardModal({
                 </button>
               ))}
             </div>
+            <p className="mode-save-hint">
+              {t(card
+                ? "Mod seçimi önce canlı önizlemeyi değiştirir; ziyaretçilere yansıtmak için değişiklikleri kaydedin. Diğer kart içeriği korunur."
+                : "Modu seçin; kartı oluşturduğunuzda bu görünüm kaydedilir.")}
+            </p>
             <div className="primary-action-editor" id="editor-primary-action">
               <h4>{t("Ana işlem")}</h4>
               <p className="field-hint">
@@ -3848,9 +3943,12 @@ function CardModal({
                   value={form.primary_action?.type || ""}
                   onChange={(event) =>
                     update("primary_action", {
-                      ...form.primary_action,
                       type: event.target.value,
                       source_block_id: "",
+                      source_item_id: "",
+                      label: "",
+                      url: "",
+                      text: "",
                     })
                   }
                 >
@@ -3878,48 +3976,43 @@ function CardModal({
                   {!["custom_url", "copy_text"].includes(
                     form.primary_action.type,
                   ) && (
-                    <label className="field">
-                      <span>{t("İçerik kaynağı")}</span>
-                      <select
-                        value={form.primary_action.source_block_id || ""}
-                        onChange={(event) =>
-                          update("primary_action", {
-                            ...form.primary_action,
-                            source_block_id: event.target.value,
-                            source_item_id: "",
-                          })
-                        }
-                      >
-                        <option value="">{t("Kaynak seçin")}</option>
-                        {blocks
-                          .filter((block) =>
-                            (
-                              ({
-                                copy_iban: ["payment_or_iban"],
-                                save_contact: ["profile", "contact"],
-                                call: ["contact"],
-                                whatsapp: ["contact"],
-                                website: [
-                                  "social",
-                                  "custom_links",
-                                  "custom_button",
-                                ],
-                                social: ["social"],
-                                maps: ["contact"],
-                                google_review: ["google_review"],
-                              })[form.primary_action.type] || CARD_BLOCK_TYPES
-                            ).includes(block.type),
-                          )
-                          .map((block) => (
+                    eligibleActionSources.length ? (
+                      <label className="field">
+                        <span>{t("İçerik kaynağı")}</span>
+                        <select
+                          value={form.primary_action.source_block_id || ""}
+                          onChange={(event) =>
+                            update("primary_action", {
+                              ...form.primary_action,
+                              source_block_id: event.target.value,
+                              source_item_id: "",
+                            })
+                          }
+                        >
+                          <option value="">{t("Kaynak seçin")}</option>
+                          {invalidActionSource && (
+                            <option value={form.primary_action.source_block_id} disabled>
+                              {t("Önceki kaynak artık kullanılamıyor")}
+                            </option>
+                          )}
+                          {eligibleActionSources.map((block) => (
                             <option key={block.id} value={block.id}>
                               {t(cardBlockLabels[block.type] || block.type)}
-                              {block.visible === false
-                                ? ` · ${t("gizli")}`
+                              {block.data?.name || block.data?.bank_name || block.data?.url
+                                ? ` · ${block.data.name || block.data.bank_name || block.data.url}`
                                 : ""}
                             </option>
                           ))}
-                      </select>
-                    </label>
+                        </select>
+                      </label>
+                    ) : (
+                      <div className="action-source-empty" role="status">
+                        <p>{t("Bu işlem için kullanılabilir bir içerik kaynağı yok. İlgili bloğu ekleyin veya gerekli alanlarını doldurun ve görünür yapın.")}</p>
+                        <button type="button" className="button button-secondary" onClick={() => navigateEditorSection("content")}>
+                          {t("İçeriğe git")}
+                        </button>
+                      </div>
+                    )
                   )}
                   {(() => {
                     const sourceBlock = blocks.find(
@@ -4048,7 +4141,9 @@ function CardModal({
               >
                 {[...blocks]
                   .sort((a, b) => a.order - b.order)
-                  .map((block, index) => (
+                  .map((block, index) => {
+                    const BlockIcon = cardBlockIcons[block.type] || FileText;
+                    return (
                     <div
                       className={`card-builder-item ${block.visible ? "" : "is-hidden"} ${expandedBlockId === block.id ? "is-expanded" : ""}`}
                       key={block.id}
@@ -4060,27 +4155,23 @@ function CardModal({
                         setDraggedBlockId(null);
                       }}
                     >
-                      <div
-                        className="block-item-heading"
-                        onClick={() =>
-                          setExpandedBlockId(
-                            expandedBlockId === block.id ? null : block.id,
-                          )
-                        }
-                      >
+                      <div className="block-item-heading">
                         <button
                           type="button"
                           className="block-expand-button"
                           aria-expanded={expandedBlockId === block.id}
+                          onClick={() =>
+                            setExpandedBlockId(
+                              expandedBlockId === block.id ? null : block.id,
+                            )
+                          }
                         >
-                          <strong>
-                            {t(cardBlockLabels[block.type] || block.type)}
-                          </strong>
-                          <span>
-                            {expandedBlockId === block.id
-                              ? t("Kapat")
-                              : t("Düzenle")}
+                          <span className="block-icon" aria-hidden="true"><BlockIcon size={18} /></span>
+                          <span className="block-copy">
+                            <strong>{t(cardBlockLabels[block.type] || block.type)}</strong>
+                            <small>{cardBlockPreviewText(block) || t("İçerik ekleyin")}</small>
                           </span>
+                          <ChevronDown className="block-chevron" size={17} aria-hidden="true" />
                         </button>
                         <label className="check-row">
                           <input
@@ -4149,7 +4240,7 @@ function CardModal({
                         />
                       )}
                     </div>
-                  ))}
+                  );})}
                 {blocks.length > 8 && (
                   <div className="inline-warning" role="status">
                     {t(
@@ -4224,7 +4315,11 @@ function CardModal({
                 <LoaderCircle className="spin" size={18} />
               ) : (
                 <>
-                  {palettes.map((palette) => {
+                  {[...palettes].sort((left, right) =>
+                    Number(right.is_default) - Number(left.is_default) ||
+                    paletteContrastIssues(left.tokens).length - paletteContrastIssues(right.tokens).length ||
+                    left.name.localeCompare(right.name),
+                  ).map((palette) => {
                     const selected = form.palette_id === palette.id;
                     return (
                       <button
@@ -4237,15 +4332,19 @@ function CardModal({
                           setSuggestedPalette(null);
                         }}
                       >
-                        <span className="palette-swatches" aria-hidden="true">
-                          <i
-                            style={{
-                              backgroundColor: palette.tokens?.background,
-                            }}
-                          />
-                          <i
-                            style={{ backgroundColor: palette.tokens?.primary }}
-                          />
+                        <span
+                          className="palette-card-preview"
+                          aria-hidden="true"
+                          style={{
+                            "--sample-background": palette.tokens?.background,
+                            "--sample-surface": palette.tokens?.surface,
+                            "--sample-text": palette.tokens?.text,
+                            "--sample-primary": palette.tokens?.primary,
+                          }}
+                        >
+                          <i className="palette-sample-avatar" />
+                          <i className="palette-sample-line" />
+                          <i className="palette-sample-button" />
                         </span>
                         <span>
                           <strong>{palette.name}</strong>
@@ -4269,9 +4368,15 @@ function CardModal({
                       setSuggestedPalette(null);
                     }}
                   >
-                    <span className="palette-swatches" aria-hidden="true">
-                      <i style={{ backgroundColor: "#0F172A" }} />
-                      <i style={{ backgroundColor: "#38BDF8" }} />
+                        <span className="palette-card-preview" aria-hidden="true" style={{
+                          "--sample-background": "#0F172A",
+                          "--sample-surface": "#1E293B",
+                          "--sample-text": "#F8FAFC",
+                          "--sample-primary": "#38BDF8",
+                        }}>
+                          <i className="palette-sample-avatar" />
+                          <i className="palette-sample-line" />
+                          <i className="palette-sample-button" />
                     </span>
                     <span>
                       <strong>{t("Sistem varsayılanı")}</strong>
@@ -4512,6 +4617,8 @@ function CardModal({
 function Sidebar({
   section,
   onSection,
+  onManagedCards,
+  cardScope,
   onSignOut,
   user,
   mobileOpen,
@@ -4576,12 +4683,31 @@ function Sidebar({
             <Smartphone size={17} /> {t("Kartlarım")}
           </button>
           <button
+            className={section === "analytics" ? "selected" : ""}
+            onClick={() => onSection("analytics")}
+          >
+            <BarChart3 size={17} /> {t("Analitik")}
+          </button>
+          <button
             className={section === "feedback" ? "selected" : ""}
             onClick={() => onSection("feedback")}
           >
             <FileText size={17} /> {t("Geri bildirimler")}
           </button>
+        </nav>
+        {isAdmin && (
+          <p className="nav-caption nav-caption-lower">{t("YÖNETİM")}</p>
+        )}
+        <nav className="side-nav" aria-label={t("Yönetim menüsü")}>
           {isAdmin && (
+            <button
+              className={section === "cards" && cardScope === "managed" ? "selected" : ""}
+              onClick={onManagedCards}
+            >
+              <Users size={17} /> {t("Müşteri kartları")}
+            </button>
+          )}
+          {canManageUsers && (
             <button
               className={section === "abuse" ? "selected" : ""}
               onClick={() => onSection("abuse")}
@@ -6054,11 +6180,28 @@ function App() {
       .toLocaleLowerCase(language)
       .includes(query.toLocaleLowerCase(language)),
   );
+  const analyticsRows = visibleCards.map((card) => {
+    const responses = feedback.filter((item) => item.card_id === card.id);
+    const ratings = responses
+      .map((item) => Number(item.rating))
+      .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5);
+    return {
+      card,
+      responseCount: responses.length,
+      averageRating: ratings.length
+        ? (ratings.reduce((total, rating) => total + rating, 0) / ratings.length).toFixed(1)
+        : null,
+    };
+  }).sort((left, right) => right.responseCount - left.responseCount);
   const heading = {
     overview: [t("Genel Bakış"), t("Dijital varlıklarınızın bugünkü özeti.")],
     cards: [
       t("Kartlarım"),
       t("Dijital kartlarınızı ve NFC bağlantılarınızı yönetin."),
+    ],
+    analytics: [
+      t("Analitik"),
+      t("Kartlarınıza gelen gerçek geri bildirimlerin özeti."),
     ],
     feedback: [
       t("Geri bildirimler"),
@@ -6092,7 +6235,15 @@ function App() {
     <div className="dashboard-shell">
       <Sidebar
         section={section}
-        onSection={goTo}
+        onSection={(nextSection) => {
+          if (nextSection === "cards" && isAdmin) setCardScope("personal");
+          goTo(nextSection);
+        }}
+        onManagedCards={() => {
+          setCardScope("managed");
+          goTo("cards");
+        }}
+        cardScope={cardScope}
         onSignOut={signOut}
         user={{
           ...user,
@@ -6131,13 +6282,13 @@ function App() {
               className="notification-button icon-button"
               aria-label={t("Bildirimler")}
               onClick={() =>
-                isAdmin
+                canManageUsers
                   ? goTo("abuse")
                   : setToast({ message: t("Yeni bildiriminiz yok.") })
               }
             >
               <Bell size={18} />
-              {isAdmin && pendingReports > 0 && <i />}
+              {canManageUsers && pendingReports > 0 && <i />}
             </button>
             <span className="top-avatar">
               {(user.user_metadata?.full_name || user.email || "B")
@@ -6160,6 +6311,7 @@ function App() {
             </div>
             {section !== "settings" &&
               section !== "feedback" &&
+              section !== "analytics" &&
               section !== "abuse" &&
               section !== "users" &&
               section !== "audit" &&
@@ -6488,6 +6640,35 @@ function App() {
                   )}
                 </section>
               )}
+              {section === "analytics" && (
+                <section className="panel analytics-panel" aria-label={t("Kart analitiği")}>
+                  <div className="panel-heading">
+                    <div>
+                      <h2>{t("Kart başına geri bildirim")}</h2>
+                      <p>{t("Yalnızca alınan geri bildirimler ve puanlar gösterilir.")}</p>
+                    </div>
+                    <span className="count-pill">{feedbackTotal} {t("yanıt")}</span>
+                  </div>
+                  {analyticsRows.length ? (
+                    <div className="analytics-list">
+                      {analyticsRows.map(({ card, responseCount, averageRating }) => (
+                        <div className="analytics-row" key={card.id}>
+                          <div>
+                            <strong>{card.title}</strong>
+                            <small>{card.access_mode === "public" ? t("Herkese açık") : t("Gizli")}</small>
+                          </div>
+                          <span>{responseCount} {t("yanıt")}</span>
+                          <span>{averageRating ? `${averageRating} / 5` : t("Puan yok")}</span>
+                          <button type="button" className="text-button" onClick={() => {
+                            setFeedbackCardId(card.id);
+                            goTo("feedback");
+                          }}>{t("Geri bildirimleri gör")} <ArrowUpRight size={14} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="analytics-empty">{t("Henüz kart yok. Yeni kart oluşturduğunuzda geri bildirim özetleri burada görünür.")}</p>}
+                </section>
+              )}
               {section === "feedback" && (
                 <section className="panel feedback-panel">
                   <div className="panel-heading">
@@ -6593,7 +6774,7 @@ function App() {
                   )}
                 </section>
               )}
-              {section === "abuse" && isAdmin && (
+              {section === "abuse" && canManageUsers && (
                 <section className="panel abuse-panel">
                   <div className="panel-heading">
                     <div>

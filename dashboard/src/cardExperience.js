@@ -1,5 +1,53 @@
 export const PRESENTATION_MODES = ["classic", "smart", "showcase"];
 
+export async function copyPublicCardValue(clipboard, value) {
+  if (!clipboard?.writeText || typeof value !== "string" || !value) {
+    throw new Error("Clipboard or card value is unavailable.");
+  }
+  await clipboard.writeText(value);
+}
+
+const hasText = (value) => typeof value === "string" && Boolean(value.trim());
+
+const ACTION_SOURCE_TYPES = {
+  copy_iban: ["payment_or_iban"],
+  save_contact: ["profile", "contact"],
+  call: ["contact"],
+  whatsapp: ["contact"],
+  website: ["social", "custom_links", "custom_button"],
+  social: ["social"],
+  maps: ["contact"],
+  google_review: ["google_review"],
+};
+
+function hasActionContent(block, actionType) {
+  const data = block?.data || {};
+  const hasLink = Array.isArray(data.links) && data.links.some((link) => hasText(link?.url));
+  switch (actionType) {
+    case "copy_iban": return hasText(data.iban);
+    case "save_contact": return hasText(data.name) || hasText(data.phone) || hasText(data.email);
+    case "call": return hasText(data.phone);
+    case "whatsapp": return hasText(data.whatsapp);
+    case "website": return hasText(data.url) || hasLink;
+    case "social": return hasLink;
+    case "maps": return hasText(data.maps_url);
+    case "google_review": return hasText(data.url);
+    default: return false;
+  }
+}
+
+export function getEligiblePrimaryActionSources(card, actionType) {
+  const types = ACTION_SOURCE_TYPES[actionType];
+  if (!types) return [];
+  return (Array.isArray(card?.blocks) ? card.blocks : []).filter(
+    (block) =>
+      block?.id &&
+      block.visible !== false &&
+      types.includes(block.type) &&
+      hasActionContent(block, actionType),
+  );
+}
+
 export function resolvePresentationMode(card) {
   const profile = (Array.isArray(card?.blocks) ? card.blocks : []).find(
     (block) => block?.type === "profile",
@@ -36,6 +84,13 @@ export function validatePrimaryAction(
   const source = getPrimaryActionSource(card, action);
   if (action.source_block_id && !source)
     return "The selected source block is missing or hidden.";
+  if (
+    action.source_block_id &&
+    !getEligiblePrimaryActionSources(card, action.type).some(
+      (block) => block.id === action.source_block_id,
+    )
+  )
+    return "The selected source is incompatible or incomplete.";
   const data = source?.data || {};
   if (
     action.source_item_id &&

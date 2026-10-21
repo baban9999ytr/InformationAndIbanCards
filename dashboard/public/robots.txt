@@ -1,0 +1,15 @@
+# Public Bilgi site routes may be crawled. Account and management routes must not.
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /create
+Disallow: /settings
+Disallow: /settings/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /__dev/
+Disallow: /informationpage
+
+Sitemap: https://bilgi.openstacktool.com/sitemap.xml

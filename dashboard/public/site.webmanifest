@@ -1,0 +1,10 @@
+{
+  "name": "Bilgi",
+  "short_name": "Bilgi",
+  "description": "NFC dijital kart yönetimi",
+  "lang": "tr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#f5f7fb"
+}

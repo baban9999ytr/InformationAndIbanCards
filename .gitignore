@@ -211,7 +211,7 @@ dashboard/supabase/.temp/
 
 # PyPI configuration file
 .pypirc
-
+.agents
 # Marimo
 marimo/_static/
 marimo/_lsp/

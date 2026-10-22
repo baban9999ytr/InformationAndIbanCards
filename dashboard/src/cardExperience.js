@@ -16,7 +16,7 @@ const ACTION_SOURCE_TYPES = {
   whatsapp: ["contact"],
   website: ["social", "custom_links", "custom_button"],
   social: ["social"],
-  maps: ["contact"],
+  maps: ["location", "contact"],
   google_review: ["google_review"],
 };
 
@@ -30,7 +30,7 @@ function hasActionContent(block, actionType) {
     case "whatsapp": return hasText(data.whatsapp);
     case "website": return hasText(data.url) || hasLink;
     case "social": return hasLink;
-    case "maps": return hasText(data.maps_url);
+    case "maps": return hasText(data.map_url) || hasText(data.maps_url) || hasText(data.address);
     case "google_review": return hasText(data.url);
     default: return false;
   }
@@ -131,7 +131,7 @@ export function validatePrimaryAction(
       selectedItem?.url ||
       (Array.isArray(data.links) && data.links.some((link) => link?.url)),
     ),
-    maps: Boolean(data.maps_url || data.address),
+    maps: Boolean(data.map_url || data.maps_url || data.address || card?.map_url || card?.map_address),
     google_review: Boolean(data.url || card?.google_review_url),
     custom_url: Boolean(action.url),
     copy_text: Boolean(action.text),
@@ -212,7 +212,7 @@ export const demoCard = {
       data: {
         bank_name: "VakıfBank",
         recipient_name: "Mavi Kahve Ltd. Şti.",
-        iban: "TR120006200123400006789012",
+        iban: "TR270006200123400006789012",
         description: "Banka Hesabı (IBAN)",
       },
     },

@@ -3,6 +3,7 @@ export const CARD_BLOCK_TYPES = [
   "google_review",
   "payment_or_iban",
   "contact",
+  "location",
   "social",
   "custom_button",
   "custom_links",
@@ -42,6 +43,7 @@ const blockDefaults = {
     address: "",
     channels: {},
   },
+  location: { address: "", map_url: "", map_type: null },
   social: { links: [] },
   custom_button: {
     title: "",
@@ -154,6 +156,52 @@ export function makeCardBlocks(existing = [], legacyCard = {}) {
       sms: legacyCard.sms || "",
     },
   );
+  const legacyContact = blocks.find((block) => block.type === "contact");
+  const contactChannels = legacyContact?.data?.channels || {};
+  const legacyLocationData = {
+    address:
+      legacyCard.map_address ||
+      (legacyContact?.visible === false || contactChannels.address === false
+        ? ""
+        : legacyContact?.data?.address) ||
+      "",
+    map_url:
+      legacyCard.map_url ||
+      (legacyContact?.visible === false || contactChannels.maps_url === false
+        ? ""
+        : legacyContact?.data?.maps_url) ||
+      "",
+    map_type:
+      legacyCard.map_type || legacyContact?.data?.map_type || null,
+  };
+  if (!legacyLocationData.map_type && legacyLocationData.map_url) {
+    legacyLocationData.map_type =
+      /^https:\/\/www\.google\.com\/maps\/embed(?:[/?#]|$)/i.test(
+        legacyLocationData.map_url,
+      )
+        ? "embed"
+        : /^https:\/\/maps\.app\.goo\.gl\//i.test(legacyLocationData.map_url)
+          ? "short"
+          : "legacy";
+  }
+  const hasLegacyLocation =
+    Boolean(legacyLocationData.address) || Boolean(legacyLocationData.map_url);
+  addMissing("location", hasLegacyLocation, legacyLocationData);
+  if (hasLegacyLocation && legacyContact?.visible !== false) {
+    const locationBlock = blocks.find((block) => block.type === "location");
+    if (locationBlock) {
+      locationBlock.data = {
+        ...locationBlock.data,
+        address: locationBlock.data.address || legacyLocationData.address,
+        map_url: locationBlock.data.map_url || legacyLocationData.map_url,
+        map_type: locationBlock.data.map_type || legacyLocationData.map_type,
+      };
+      legacyContact.data = { ...legacyContact.data };
+      delete legacyContact.data.address;
+      delete legacyContact.data.maps_url;
+      delete legacyContact.data.map_type;
+    }
+  }
   addMissing("social", legacyCard.instagram_url, {
     links: [{ label: "Instagram", url: legacyCard.instagram_url }],
   });
@@ -224,6 +272,11 @@ export function isValidIban(value) {
   return remainder === 1;
 }
 
+export function hasTurkishIbanFormat(value) {
+  const iban = String(value || "").replace(/\s+/g, "").toUpperCase();
+  return /^TR\d{24}$/.test(iban);
+}
+
 export function toLegacyCardFields(blocks) {
   const dataFor = (type) =>
     blocks.find((block) => block.type === type && block.visible !== false)
@@ -233,6 +286,7 @@ export function toLegacyCardFields(blocks) {
   const contact = dataFor("contact");
   const socialLinks = dataFor("social").links || [];
   const customLinks = dataFor("custom_links").links || [];
+  const location = dataFor("location");
   const instagram = socialLinks.find((link) =>
     /instagram/i.test(link.label || link.url || ""),
   );
@@ -248,6 +302,9 @@ export function toLegacyCardFields(blocks) {
     sms: contact.sms ? String(contact.sms).replace(/\D/g, "") : null,
     email: contact.email || null,
     instagram_url: instagram?.url || null,
+    map_address: location.address || null,
+    map_url: location.map_url || null,
+    map_type: location.map_type || null,
     extra_links: customLinks.slice(0, 3).map((link) => ({
       label: String(link.label || "").trim(),
       url: String(link.url || "").trim(),
@@ -288,6 +345,15 @@ export function legacyFieldsForCardSave(existingCard = {}, blocks = []) {
     extra_links: visible("custom_links")
       ? fromBlocks.extra_links
       : (existingCard.extra_links ?? []),
+    map_address: visible("location")
+      ? fromBlocks.map_address
+      : (existingCard.map_address ?? null),
+    map_url: visible("location")
+      ? fromBlocks.map_url
+      : (existingCard.map_url ?? null),
+    map_type: visible("location")
+      ? fromBlocks.map_type
+      : (existingCard.map_type ?? null),
   };
 }
 

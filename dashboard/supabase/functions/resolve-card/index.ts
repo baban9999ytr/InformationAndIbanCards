@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isCardReadyForPublic } from "../_shared/card-readiness.js";
 
 const corsHeaders = (origin: string) => ({
   "access-control-allow-origin": origin,
@@ -70,7 +71,7 @@ Deno.serve(async (request: Request) => {
     auth: { persistSession: false },
   });
   const safeFields =
-    "id,title,type,access_mode,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,extra_links,blocks,is_active,user_id,updated_at,palette_id,palette:palette_definitions!nfc_cards_palette_id_fkey(tokens,is_active,moderation_status,kind,is_default,updated_at)";
+    "id,title,type,access_mode,google_review_url,whatsapp,sms,instagram_url,email,iban,bank_name,map_address,map_url,map_type,extra_links,blocks,is_active,user_id,updated_at,palette_id,palette:palette_definitions!nfc_cards_palette_id_fkey(tokens,is_active,moderation_status,kind,is_default,updated_at)";
   let card = null;
   let error = null;
   if (
@@ -118,6 +119,12 @@ Deno.serve(async (request: Request) => {
       status: 404,
       headers,
     });
+  if (!isCardReadyForPublic(card)) {
+    return new Response(JSON.stringify({ error: "Card not found" }), {
+      status: 404,
+      headers,
+    });
+  }
   const { data: ownerProfile, error: ownerError } = await admin
     .from("profiles")
     .select("is_suspended")

@@ -716,6 +716,48 @@ textarea:focus-visible {
 .cards-panel {
   overflow: visible;
 }
+.expired-cards-panel {
+  overflow: hidden;
+}
+.expired-card-list {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+.expired-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.expired-card-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.expired-card-info strong {
+  color: var(--text);
+}
+.expired-card-info span,
+.expired-card-info small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.expired-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.expired-card-actions .button {
+  min-height: 36px;
+  padding: 0 11px;
+  font-size: 12px;
+}
 .panel-heading {
   display: flex;
   align-items: center;
@@ -1746,6 +1788,10 @@ textarea:focus-visible {
   font-weight: 600;
   cursor: pointer;
 }
+.segmented button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .segmented button.active {
   background: var(--surface);
   color: var(--purple);
@@ -2371,6 +2417,60 @@ textarea:focus-visible {
 .admin-user-table td small {
   color: var(--muted);
   font-size: 12px;
+}
+
+.public-map-embed {
+  display: block;
+  width: 100%;
+  min-height: 260px;
+  border: 0;
+  border-radius: 18px;
+  margin-top: 18px;
+  background: var(--surface, #fff);
+}
+
+.permission-gate,
+.permission-requests-panel {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--border, #dbe2ea);
+  border-radius: 16px;
+  background: var(--surface, #fff);
+}
+
+.permission-request-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border, #dbe2ea);
+}
+
+.permission-request-row > div:first-child {
+  display: grid;
+  gap: 5px;
+}
+
+.permission-request-row > div:last-child {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .permission-request-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .permission-request-row > div:last-child {
+    width: 100%;
+  }
+  .permission-request-row .button {
+    flex: 1;
+  }
+  .public-map-embed {
+    min-height: 220px;
+  }
 }
 .admin-user-stats strong {
   font-size: 22px;
@@ -4933,4 +5033,19 @@ textarea:focus-visible {
   .card-editor-workspace.preview-open .card-builder-preview { width: min(100%, 360px); }
   .quick-create .presentation-mode-options { grid-template-columns: 1fr; }
   .quick-create .presentation-mode-option { min-height: 0; }
+}
+@media (max-width: 600px) {
+  .expired-card-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    padding: 13px;
+  }
+  .expired-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .expired-card-actions .button {
+    width: 100%;
+  }
 }

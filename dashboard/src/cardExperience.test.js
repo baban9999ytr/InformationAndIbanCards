@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { isValidIban } from "./cardBlocks.js";
 import {
   copyPublicCardValue,
   demoCard,
@@ -15,8 +16,8 @@ test("public card copy writes the exact recipient or IBAN value", async () => {
   const copied = [];
   const clipboard = { writeText: async (value) => copied.push(value) };
   await copyPublicCardValue(clipboard, "Mavi Kahve Ltd. Şti.");
-  await copyPublicCardValue(clipboard, "TR120006200123400006789012");
-  assert.deepEqual(copied, ["Mavi Kahve Ltd. Şti.", "TR120006200123400006789012"]);
+  await copyPublicCardValue(clipboard, "TR270006200123400006789012");
+  assert.deepEqual(copied, ["Mavi Kahve Ltd. Şti.", "TR270006200123400006789012"]);
   await assert.rejects(copyPublicCardValue(null, "Mavi Kahve Ltd. Şti."));
 });
 
@@ -60,7 +61,7 @@ test("primary action references stable block IDs instead of block ordering", () 
         id: "pay-1",
         type: "payment_or_iban",
         visible: true,
-        data: { iban: "TR120006200123400006789012" },
+        data: { iban: "TR270006200123400006789012" },
       },
     ],
   };
@@ -77,7 +78,7 @@ test("missing, hidden, and incomplete primary action sources are rejected", () =
         id: "payment",
         type: "payment_or_iban",
         visible: false,
-        data: { iban: "TR120006200123400006789012" },
+        data: { iban: "TR270006200123400006789012" },
       },
     ],
   };
@@ -125,8 +126,8 @@ test("primary actions can address a stable link inside a source block", () => {
 test("source picker offers only visible blocks with content for the selected action", () => {
   const card = { blocks: [
     { id: "empty", type: "payment_or_iban", visible: true, data: { iban: "" } },
-    { id: "hidden", type: "payment_or_iban", visible: false, data: { iban: "TR120006200123400006789012" } },
-    { id: "ready", type: "payment_or_iban", visible: true, data: { iban: "TR120006200123400006789012" } },
+    { id: "hidden", type: "payment_or_iban", visible: false, data: { iban: "TR270006200123400006789012" } },
+    { id: "ready", type: "payment_or_iban", visible: true, data: { iban: "TR270006200123400006789012" } },
     { id: "contact", type: "contact", visible: true, data: { phone: "+902121234567" } },
   ] };
   assert.deepEqual(getEligiblePrimaryActionSources(card, "copy_iban").map((block) => block.id), ["ready"]);
@@ -165,6 +166,13 @@ test("malformed legacy source data does not crash the source picker", () => {
 
 test("local demo fixture covers real Showcase content without a production record", () => {
   assert.equal(resolvePresentationMode(demoCard), "showcase");
+  assert.equal(
+    isValidIban(
+      demoCard.blocks.find((block) => block.type === "payment_or_iban")?.data
+        .iban,
+    ),
+    true,
+  );
   assert.ok(
     demoCard.blocks.find((block) => block.type === "profile").data.cover_url,
   );

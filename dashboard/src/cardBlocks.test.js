@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   hydrateCardFromBlocks,
+  hasTurkishIbanFormat,
   inspectCardCompatibility,
   isValidIban,
   legacyFieldsForCardSave,
@@ -15,7 +16,7 @@ test("legacy card fields hydrate into supported editable blocks", () => {
   const card = hydrateCardFromBlocks({
     title: "Cafe",
     google_review_url: "https://example.com/review",
-    iban: "TR120006100000000123456789",
+    iban: "TR400006100000000123456789",
     bank_name: "Example Bank",
     email: "hello@example.com",
   });
@@ -35,7 +36,7 @@ test("legacy block aliases normalize without losing order or hidden state", () =
       type: "payment",
       order: 7,
       visible: false,
-      data: { iban: "TR12 0006 1000 0000 0123 4567 89" },
+      data: { iban: "TR40 0006 1000 0000 0123 4567 89" },
     },
     { id: "old-links", type: "custom", order: 2, data: { links: [] } },
   ]);
@@ -56,7 +57,7 @@ test("legacy columns are mirrored only from visible blocks", () => {
     {
       type: "payment_or_iban",
       visible: false,
-      data: { iban: "TR120006100000000123456789" },
+      data: { iban: "TR400006100000000123456789" },
     },
     { type: "contact", visible: true, data: { email: "person@example.com" } },
   ]);
@@ -65,10 +66,32 @@ test("legacy columns are mirrored only from visible blocks", () => {
   assert.equal(fields.email, "person@example.com");
 });
 
+test("legacy contact map data migrates to a location block and round-trips", () => {
+  const legacy = {
+    title: "Harita işletmesi",
+    map_address: "Kadıköy, İstanbul",
+    map_url: "https://www.google.com/maps/embed?pb=legacy-map",
+    map_type: "embed",
+    blocks: [{ id: "contact-old", type: "contact", visible: true, data: { phone: "905551112233", address: "Kadıköy, İstanbul", maps_url: "https://www.google.com/maps/embed?pb=legacy-map" } }],
+  };
+  const normalized = hydrateCardFromBlocks(legacy);
+  const location = normalized.blocks.find((block) => block.type === "location");
+  assert.equal(location.data.address, "Kadıköy, İstanbul");
+  assert.equal(location.data.map_type, "embed");
+  const serialized = serializeCardBlocks(normalized.blocks);
+  const saved = { ...legacy, ...legacyFieldsForCardSave(legacy, serialized), blocks: serialized };
+  const reloaded = hydrateCardFromBlocks(saved);
+  assert.equal(reloaded.blocks.find((block) => block.type === "location").data.map_url, legacy.map_url);
+  assert.equal(reloaded.blocks.find((block) => block.id === "contact-old").data.phone, "905551112233");
+});
+
 test("IBAN validation checks Turkish format and mod-97 checksum", () => {
-  assert.equal(isValidIban("TR12 0006 1000 0000 0123 4567 89"), false);
-  assert.equal(isValidIban("TR12 0006 1000 0000 0123 4567 8"), false);
-  assert.equal(isValidIban("TR120006100000000123456789:44"), false);
+  assert.equal(hasTurkishIbanFormat("TR93 0006 2000 0000 1234 5678 90"), true);
+  assert.equal(isValidIban("TR93 0006 2000 0000 1234 5678 90"), false);
+  assert.equal(hasTurkishIbanFormat("TR40 0006 1000 0000 0123 4567 89"), true);
+  assert.equal(isValidIban("TR40 0006 1000 0000 0123 4567 89"), true);
+  assert.equal(hasTurkishIbanFormat("TR40 0006 1000 0000 0123 4567 8"), false);
+  assert.equal(isValidIban("TR930006200000001234567890"), false);
 });
 
 test("unknown legacy blocks and fields are retained for a non-destructive save", () => {
@@ -107,7 +130,7 @@ test("legacy card survives normalize, edit, serialize, and reload", () => {
     palette_id: "custom-palette",
     palette: { tokens: { background: "#101010" } },
     title: "Gület Denizcilik",
-    iban: "TR120006100000000123456789",
+    iban: "TR400006100000000123456789",
     bank_name: "Eski Banka",
     whatsapp: "905551112233",
     email: "merhaba@example.com",
@@ -124,7 +147,7 @@ test("legacy card survives normalize, edit, serialize, and reload", () => {
         type: "payment",
         order: 3,
         visible: true,
-        data: { iban: "TR120006100000000123456789", bank_name: "Eski Banka" },
+        data: { iban: "TR400006100000000123456789", bank_name: "Eski Banka" },
       },
       {
         id: "future",
@@ -166,7 +189,7 @@ test("legacy card survives normalize, edit, serialize, and reload", () => {
 
 test("hidden blocks do not clear legacy mirror fields during save", () => {
   const source = {
-    iban: "TR120006100000000123456789",
+    iban: "TR400006100000000123456789",
     bank_name: "Korunan Banka",
   };
   const fields = legacyFieldsForCardSave(source, [

@@ -52,6 +52,7 @@ import {
   createCardBlock,
   hydrateCardFromBlocks,
   hasTurkishIbanFormat,
+  isSafeGoogleMapsEmbedUrl,
   isValidIban,
   isSupportedCardBlock,
   legacyFieldsForCardSave,
@@ -1797,7 +1798,7 @@ const actionWarning = validatePrimaryAction(card) ||
                       <p>{links.location.address || links.profile.address}</p>
                     </div>
                     {links.location.map_type === "embed" && links.location.map_url ? (
-                      <iframe className="public-map-embed" src={links.location.map_url} title={t("Google Maps konumu")} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" sandbox="allow-scripts" allowFullScreen />
+                      <GoogleMapsEmbed url={links.location.map_url} t={t} />
                     ) : links.location.map_url && (
                       <button
                         type="button"
@@ -2583,6 +2584,9 @@ function CompactCardPresentation({
       )}
       {mode === "classic" && location?.address && <p className="compact-location-address"><MapPin size={15} /> {location.address}</p>}
       {mode === "classic" && location?.map_url && <button type="button" className="compact-location-link" onClick={() => onExternal({ label: t("Konum"), url: location.map_url })}><MapPin size={15} /> {t("Haritada aç")}</button>}
+      {["classic", "smart"].includes(mode) &&
+        location?.map_type === "embed" &&
+        location.map_url && <GoogleMapsEmbed url={location.map_url} t={t} />}
       {mode === "smart" && note?.text && (
         <p className="smart-note">{note.text}</p>
       )}
@@ -2626,6 +2630,21 @@ function CompactCardPresentation({
         </div>
       )}
     </div>
+  );
+}
+
+function GoogleMapsEmbed({ url, t }) {
+  if (!isSafeGoogleMapsEmbedUrl(url)) return null;
+  return (
+    <iframe
+      className="public-map-embed"
+      src={url}
+      title={t("Google Maps konumu")}
+      loading="lazy"
+      referrerPolicy="strict-origin-when-cross-origin"
+      sandbox="allow-scripts"
+      allowFullScreen
+    />
   );
 }
 

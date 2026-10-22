@@ -60,6 +60,22 @@ export function normalizeBlockType(type) {
   return legacyBlockTypes[type] || type;
 }
 
+export function isSafeGoogleMapsEmbedUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "www.google.com" &&
+      url.pathname === "/maps/embed" &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isSupportedCardBlock(block) {
   return (
     Boolean(block) && CARD_BLOCK_TYPES.includes(normalizeBlockType(block.type))

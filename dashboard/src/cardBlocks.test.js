@@ -4,6 +4,7 @@ import {
   hydrateCardFromBlocks,
   hasTurkishIbanFormat,
   inspectCardCompatibility,
+  isSafeGoogleMapsEmbedUrl,
   isValidIban,
   legacyFieldsForCardSave,
   makeCardBlocks,
@@ -100,6 +101,27 @@ test("standalone legacy map columns hydrate when no contact block exists", () =>
   assert.equal(location.data.map_url, "https://www.google.com/maps/embed?pb=legacy-map");
   assert.equal(location.data.map_type, "embed");
   assert.equal(card.blocks.some((block) => block.type === "contact"), false);
+});
+
+test("only canonical HTTPS Google Maps embed URLs are embeddable", () => {
+  assert.equal(
+    isSafeGoogleMapsEmbedUrl("https://www.google.com/maps/embed?pb=map"),
+    true,
+  );
+  assert.equal(
+    isSafeGoogleMapsEmbedUrl("https://maps.app.goo.gl/share-code"),
+    false,
+  );
+  assert.equal(
+    isSafeGoogleMapsEmbedUrl("https://www.google.com.evil.test/maps/embed"),
+    false,
+  );
+  assert.equal(
+    isSafeGoogleMapsEmbedUrl(
+      '<iframe src="https://www.google.com/maps/embed"></iframe>',
+    ),
+    false,
+  );
 });
 
 test("IBAN validation checks Turkish format and mod-97 checksum", () => {

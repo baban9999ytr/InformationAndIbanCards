@@ -48,6 +48,10 @@ export function getEligiblePrimaryActionSources(card, actionType) {
   );
 }
 
+export function getPrimaryActionBlockTypes(actionType) {
+  return ACTION_SOURCE_TYPES[actionType] || [];
+}
+
 export function resolvePresentationMode(card) {
   const profile = (Array.isArray(card?.blocks) ? card.blocks : []).find(
     (block) => block?.type === "profile",

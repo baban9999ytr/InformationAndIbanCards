@@ -5,6 +5,7 @@ import {
   copyPublicCardValue,
   demoCard,
   getEligiblePrimaryActionSources,
+  getPrimaryActionBlockTypes,
   resolvePrimaryAction,
   resolvePresentationMode,
   validatePrimaryAction,
@@ -131,6 +132,13 @@ test("source picker offers only visible blocks with content for the selected act
   assert.deepEqual(getEligiblePrimaryActionSources(card, "copy_iban").map((block) => block.id), ["ready"]);
   assert.deepEqual(getEligiblePrimaryActionSources(card, "call").map((block) => block.id), ["contact"]);
   assert.deepEqual(getEligiblePrimaryActionSources(card, "social"), []);
+});
+
+test("primary actions identify the block type to add when a source is missing", () => {
+  assert.deepEqual(getPrimaryActionBlockTypes("copy_iban"), ["payment_or_iban"]);
+  assert.deepEqual(getPrimaryActionBlockTypes("call"), ["contact"]);
+  assert.deepEqual(getPrimaryActionBlockTypes("google_review"), ["google_review"]);
+  assert.deepEqual(getPrimaryActionBlockTypes("custom_url"), []);
 });
 
 test("deleted, hidden, and incompatible selected sources are rejected", () => {

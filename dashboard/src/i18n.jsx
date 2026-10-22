@@ -10,6 +10,10 @@ const english = {
   "Bu işlem için kullanılabilir bir içerik kaynağı yok. İlgili bloğu ekleyin veya gerekli alanlarını doldurun ve görünür yapın.":
     "No usable content source is available for this action. Add the relevant block, complete its fields, and make it visible.",
   "İçeriğe git": "Go to content",
+  "Bloğu tamamla": "Complete block",
+  "İlgili bloğu ekle": "Add required block",
+  "{block} bloğu bu işlem için eklendi. Zorunlu alanları tamamlayın; kaynak otomatik seçilecek.":
+    "Complete the required fields in the {block} block and it will be selected automatically.",
   "İçerik kaynağı seçin.": "Choose a content source.",
   "İçerik ekleyin": "Add content",
   "Önceki kaynak artık kullanılamıyor": "Previous source is no longer available",

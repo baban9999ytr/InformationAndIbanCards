@@ -59,6 +59,7 @@ import {
   copyPublicCardValue,
   demoCard,
   getEligiblePrimaryActionSources,
+  getPrimaryActionBlockTypes,
   resolvePrimaryAction,
   resolvePresentationMode,
   validatePrimaryAction,
@@ -3079,6 +3080,7 @@ function CardModal({
           palette_id: card?.palette_id || null,
         };
   });
+  const pendingActionSourceId = useRef(null);
   const [blocks, setBlocks] = useState(() =>
     makeCardBlocks(
       savedDraft?.blocks?.length ? savedDraft.blocks : card?.blocks || [],
@@ -3112,6 +3114,36 @@ function CardModal({
   const [scanNotice, setScanNotice] = useState("");
   const [isDirty, setIsDirty] = useState(Boolean(savedDraft));
   const [devToolsOpen, setDevToolsOpen] = useState(false);
+
+  useEffect(() => {
+    const pendingId = pendingActionSourceId.current;
+    const actionType = form.primary_action?.type;
+    if (!pendingId || !actionType) return;
+    const source = getEligiblePrimaryActionSources(
+      { blocks },
+      actionType,
+    ).find((block) => block.id === pendingId);
+    if (!source) return;
+    pendingActionSourceId.current = null;
+    setForm((current) => {
+      if (current.primary_action?.type !== actionType) return current;
+      const selectedSourceIsValid = getEligiblePrimaryActionSources(
+        { blocks },
+        actionType,
+      ).some(
+        (block) => block.id === current.primary_action.source_block_id,
+      );
+      if (selectedSourceIsValid) return current;
+      return {
+        ...current,
+        primary_action: {
+          ...current.primary_action,
+          source_block_id: source.id,
+        },
+      };
+    });
+    setIsDirty(true);
+  }, [blocks, form.primary_action?.type, form.primary_action?.source_block_id]);
 
   useEffect(() => {
     let alive = true;
@@ -3280,6 +3312,46 @@ function CardModal({
         ? { slug: slugify(value) }
         : {}),
     }));
+  }
+
+  function preparePrimaryActionSource(type) {
+    const eligible = getEligiblePrimaryActionSources({ blocks }, type);
+    if (eligible.length) return eligible[0];
+    const blockTypes = getPrimaryActionBlockTypes(type);
+    if (!blockTypes.length) return null;
+    let source = blocks.find(
+      (block) => block.visible !== false && blockTypes.includes(block.type),
+    );
+    if (!source) {
+      source = createCardBlock(blockTypes[0], blocks.length);
+      setBlocks((current) => [...current, source]);
+    }
+    setExpandedBlockId(source.id);
+    pendingActionSourceId.current = source.id;
+    navigateEditorSection("content");
+    return null;
+  }
+
+  function selectPrimaryAction(type) {
+    pendingActionSourceId.current = null;
+    const source = preparePrimaryActionSource(type);
+    update("primary_action", {
+      type,
+      source_block_id: source?.id || "",
+      source_item_id: "",
+      label: "",
+      url: "",
+      text: "",
+    });
+  }
+
+  function selectPrimaryActionSource(sourceBlockId) {
+    pendingActionSourceId.current = null;
+    update("primary_action", {
+      ...form.primary_action,
+      source_block_id: sourceBlockId,
+      source_item_id: "",
+    });
   }
 
   function fillAdminTestData() {
@@ -3671,6 +3743,13 @@ function CardModal({
     { blocks },
     form.primary_action?.type,
   );
+  const incompleteActionSource = blocks.find(
+    (block) =>
+      block.visible !== false &&
+      getPrimaryActionBlockTypes(form.primary_action?.type).includes(
+        block.type,
+      ),
+  );
   const invalidActionSource = Boolean(
     form.primary_action?.source_block_id &&
       !eligibleActionSources.some(
@@ -3942,14 +4021,7 @@ function CardModal({
                 <select
                   value={form.primary_action?.type || ""}
                   onChange={(event) =>
-                    update("primary_action", {
-                      type: event.target.value,
-                      source_block_id: "",
-                      source_item_id: "",
-                      label: "",
-                      url: "",
-                      text: "",
-                    })
+                    selectPrimaryAction(event.target.value)
                   }
                 >
                   <option value="">{t("İşlem seçin")}</option>
@@ -3982,11 +4054,7 @@ function CardModal({
                         <select
                           value={form.primary_action.source_block_id || ""}
                           onChange={(event) =>
-                            update("primary_action", {
-                              ...form.primary_action,
-                              source_block_id: event.target.value,
-                              source_item_id: "",
-                            })
+                            selectPrimaryActionSource(event.target.value)
                           }
                         >
                           <option value="">{t("Kaynak seçin")}</option>
@@ -4007,9 +4075,49 @@ function CardModal({
                       </label>
                     ) : (
                       <div className="action-source-empty" role="status">
-                        <p>{t("Bu işlem için kullanılabilir bir içerik kaynağı yok. İlgili bloğu ekleyin veya gerekli alanlarını doldurun ve görünür yapın.")}</p>
-                        <button type="button" className="button button-secondary" onClick={() => navigateEditorSection("content")}>
-                          {t("İçeriğe git")}
+                        <p>
+                          {incompleteActionSource
+                            ? t(
+                                "{block} bloğundaki zorunlu alanları tamamlayın; kaynak otomatik seçilecek.",
+                                {
+                                  block: t(
+                                    cardBlockLabels[incompleteActionSource.type] ||
+                                      incompleteActionSource.type,
+                                  ),
+                                },
+                              )
+                            : t("Bu işlem için kullanılabilir bir içerik kaynağı yok. İlgili bloğu ekleyin veya gerekli alanlarını doldurun ve görünür yapın.")}
+                        </p>
+                        <button
+                          type="button"
+                          className="button button-secondary"
+                          onClick={() => {
+                            if (incompleteActionSource)
+                              pendingActionSourceId.current =
+                                incompleteActionSource.id;
+                            if (incompleteActionSource)
+                              setExpandedBlockId(incompleteActionSource.id);
+                            else {
+                              pendingActionSourceId.current = null;
+                              preparePrimaryActionSource(
+                                form.primary_action?.type,
+                              );
+                              setForm((current) => ({
+                                ...current,
+                                primary_action: {
+                                  ...current.primary_action,
+                                  source_block_id: "",
+                                  source_item_id: "",
+                                },
+                              }));
+                              setIsDirty(true);
+                            }
+                            navigateEditorSection("content");
+                          }}
+                        >
+                          {incompleteActionSource
+                            ? t("Bloğu tamamla")
+                            : t("İlgili bloğu ekle")}
                         </button>
                       </div>
                     )

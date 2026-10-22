@@ -85,6 +85,23 @@ test("legacy contact map data migrates to a location block and round-trips", () 
   assert.equal(reloaded.blocks.find((block) => block.id === "contact-old").data.phone, "905551112233");
 });
 
+test("standalone legacy map columns hydrate when no contact block exists", () => {
+  const card = hydrateCardFromBlocks({
+    title: "Adres kartı",
+    map_address: "Kadıköy, İstanbul",
+    map_url: "https://www.google.com/maps/embed?pb=legacy-map",
+    map_type: "embed",
+    blocks: [],
+  });
+
+  const location = card.blocks.find((block) => block.type === "location");
+  assert.ok(location);
+  assert.equal(location.data.address, "Kadıköy, İstanbul");
+  assert.equal(location.data.map_url, "https://www.google.com/maps/embed?pb=legacy-map");
+  assert.equal(location.data.map_type, "embed");
+  assert.equal(card.blocks.some((block) => block.type === "contact"), false);
+});
+
 test("IBAN validation checks Turkish format and mod-97 checksum", () => {
   assert.equal(hasTurkishIbanFormat("TR93 0006 2000 0000 1234 5678 90"), true);
   assert.equal(isValidIban("TR93 0006 2000 0000 1234 5678 90"), false);

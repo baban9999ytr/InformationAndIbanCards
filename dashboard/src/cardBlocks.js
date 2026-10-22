@@ -187,7 +187,7 @@ export function makeCardBlocks(existing = [], legacyCard = {}) {
   const hasLegacyLocation =
     Boolean(legacyLocationData.address) || Boolean(legacyLocationData.map_url);
   addMissing("location", hasLegacyLocation, legacyLocationData);
-  if (hasLegacyLocation && legacyContact?.visible !== false) {
+  if (hasLegacyLocation && legacyContact && legacyContact.visible !== false) {
     const locationBlock = blocks.find((block) => block.type === "location");
     if (locationBlock) {
       locationBlock.data = {

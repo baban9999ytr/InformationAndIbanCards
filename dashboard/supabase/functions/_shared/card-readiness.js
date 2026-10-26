@@ -1,20 +1,22 @@
-const hasText = (value) =>
-  typeof value === "string" && value.trim().length > 0;
+const hasText = (value) => typeof value === "string" && value.trim().length > 0;
 
 const hasUrlIn = (value) =>
   Array.isArray(value) && value.some((item) => hasText(item?.url));
 
 /** A card needs meaningful visible content beyond its business name and slug. */
 export function isCardReadyForPublic(card = {}) {
-  const title = String(card.title || "").trim().toLocaleLowerCase();
-  const legacyContent = [
-    card.google_review_url,
-    card.whatsapp,
-    card.sms,
-    card.instagram_url,
-    card.email,
-    card.iban,
-  ].some(hasText) || hasUrlIn(card.extra_links);
+  const title = String(card.title || "")
+    .trim()
+    .toLocaleLowerCase();
+  const legacyContent =
+    [
+      card.google_review_url,
+      card.whatsapp,
+      card.sms,
+      card.instagram_url,
+      card.email,
+      card.iban,
+    ].some(hasText) || hasUrlIn(card.extra_links);
 
   if (legacyContent) return true;
 
@@ -26,11 +28,18 @@ export function isCardReadyForPublic(card = {}) {
     switch (type) {
       case "profile": {
         const identity = [data.name, data.company].some(
-          (value) => hasText(value) && value.trim().toLocaleLowerCase() !== title,
+          (value) =>
+            hasText(value) && value.trim().toLocaleLowerCase() !== title,
         );
         return (
           identity ||
-          [data.title, data.bio, data.avatar_url, data.cover_url, data.location].some(hasText) ||
+          [
+            data.title,
+            data.bio,
+            data.avatar_url,
+            data.cover_url,
+            data.location,
+          ].some(hasText) ||
           (Array.isArray(data.gallery) && data.gallery.some(hasText))
         );
       }

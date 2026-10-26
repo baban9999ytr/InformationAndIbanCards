@@ -17,7 +17,10 @@ test("public card copy writes the exact recipient or IBAN value", async () => {
   const clipboard = { writeText: async (value) => copied.push(value) };
   await copyPublicCardValue(clipboard, "Mavi Kahve Ltd. Şti.");
   await copyPublicCardValue(clipboard, "TR270006200123400006789012");
-  assert.deepEqual(copied, ["Mavi Kahve Ltd. Şti.", "TR270006200123400006789012"]);
+  assert.deepEqual(copied, [
+    "Mavi Kahve Ltd. Şti.",
+    "TR270006200123400006789012",
+  ]);
   await assert.rejects(copyPublicCardValue(null, "Mavi Kahve Ltd. Şti."));
 });
 
@@ -31,7 +34,10 @@ test("legacy cards without a presentation setting remain Showcase", () => {
 
 test("legacy cards without a primary action resolve safely to no action", () => {
   assert.equal(resolvePrimaryAction({ title: "Existing", blocks: [] }), null);
-  assert.equal(validatePrimaryAction({ title: "Existing", blocks: [] }), "Choose a primary action.");
+  assert.equal(
+    validatePrimaryAction({ title: "Existing", blocks: [] }),
+    "Choose a primary action.",
+  );
 });
 
 test("public Showcase renderer binds the optional action before rendering it", async () => {
@@ -124,44 +130,115 @@ test("primary actions can address a stable link inside a source block", () => {
 });
 
 test("source picker offers only visible blocks with content for the selected action", () => {
-  const card = { blocks: [
-    { id: "empty", type: "payment_or_iban", visible: true, data: { iban: "" } },
-    { id: "hidden", type: "payment_or_iban", visible: false, data: { iban: "TR270006200123400006789012" } },
-    { id: "ready", type: "payment_or_iban", visible: true, data: { iban: "TR270006200123400006789012" } },
-    { id: "contact", type: "contact", visible: true, data: { phone: "+902121234567" } },
-  ] };
-  assert.deepEqual(getEligiblePrimaryActionSources(card, "copy_iban").map((block) => block.id), ["ready"]);
-  assert.deepEqual(getEligiblePrimaryActionSources(card, "call").map((block) => block.id), ["contact"]);
+  const card = {
+    blocks: [
+      {
+        id: "empty",
+        type: "payment_or_iban",
+        visible: true,
+        data: { iban: "" },
+      },
+      {
+        id: "hidden",
+        type: "payment_or_iban",
+        visible: false,
+        data: { iban: "TR270006200123400006789012" },
+      },
+      {
+        id: "ready",
+        type: "payment_or_iban",
+        visible: true,
+        data: { iban: "TR270006200123400006789012" },
+      },
+      {
+        id: "contact",
+        type: "contact",
+        visible: true,
+        data: { phone: "+902121234567" },
+      },
+    ],
+  };
+  assert.deepEqual(
+    getEligiblePrimaryActionSources(card, "copy_iban").map((block) => block.id),
+    ["ready"],
+  );
+  assert.deepEqual(
+    getEligiblePrimaryActionSources(card, "call").map((block) => block.id),
+    ["contact"],
+  );
   assert.deepEqual(getEligiblePrimaryActionSources(card, "social"), []);
 });
 
 test("primary actions identify the block type to add when a source is missing", () => {
-  assert.deepEqual(getPrimaryActionBlockTypes("copy_iban"), ["payment_or_iban"]);
+  assert.deepEqual(getPrimaryActionBlockTypes("copy_iban"), [
+    "payment_or_iban",
+  ]);
   assert.deepEqual(getPrimaryActionBlockTypes("call"), ["contact"]);
-  assert.deepEqual(getPrimaryActionBlockTypes("google_review"), ["google_review"]);
+  assert.deepEqual(getPrimaryActionBlockTypes("google_review"), [
+    "google_review",
+  ]);
   assert.deepEqual(getPrimaryActionBlockTypes("custom_url"), []);
 });
 
 test("deleted, hidden, and incompatible selected sources are rejected", () => {
-  const card = { blocks: [
-    { id: "phone", type: "contact", visible: true, data: { phone: "+902121234567" } },
-    { id: "social", type: "social", visible: true, data: { links: [{ id: "site", url: "https://example.com" }] } },
-  ] };
-  assert.match(validatePrimaryAction(card, { type: "copy_iban", source_block_id: "phone" }), /incompatible/);
-  assert.match(validatePrimaryAction(card, { type: "call", source_block_id: "deleted" }), /missing or hidden/);
+  const card = {
+    blocks: [
+      {
+        id: "phone",
+        type: "contact",
+        visible: true,
+        data: { phone: "+902121234567" },
+      },
+      {
+        id: "social",
+        type: "social",
+        visible: true,
+        data: { links: [{ id: "site", url: "https://example.com" }] },
+      },
+    ],
+  };
+  assert.match(
+    validatePrimaryAction(card, {
+      type: "copy_iban",
+      source_block_id: "phone",
+    }),
+    /incompatible/,
+  );
+  assert.match(
+    validatePrimaryAction(card, { type: "call", source_block_id: "deleted" }),
+    /missing or hidden/,
+  );
   card.blocks[0].visible = false;
-  assert.match(validatePrimaryAction(card, { type: "call", source_block_id: "phone" }), /missing or hidden/);
-  assert.equal(validatePrimaryAction(card, { type: "website", source_block_id: "social", source_item_id: "site" }), "");
+  assert.match(
+    validatePrimaryAction(card, { type: "call", source_block_id: "phone" }),
+    /missing or hidden/,
+  );
+  assert.equal(
+    validatePrimaryAction(card, {
+      type: "website",
+      source_block_id: "social",
+      source_item_id: "site",
+    }),
+    "",
+  );
 });
 
 test("malformed legacy source data does not crash the source picker", () => {
-  const card = { blocks: [
-    { id: "broken", type: "payment_or_iban", data: { iban: 12345 } },
-    { id: "bad-links", type: "social", data: { links: [{ url: 7 }, null] } },
-  ] };
+  const card = {
+    blocks: [
+      { id: "broken", type: "payment_or_iban", data: { iban: 12345 } },
+      { id: "bad-links", type: "social", data: { links: [{ url: 7 }, null] } },
+    ],
+  };
   assert.deepEqual(getEligiblePrimaryActionSources(card, "copy_iban"), []);
   assert.deepEqual(getEligiblePrimaryActionSources(card, "social"), []);
-  assert.match(validatePrimaryAction(card, { type: "copy_iban", source_block_id: "broken" }), /incompatible/);
+  assert.match(
+    validatePrimaryAction(card, {
+      type: "copy_iban",
+      source_block_id: "broken",
+    }),
+    /incompatible/,
+  );
 });
 
 test("local demo fixture covers real Showcase content without a production record", () => {

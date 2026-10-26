@@ -22,6 +22,10 @@ test("legacy palettes remain inspectable and low-contrast combinations are ident
   const issues = paletteContrastIssues(legacyTokens);
   assert.deepEqual(
     issues.map(({ foreground, background }) => [foreground, background]),
-    [["text", "background"], ["text", "surface"], ["button_text", "primary"]],
+    [
+      ["text", "background"],
+      ["text", "surface"],
+      ["button_text", "primary"],
+    ],
   );
 });

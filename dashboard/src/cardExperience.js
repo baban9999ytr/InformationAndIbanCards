@@ -22,17 +22,29 @@ const ACTION_SOURCE_TYPES = {
 
 function hasActionContent(block, actionType) {
   const data = block?.data || {};
-  const hasLink = Array.isArray(data.links) && data.links.some((link) => hasText(link?.url));
+  const hasLink =
+    Array.isArray(data.links) && data.links.some((link) => hasText(link?.url));
   switch (actionType) {
-    case "copy_iban": return hasText(data.iban);
-    case "save_contact": return hasText(data.name) || hasText(data.phone) || hasText(data.email);
-    case "call": return hasText(data.phone);
-    case "whatsapp": return hasText(data.whatsapp);
-    case "website": return hasText(data.url) || hasLink;
-    case "social": return hasLink;
-    case "maps": return hasText(data.map_url) || hasText(data.maps_url) || hasText(data.address);
-    case "google_review": return hasText(data.url);
-    default: return false;
+    case "copy_iban":
+      return hasText(data.iban);
+    case "save_contact":
+      return hasText(data.name) || hasText(data.phone) || hasText(data.email);
+    case "call":
+      return hasText(data.phone);
+    case "whatsapp":
+      return hasText(data.whatsapp);
+    case "website":
+      return hasText(data.url) || hasLink;
+    case "social":
+      return hasLink;
+    case "maps":
+      return (
+        hasText(data.map_url) || hasText(data.maps_url) || hasText(data.address)
+      );
+    case "google_review":
+      return hasText(data.url);
+    default:
+      return false;
   }
 }
 
@@ -131,7 +143,13 @@ export function validatePrimaryAction(
       selectedItem?.url ||
       (Array.isArray(data.links) && data.links.some((link) => link?.url)),
     ),
-    maps: Boolean(data.map_url || data.maps_url || data.address || card?.map_url || card?.map_address),
+    maps: Boolean(
+      data.map_url ||
+      data.maps_url ||
+      data.address ||
+      card?.map_url ||
+      card?.map_address,
+    ),
     google_review: Boolean(data.url || card?.google_review_url),
     custom_url: Boolean(action.url),
     copy_text: Boolean(action.text),

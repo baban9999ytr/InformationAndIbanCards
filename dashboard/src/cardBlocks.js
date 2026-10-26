@@ -187,8 +187,7 @@ export function makeCardBlocks(existing = [], legacyCard = {}) {
         ? ""
         : legacyContact?.data?.maps_url) ||
       "",
-    map_type:
-      legacyCard.map_type || legacyContact?.data?.map_type || null,
+    map_type: legacyCard.map_type || legacyContact?.data?.map_type || null,
   };
   if (!legacyLocationData.map_type && legacyLocationData.map_url) {
     legacyLocationData.map_type =
@@ -289,7 +288,9 @@ export function isValidIban(value) {
 }
 
 export function hasTurkishIbanFormat(value) {
-  const iban = String(value || "").replace(/\s+/g, "").toUpperCase();
+  const iban = String(value || "")
+    .replace(/\s+/g, "")
+    .toUpperCase();
   return /^TR\d{24}$/.test(iban);
 }
 

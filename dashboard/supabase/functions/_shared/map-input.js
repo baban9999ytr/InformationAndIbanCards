@@ -48,12 +48,7 @@ function parseHttpsUrl(value) {
   } catch {
     throw new Error("Enter a valid Google Maps URL.");
   }
-  if (
-    url.protocol !== "https:" ||
-    url.username ||
-    url.password ||
-    url.port
-  ) {
+  if (url.protocol !== "https:" || url.username || url.password || url.port) {
     throw new Error("Google Maps links must use HTTPS without credentials.");
   }
   return url;
@@ -90,11 +85,11 @@ export function normalizeMapReference(mapType, value) {
   if (mapType === "legacy") {
     const url = parseHttpsUrl(value);
     const allowedLegacyMap =
-      (url.hostname === "maps.google.com" && (url.pathname === "/" || url.pathname.startsWith("/maps"))) ||
+      (url.hostname === "maps.google.com" &&
+        (url.pathname === "/" || url.pathname.startsWith("/maps"))) ||
       (url.hostname === "www.google.com" &&
         /^\/maps\/(?:search|place)(?:\/|$)/.test(url.pathname));
-    if (!allowedLegacyMap)
-      throw new Error("Unsupported legacy map link.");
+    if (!allowedLegacyMap) throw new Error("Unsupported legacy map link.");
     return url.href;
   }
   throw new Error("Choose a Google Maps link type.");

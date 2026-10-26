@@ -3,38 +3,46 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 const LanguageContext = createContext(null);
 
 const english = {
-  "Konum": "Location",
+  Konum: "Location",
   "Açık adres (isteğe bağlı)": "Street address (optional)",
   "Harita bağlantısı türü (isteğe bağlı)": "Map link type (optional)",
   "Harita bağlantısı ekleme": "No map link",
-  "Google Maps iframe kodu veya embed URL'si": "Google Maps iframe code or embed URL",
+  "Google Maps iframe kodu veya embed URL'si":
+    "Google Maps iframe code or embed URL",
   "maps.app.goo.gl kısa bağlantısı": "maps.app.goo.gl short link",
-  "Adres, harita bağlantısı veya ikisini birlikte ekleyin. Iframe kodundan yalnızca güvenli Google Maps src adresi saklanır.": "Add an address, a map link, or both. Only the validated Google Maps src URL is stored from iframe code.",
+  "Adres, harita bağlantısı veya ikisini birlikte ekleyin. Iframe kodundan yalnızca güvenli Google Maps src adresi saklanır.":
+    "Add an address, a map link, or both. Only the validated Google Maps src URL is stored from iframe code.",
   "Google Maps konumu": "Google Maps location",
   "Kart oluşturma": "Create cards",
   "Kart yönetimi": "Manage cards",
   "Kart görme": "View cards",
-  "Açık": "On",
-  "Kapalı": "Off",
+  Açık: "On",
+  Kapalı: "Off",
   "İstek gerekli": "Request required",
   "Bekleyen kart erişim istekleri": "Pending card access requests",
-  "Kullanıcıların istediği kart yetkilerini inceleyin.": "Review card permissions requested by users.",
+  "Kullanıcıların istediği kart yetkilerini inceleyin.":
+    "Review card permissions requested by users.",
   "Yöneticiye erişim isteyin.": "Request access from an administrator.",
-  "Erişim isteğiniz yöneticiye iletildi.": "Your access request was sent to an administrator.",
+  "Erişim isteğiniz yöneticiye iletildi.":
+    "Your access request was sent to an administrator.",
   "Erişim isteği gönderilemedi.": "Could not send the access request.",
   "Erişim istekleri yüklenemedi.": "Could not load access requests.",
   "Erişim isteği onaylandı.": "Access request approved.",
   "Erişim isteği reddedildi.": "Access request rejected.",
   "İstek sonuçlandırılamadı.": "Could not resolve the request.",
   "Kart erişim yetkisi güncellendi.": "Card access permission updated.",
-  "Kart erişim yetkisi güncellenemedi.": "Could not update card access permission.",
-  "Kartlarını görüntüleme izniniz kapalı.": "You do not have permission to view your cards.",
-  "Kartlarınıza erişmek için yöneticinizden yetki isteyin.": "Request access from your administrator to view your cards.",
+  "Kart erişim yetkisi güncellenemedi.":
+    "Could not update card access permission.",
+  "Kartlarını görüntüleme izniniz kapalı.":
+    "You do not have permission to view your cards.",
+  "Kartlarınıza erişmek için yöneticinizden yetki isteyin.":
+    "Request access from your administrator to view your cards.",
   "Kart görme erişimi iste": "Request card viewing access",
   "Kart oluşturma erişimi iste": "Request card creation access",
   "Kart yönetimi erişimi iste": "Request card management access",
   "Kart yönetimi yetkisi gerekiyor.": "Card management permission is required.",
-  "Kart oluşturma yetkiniz yönetici tarafından kapalı.": "Card creation is disabled by your administrator.",
+  "Kart oluşturma yetkiniz yönetici tarafından kapalı.":
+    "Card creation is disabled by your administrator.",
   "İstek gönderildi": "Request sent",
   "Alıcı adı": "Account holder",
   "Alıcı adını kopyala": "Copy account holder",
@@ -49,17 +57,20 @@ const english = {
     "Complete the required fields in the {block} block and it will be selected automatically.",
   "İçerik kaynağı seçin.": "Choose a content source.",
   "İçerik ekleyin": "Add content",
-  "Önceki kaynak artık kullanılamıyor": "Previous source is no longer available",
-  "Analitik": "Analytics",
+  "Önceki kaynak artık kullanılamıyor":
+    "Previous source is no longer available",
+  Analitik: "Analytics",
   "Kart analitiği": "Card analytics",
   "Kart başına geri bildirim": "Feedback by card",
-  "Kartlarınıza gelen gerçek geri bildirimlerin özeti.": "A summary of feedback actually received by your cards.",
-  "Yalnızca alınan geri bildirimler ve puanlar gösterilir.": "Only received feedback and ratings are shown.",
+  "Kartlarınıza gelen gerçek geri bildirimlerin özeti.":
+    "A summary of feedback actually received by your cards.",
+  "Yalnızca alınan geri bildirimler ve puanlar gösterilir.":
+    "Only received feedback and ratings are shown.",
   "Puan yok": "No rating",
   "Geri bildirimleri gör": "View feedback",
   "Henüz kart yok. Yeni kart oluşturduğunuzda geri bildirim özetleri burada görünür.":
     "No cards yet. Feedback summaries will appear here after you create one.",
-  "YÖNETİM": "MANAGEMENT",
+  YÖNETİM: "MANAGEMENT",
   "Yönetim menüsü": "Management menu",
   "Mod seçimi önce canlı önizlemeyi değiştirir; ziyaretçilere yansıtmak için değişiklikleri kaydedin. Diğer kart içeriği korunur.":
     "Mode selection first updates the live preview. Save changes to publish it; other card content is retained.",
@@ -645,10 +656,14 @@ const english = {
 
 const turkishFromEnglish = {
   "Choose a primary action.": "Bir ana işlem seçin.",
-  "The selected source block is missing or hidden.": "Seçilen kaynak bloğu silinmiş veya gizlenmiş.",
-  "The selected source is incompatible or incomplete.": "Seçilen kaynak bu işlem için uygun değil veya eksik.",
-  "The selected link is no longer available.": "Seçilen bağlantı artık kullanılamıyor.",
-  "The selected action has no valid destination or content.": "Seçilen işlemin geçerli hedefi veya içeriği yok.",
+  "The selected source block is missing or hidden.":
+    "Seçilen kaynak bloğu silinmiş veya gizlenmiş.",
+  "The selected source is incompatible or incomplete.":
+    "Seçilen kaynak bu işlem için uygun değil veya eksik.",
+  "The selected link is no longer available.":
+    "Seçilen bağlantı artık kullanılamıyor.",
+  "The selected action has no valid destination or content.":
+    "Seçilen işlemin geçerli hedefi veya içeriği yok.",
   "Choose a content source.": "İçerik kaynağı seçin.",
 };
 
@@ -675,7 +690,10 @@ export function LanguageProvider({ children }) {
       language,
       setLanguage,
       t: (key, values = {}) => {
-        let result = language === "en" ? english[key] || key : turkishFromEnglish[key] || key;
+        let result =
+          language === "en"
+            ? english[key] || key
+            : turkishFromEnglish[key] || key;
         for (const [name, replacement] of Object.entries(values)) {
           result = result.replaceAll(`{${name}}`, String(replacement));
         }

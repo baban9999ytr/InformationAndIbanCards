@@ -124,7 +124,9 @@ Deno.serve(async (request: Request) => {
       userIds.length
         ? admin
             .from("profiles")
-            .select("id,full_name,email,role,is_suspended,is_super_user,card_permissions")
+            .select(
+              "id,full_name,email,role,is_suspended,is_super_user,card_permissions",
+            )
             .in("id", userIds)
         : Promise.resolve({ data: [], error: null }),
       admin.from("profiles").select("id", { count: "exact", head: true }),
@@ -194,16 +196,21 @@ Deno.serve(async (request: Request) => {
     const mode = payload.mode;
     if (
       typeof targetId !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetId) ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        targetId,
+      ) ||
       typeof permissionKey !== "string" ||
       !(cardPermissionKeys as readonly string[]).includes(permissionKey) ||
       typeof mode !== "string" ||
       !(cardPermissionModes as readonly string[]).includes(mode)
     ) {
-      return new Response(JSON.stringify({ error: "Invalid card permission request" }), {
-        status: 400,
-        headers,
-      });
+      return new Response(
+        JSON.stringify({ error: "Invalid card permission request" }),
+        {
+          status: 400,
+          headers,
+        },
+      );
     }
     const { data: targetProfile, error: targetError } = await admin
       .from("profiles")
@@ -211,11 +218,17 @@ Deno.serve(async (request: Request) => {
       .eq("id", targetId)
       .maybeSingle();
     if (targetError) {
-      console.error("Admin permission target lookup failed", targetError.message);
-      return new Response(JSON.stringify({ error: "Unable to verify target user" }), {
-        status: 500,
-        headers,
-      });
+      console.error(
+        "Admin permission target lookup failed",
+        targetError.message,
+      );
+      return new Response(
+        JSON.stringify({ error: "Unable to verify target user" }),
+        {
+          status: 500,
+          headers,
+        },
+      );
     }
     if (!targetProfile)
       return new Response(JSON.stringify({ error: "User not found" }), {
@@ -223,10 +236,15 @@ Deno.serve(async (request: Request) => {
         headers,
       });
     if (targetProfile.role !== "user" || targetProfile.is_super_user) {
-      return new Response(JSON.stringify({ error: "Only standard user permissions can be changed" }), {
-        status: 403,
-        headers,
-      });
+      return new Response(
+        JSON.stringify({
+          error: "Only standard user permissions can be changed",
+        }),
+        {
+          status: 403,
+          headers,
+        },
+      );
     }
 
     const permissions = {
@@ -242,10 +260,13 @@ Deno.serve(async (request: Request) => {
       .eq("id", targetId);
     if (updateError) {
       console.error("Card permission update failed", updateError.message);
-      return new Response(JSON.stringify({ error: "Unable to update card permission" }), {
-        status: 500,
-        headers,
-      });
+      return new Response(
+        JSON.stringify({ error: "Unable to update card permission" }),
+        {
+          status: 500,
+          headers,
+        },
+      );
     }
 
     if (mode !== "request") {
@@ -260,11 +281,19 @@ Deno.serve(async (request: Request) => {
         .eq("permission_key", permissionKey)
         .eq("status", "pending");
       if (requestError) {
-        console.error("Pending permission request update failed", requestError.message);
-        return new Response(JSON.stringify({ error: "Permission changed but request could not be resolved" }), {
-          status: 500,
-          headers,
-        });
+        console.error(
+          "Pending permission request update failed",
+          requestError.message,
+        );
+        return new Response(
+          JSON.stringify({
+            error: "Permission changed but request could not be resolved",
+          }),
+          {
+            status: 500,
+            headers,
+          },
+        );
       }
     }
 
@@ -277,10 +306,15 @@ Deno.serve(async (request: Request) => {
     });
     if (auditError) {
       console.error("Card permission audit write failed", auditError.message);
-      return new Response(JSON.stringify({ error: "Permission changed but audit logging failed" }), {
-        status: 500,
-        headers,
-      });
+      return new Response(
+        JSON.stringify({
+          error: "Permission changed but audit logging failed",
+        }),
+        {
+          status: 500,
+          headers,
+        },
+      );
     }
     return new Response(
       JSON.stringify({ ok: true, userId: targetId, permissionKey, mode }),
@@ -297,12 +331,17 @@ Deno.serve(async (request: Request) => {
       .limit(500);
     if (requestError) {
       console.error("Permission request list failed", requestError.message);
-      return new Response(JSON.stringify({ error: "Unable to list permission requests" }), {
-        status: 500,
-        headers,
-      });
+      return new Response(
+        JSON.stringify({ error: "Unable to list permission requests" }),
+        {
+          status: 500,
+          headers,
+        },
+      );
     }
-    const userIds = [...new Set((requests || []).map((request) => request.user_id))];
+    const userIds = [
+      ...new Set((requests || []).map((request) => request.user_id)),
+    ];
     const { data: profiles, error: profilesError } = userIds.length
       ? await admin
           .from("profiles")
@@ -310,13 +349,21 @@ Deno.serve(async (request: Request) => {
           .in("id", userIds)
       : { data: [], error: null };
     if (profilesError) {
-      console.error("Permission request profiles failed", profilesError.message);
-      return new Response(JSON.stringify({ error: "Unable to load permission request users" }), {
-        status: 500,
-        headers,
-      });
+      console.error(
+        "Permission request profiles failed",
+        profilesError.message,
+      );
+      return new Response(
+        JSON.stringify({ error: "Unable to load permission request users" }),
+        {
+          status: 500,
+          headers,
+        },
+      );
     }
-    const profileById = new Map((profiles || []).map((profile) => [profile.id, profile]));
+    const profileById = new Map(
+      (profiles || []).map((profile) => [profile.id, profile]),
+    );
     return new Response(
       JSON.stringify({
         requests: (requests || []).map((request) => ({
@@ -333,13 +380,18 @@ Deno.serve(async (request: Request) => {
     const approved = payload.approved;
     if (
       typeof requestId !== "string" ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId) ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        requestId,
+      ) ||
       typeof approved !== "boolean"
     ) {
-      return new Response(JSON.stringify({ error: "Invalid permission request resolution" }), {
-        status: 400,
-        headers,
-      });
+      return new Response(
+        JSON.stringify({ error: "Invalid permission request resolution" }),
+        {
+          status: 400,
+          headers,
+        },
+      );
     }
     const { data: permissionRequest, error: requestLookupError } = await admin
       .from("card_permission_requests")
@@ -348,17 +400,26 @@ Deno.serve(async (request: Request) => {
       .eq("status", "pending")
       .maybeSingle();
     if (requestLookupError) {
-      console.error("Permission request lookup failed", requestLookupError.message);
-      return new Response(JSON.stringify({ error: "Unable to verify permission request" }), {
-        status: 500,
-        headers,
-      });
+      console.error(
+        "Permission request lookup failed",
+        requestLookupError.message,
+      );
+      return new Response(
+        JSON.stringify({ error: "Unable to verify permission request" }),
+        {
+          status: 500,
+          headers,
+        },
+      );
     }
     if (!permissionRequest)
-      return new Response(JSON.stringify({ error: "Pending request not found" }), {
-        status: 404,
-        headers,
-      });
+      return new Response(
+        JSON.stringify({ error: "Pending request not found" }),
+        {
+          status: 404,
+          headers,
+        },
+      );
 
     if (approved) {
       const { data: targetProfile, error: targetError } = await admin
@@ -367,17 +428,28 @@ Deno.serve(async (request: Request) => {
         .eq("id", permissionRequest.user_id)
         .maybeSingle();
       if (targetError || !targetProfile) {
-        console.error("Permission request target lookup failed", targetError?.message);
-        return new Response(JSON.stringify({ error: "Unable to verify request user" }), {
-          status: 500,
-          headers,
-        });
+        console.error(
+          "Permission request target lookup failed",
+          targetError?.message,
+        );
+        return new Response(
+          JSON.stringify({ error: "Unable to verify request user" }),
+          {
+            status: 500,
+            headers,
+          },
+        );
       }
       if (targetProfile.role !== "user" || targetProfile.is_super_user) {
-        return new Response(JSON.stringify({ error: "Only standard user permissions can be approved" }), {
-          status: 403,
-          headers,
-        });
+        return new Response(
+          JSON.stringify({
+            error: "Only standard user permissions can be approved",
+          }),
+          {
+            status: 403,
+            headers,
+          },
+        );
       }
       const permissions = {
         card_create: "on",
@@ -391,11 +463,17 @@ Deno.serve(async (request: Request) => {
         .update({ card_permissions: permissions })
         .eq("id", permissionRequest.user_id);
       if (updateError) {
-        console.error("Permission request approval failed", updateError.message);
-        return new Response(JSON.stringify({ error: "Unable to approve permission request" }), {
-          status: 500,
-          headers,
-        });
+        console.error(
+          "Permission request approval failed",
+          updateError.message,
+        );
+        return new Response(
+          JSON.stringify({ error: "Unable to approve permission request" }),
+          {
+            status: 500,
+            headers,
+          },
+        );
       }
     }
     const { error: resolveError } = await admin
@@ -408,25 +486,41 @@ Deno.serve(async (request: Request) => {
       .eq("id", requestId)
       .eq("status", "pending");
     if (resolveError) {
-      console.error("Permission request resolution failed", resolveError.message);
-      return new Response(JSON.stringify({ error: "Permission changed but request resolution failed" }), {
-        status: 500,
-        headers,
-      });
+      console.error(
+        "Permission request resolution failed",
+        resolveError.message,
+      );
+      return new Response(
+        JSON.stringify({
+          error: "Permission changed but request resolution failed",
+        }),
+        {
+          status: 500,
+          headers,
+        },
+      );
     }
     const { error: auditError } = await admin.from("admin_audit_log").insert({
       actor_user_id: actor.id,
-      action: approved ? "user.card_permission.approve" : "user.card_permission.reject",
+      action: approved
+        ? "user.card_permission.approve"
+        : "user.card_permission.reject",
       entity_type: "profile",
       entity_id: permissionRequest.user_id,
       changed_fields: [permissionRequest.permission_key],
     });
     if (auditError) {
-      console.error("Permission request audit write failed", auditError.message);
-      return new Response(JSON.stringify({ error: "Request resolved but audit logging failed" }), {
-        status: 500,
-        headers,
-      });
+      console.error(
+        "Permission request audit write failed",
+        auditError.message,
+      );
+      return new Response(
+        JSON.stringify({ error: "Request resolved but audit logging failed" }),
+        {
+          status: 500,
+          headers,
+        },
+      );
     }
     return new Response(JSON.stringify({ ok: true, requestId, approved }), {
       status: 200,

@@ -73,17 +73,38 @@ test("legacy contact map data migrates to a location block and round-trips", () 
     map_address: "Kadıköy, İstanbul",
     map_url: "https://www.google.com/maps/embed?pb=legacy-map",
     map_type: "embed",
-    blocks: [{ id: "contact-old", type: "contact", visible: true, data: { phone: "905551112233", address: "Kadıköy, İstanbul", maps_url: "https://www.google.com/maps/embed?pb=legacy-map" } }],
+    blocks: [
+      {
+        id: "contact-old",
+        type: "contact",
+        visible: true,
+        data: {
+          phone: "905551112233",
+          address: "Kadıköy, İstanbul",
+          maps_url: "https://www.google.com/maps/embed?pb=legacy-map",
+        },
+      },
+    ],
   };
   const normalized = hydrateCardFromBlocks(legacy);
   const location = normalized.blocks.find((block) => block.type === "location");
   assert.equal(location.data.address, "Kadıköy, İstanbul");
   assert.equal(location.data.map_type, "embed");
   const serialized = serializeCardBlocks(normalized.blocks);
-  const saved = { ...legacy, ...legacyFieldsForCardSave(legacy, serialized), blocks: serialized };
+  const saved = {
+    ...legacy,
+    ...legacyFieldsForCardSave(legacy, serialized),
+    blocks: serialized,
+  };
   const reloaded = hydrateCardFromBlocks(saved);
-  assert.equal(reloaded.blocks.find((block) => block.type === "location").data.map_url, legacy.map_url);
-  assert.equal(reloaded.blocks.find((block) => block.id === "contact-old").data.phone, "905551112233");
+  assert.equal(
+    reloaded.blocks.find((block) => block.type === "location").data.map_url,
+    legacy.map_url,
+  );
+  assert.equal(
+    reloaded.blocks.find((block) => block.id === "contact-old").data.phone,
+    "905551112233",
+  );
 });
 
 test("standalone legacy map columns hydrate when no contact block exists", () => {
@@ -98,9 +119,15 @@ test("standalone legacy map columns hydrate when no contact block exists", () =>
   const location = card.blocks.find((block) => block.type === "location");
   assert.ok(location);
   assert.equal(location.data.address, "Kadıköy, İstanbul");
-  assert.equal(location.data.map_url, "https://www.google.com/maps/embed?pb=legacy-map");
+  assert.equal(
+    location.data.map_url,
+    "https://www.google.com/maps/embed?pb=legacy-map",
+  );
   assert.equal(location.data.map_type, "embed");
-  assert.equal(card.blocks.some((block) => block.type === "contact"), false);
+  assert.equal(
+    card.blocks.some((block) => block.type === "contact"),
+    false,
+  );
 });
 
 test("only canonical HTTPS Google Maps embed URLs are embeddable", () => {

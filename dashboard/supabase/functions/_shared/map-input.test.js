@@ -8,8 +8,7 @@ import {
   safeLocationForRender,
 } from "./map-input.js";
 
-const validEmbed =
-  "https://www.google.com/maps/embed?pb=sample-map-data";
+const validEmbed = "https://www.google.com/maps/embed?pb=sample-map-data";
 
 test("extracts only the src from a Google Maps iframe and discards its HTML", () => {
   const source = `<iframe src="${validEmbed}" width="600" allowfullscreen onload="alert(1)"></iframe>`;
@@ -18,11 +17,11 @@ test("extracts only the src from a Google Maps iframe and discards its HTML", ()
 
 test("rejects untrusted embed hosts, protocols, duplicate src, and extra HTML", () => {
   assert.throws(
-    () => parseGoogleMapsEmbed("<iframe src=\"https://iamavirus.com\"></iframe>"),
+    () => parseGoogleMapsEmbed('<iframe src="https://iamavirus.com"></iframe>'),
     /only https/i,
   );
   assert.throws(
-    () => parseGoogleMapsEmbed("<iframe src=\"javascript:alert(1)\"></iframe>"),
+    () => parseGoogleMapsEmbed('<iframe src="javascript:alert(1)"></iframe>'),
     /https/i,
   );
   assert.throws(
@@ -88,5 +87,8 @@ test("invalid stored map URLs are not rendered", () => {
 test("legacy Google Maps query URLs remain valid for existing cards", () => {
   const legacy = "https://maps.google.com/?q=Kadikoy+Istanbul";
   assert.equal(normalizeMapReference("legacy", legacy), legacy);
-  assert.equal(safeLocationForRender({ map_url: legacy, map_type: "legacy" }).map_url, legacy);
+  assert.equal(
+    safeLocationForRender({ map_url: legacy, map_type: "legacy" }).map_url,
+    legacy,
+  );
 });

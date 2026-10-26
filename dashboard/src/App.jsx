@@ -41,7 +41,10 @@ import { supabase, supabaseConfigured } from "./supabaseClient.js";
 import { LanguageSwitcher, useTranslation } from "./i18n.jsx";
 import { invalidateCachedQueries, queryCached } from "./queryCache.js";
 import { isCardReadyForPublic } from "../supabase/functions/_shared/card-readiness.js";
-import { normalizeLocationData, safeLocationForRender } from "../supabase/functions/_shared/map-input.js";
+import {
+  normalizeLocationData,
+  safeLocationForRender,
+} from "../supabase/functions/_shared/map-input.js";
 import {
   paletteContrastIssues,
   saveCustomPalette,
@@ -252,9 +255,17 @@ function cardBlockPreviewText(block) {
         .filter(Boolean)
         .join(", ");
     case "custom_button":
-      return [data.button_text, data.title, data.url].find((value) => typeof value === "string" && value) || "";
+      return (
+        [data.button_text, data.title, data.url].find(
+          (value) => typeof value === "string" && value,
+        ) || ""
+      );
     case "text_or_note":
-      return [data.text, data.title].find((value) => typeof value === "string" && value) || "";
+      return (
+        [data.text, data.title].find(
+          (value) => typeof value === "string" && value,
+        ) || ""
+      );
     default:
       return "";
   }
@@ -1249,7 +1260,14 @@ function PublicCard({ token, onReport, previewCard = null }) {
       ? demoMode
       : resolvePresentationMode(card);
   useEffect(() => {
-    if (!import.meta.env.DEV || !card || loading || error || !modeCommentRef.current) return undefined;
+    if (
+      !import.meta.env.DEV ||
+      !card ||
+      loading ||
+      error ||
+      !modeCommentRef.current
+    )
+      return undefined;
     const marker = document.createComment(` Note By Dev: ${presentationMode} `);
     modeCommentRef.current.appendChild(marker);
     return () => marker.remove();
@@ -1269,27 +1287,31 @@ function PublicCard({ token, onReport, previewCard = null }) {
       if (import.meta.env.DEV && token === "demo") {
         const params = new URLSearchParams(window.location.search);
         const fixture = params.get("fixture");
-        const sample = fixture === "classic-iban"
-          ? {
-              ...demoCard,
-              presentation_mode: "classic",
-              palette: params.get("palette") === "dark-brown"
-                ? { tokens: {
-                    background: "#1B1410",
-                    surface: "#2A1D18",
-                    text: "#FFF4E8",
-                    muted: "#D3B4A3",
-                    primary: "#B9382D",
-                    accent: "#F58A35",
-                    button_text: "#FFF7F1",
-                  } }
-                : demoCard.palette,
-              primary_action: {
-                type: "copy_iban",
-                source_block_id: "demo-payment",
-              },
-            }
-          : demoCard;
+        const sample =
+          fixture === "classic-iban"
+            ? {
+                ...demoCard,
+                presentation_mode: "classic",
+                palette:
+                  params.get("palette") === "dark-brown"
+                    ? {
+                        tokens: {
+                          background: "#1B1410",
+                          surface: "#2A1D18",
+                          text: "#FFF4E8",
+                          muted: "#D3B4A3",
+                          primary: "#B9382D",
+                          accent: "#F58A35",
+                          button_text: "#FFF7F1",
+                        },
+                      }
+                    : demoCard.palette,
+                primary_action: {
+                  type: "copy_iban",
+                  source_block_id: "demo-payment",
+                },
+              }
+            : demoCard;
         setCard(hydrateCardFromBlocks(sample));
         setCardId(demoCard.id);
         setLoading(false);
@@ -1410,11 +1432,18 @@ function PublicCard({ token, onReport, previewCard = null }) {
       },
       location: (() => {
         const locationBlock = blockOf("location");
-        const legacyAddress = channels.address === false ? "" : contact.address || "";
-        const legacyMap = channels.maps_url === false ? "" : contact.maps_url || "";
-        const raw = locationBlock.address || locationBlock.map_url
-          ? locationBlock
-          : { address: legacyAddress, map_url: legacyMap, map_type: legacyMap ? "legacy" : null };
+        const legacyAddress =
+          channels.address === false ? "" : contact.address || "";
+        const legacyMap =
+          channels.maps_url === false ? "" : contact.maps_url || "";
+        const raw =
+          locationBlock.address || locationBlock.map_url
+            ? locationBlock
+            : {
+                address: legacyAddress,
+                map_url: legacyMap,
+                map_type: legacyMap ? "legacy" : null,
+              };
         return safeLocationForRender(raw);
       })(),
     };
@@ -1582,33 +1611,40 @@ function PublicCard({ token, onReport, previewCard = null }) {
     return <PublicNotFound onReport={onReport} message={t(error)} />;
   }
 
-const blockOrder = (type, fallback) => cardBlockOrder(card, type, fallback);
-const showcaseAction = resolvePrimaryAction(card);
+  const blockOrder = (type, fallback) => cardBlockOrder(card, type, fallback);
+  const showcaseAction = resolvePrimaryAction(card);
 
-const actionWarning = validatePrimaryAction(card) ||
-  (previewCard?.primary_action_requires_source && !resolvePrimaryAction(card)?.source_block_id
-    ? "Choose a content source."
-    : "");
+  const actionWarning =
+    validatePrimaryAction(card) ||
+    (previewCard?.primary_action_requires_source &&
+    !resolvePrimaryAction(card)?.source_block_id
+      ? "Choose a content source."
+      : "");
 
   return (
-    <main className={`public-page ${previewCard ? "editor-render-preview" : ""}`} style={cardPaletteStyle(card?.palette)}>
-      {!previewCard && <header className="public-header">
-        <a className="brand public-brand" href="/">
-          <span className="brand-symbol">b.</span>
-          <span>bilgi</span>
-        </a>
-        <div>
-          <LanguageSwitcher />
-          <button
-            className="public-report-link"
-            onClick={() =>
-              onReport({ cardId, reportedUrl: window.location.href })
-            }
-          >
-            {t("Kötüye kullanım bildirimi")}
-          </button>
-        </div>
-      </header>}
+    <main
+      className={`public-page ${previewCard ? "editor-render-preview" : ""}`}
+      style={cardPaletteStyle(card?.palette)}
+    >
+      {!previewCard && (
+        <header className="public-header">
+          <a className="brand public-brand" href="/">
+            <span className="brand-symbol">b.</span>
+            <span>bilgi</span>
+          </a>
+          <div>
+            <LanguageSwitcher />
+            <button
+              className="public-report-link"
+              onClick={() =>
+                onReport({ cardId, reportedUrl: window.location.href })
+              }
+            >
+              {t("Kötüye kullanım bildirimi")}
+            </button>
+          </div>
+        </header>
+      )}
       {!previewCard && import.meta.env.DEV && token === "demo" && (
         <nav
           className="demo-mode-switcher"
@@ -1790,28 +1826,33 @@ const actionWarning = validatePrimaryAction(card) ||
                         ))}
                     </section>
                   )}
-                {(links.location.address || links.location.map_url || links.profile.address) && (
+                {(links.location.address ||
+                  links.location.map_url ||
+                  links.profile.address) && (
                   <section className="showcase-detail" style={{ order: 6 }}>
                     <MapPin size={20} aria-hidden="true" />
                     <div>
                       <h2>{t("Adres")}</h2>
                       <p>{links.location.address || links.profile.address}</p>
                     </div>
-                    {links.location.map_type === "embed" && links.location.map_url ? (
+                    {links.location.map_type === "embed" &&
+                    links.location.map_url ? (
                       <GoogleMapsEmbed url={links.location.map_url} t={t} />
-                    ) : links.location.map_url && (
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() =>
-                          requestExternal({
-                            label: t("Konum"),
-                            url: links.location.map_url,
-                          })
-                        }
-                      >
-                        {t("Haritada aç")} <ExternalLink size={14} />
-                      </button>
+                    ) : (
+                      links.location.map_url && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() =>
+                            requestExternal({
+                              label: t("Konum"),
+                              url: links.location.map_url,
+                            })
+                          }
+                        >
+                          {t("Haritada aç")} <ExternalLink size={14} />
+                        </button>
+                      )
                     )}
                   </section>
                 )}
@@ -1993,23 +2034,26 @@ const actionWarning = validatePrimaryAction(card) ||
                           <MessageCircle size={17} /> <span>{t("SMS")}</span>
                         </button>
                       )}
-                      {links.location.map_url && links.location.map_type !== "embed" && (
-                        <button
-                          className="contact-link contact-button"
-                          style={{
-                            order:
-                              showcaseAction?.type === "maps" ? -1 : undefined,
-                          }}
-                          onClick={() =>
-                            requestExternal({
-                              label: "Harita konumu",
-                              url: links.location.map_url,
-                            })
-                          }
-                        >
-                          <MapPin size={17} /> <span>{t("Konum")}</span>
-                        </button>
-                      )}
+                      {links.location.map_url &&
+                        links.location.map_type !== "embed" && (
+                          <button
+                            className="contact-link contact-button"
+                            style={{
+                              order:
+                                showcaseAction?.type === "maps"
+                                  ? -1
+                                  : undefined,
+                            }}
+                            onClick={() =>
+                              requestExternal({
+                                label: "Harita konumu",
+                                url: links.location.map_url,
+                              })
+                            }
+                          >
+                            <MapPin size={17} /> <span>{t("Konum")}</span>
+                          </button>
+                        )}
                       {(links.contact.phone || links.contact.email) && (
                         <button
                           type="button"
@@ -2505,8 +2549,12 @@ function CompactCardPresentation({
         resolvePrimaryAction(card)?.type === "copy_iban" &&
         payment.iban && (
           <section className="classic-payment">
-            <div className="classic-payment-bank">{payment.bank_name || t("Banka hesabı")}</div>
-            <strong className="classic-payment-iban">{formatIban(sanitizeIban(payment.iban))}</strong>
+            <div className="classic-payment-bank">
+              {payment.bank_name || t("Banka hesabı")}
+            </div>
+            <strong className="classic-payment-iban">
+              {formatIban(sanitizeIban(payment.iban))}
+            </strong>
             {payment.recipient_name && (
               <div className="classic-payment-recipient">
                 <span>{t("Alıcı adı")}</span>
@@ -2514,7 +2562,9 @@ function CompactCardPresentation({
                   type="button"
                   className="classic-recipient-copy"
                   aria-label={`${t("Alıcı adını kopyala")}: ${payment.recipient_name}`}
-                  onClick={() => onCopy(payment.recipient_name, "Alıcı adı kopyalandı.")}
+                  onClick={() =>
+                    onCopy(payment.recipient_name, "Alıcı adı kopyalandı.")
+                  }
                   disabled={preview}
                 >
                   <span>{payment.recipient_name}</span>
@@ -2582,8 +2632,22 @@ function CompactCardPresentation({
           ))}
         </div>
       )}
-      {mode === "classic" && location?.address && <p className="compact-location-address"><MapPin size={15} /> {location.address}</p>}
-      {mode === "classic" && location?.map_url && <button type="button" className="compact-location-link" onClick={() => onExternal({ label: t("Konum"), url: location.map_url })}><MapPin size={15} /> {t("Haritada aç")}</button>}
+      {mode === "classic" && location?.address && (
+        <p className="compact-location-address">
+          <MapPin size={15} /> {location.address}
+        </p>
+      )}
+      {mode === "classic" && location?.map_url && (
+        <button
+          type="button"
+          className="compact-location-link"
+          onClick={() =>
+            onExternal({ label: t("Konum"), url: location.map_url })
+          }
+        >
+          <MapPin size={15} /> {t("Haritada aç")}
+        </button>
+      )}
       {["classic", "smart"].includes(mode) &&
         location?.map_type === "embed" &&
         location.map_url && <GoogleMapsEmbed url={location.map_url} t={t} />}
@@ -2749,9 +2813,7 @@ function ibanValidationMessage(value, t) {
     );
   }
   if (normalized.length !== 26 || !hasTurkishIbanFormat(normalized)) {
-    return t(
-      "IBAN, TR ve ardından 24 rakamdan oluşmalıdır.",
-    );
+    return t("IBAN, TR ve ardından 24 rakamdan oluşmalıdır.");
   }
   return "";
 }
@@ -2886,18 +2948,52 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
     <div className="block-edit-fields">
       {block.type === "location" && (
         <>
-          <TextField label={t("Açık adres (isteğe bağlı)")} value={block.data.address || ""} onChange={(event) => updateField("address", event.target.value)} />
+          <TextField
+            label={t("Açık adres (isteğe bağlı)")}
+            value={block.data.address || ""}
+            onChange={(event) => updateField("address", event.target.value)}
+          />
           <label className="field">
             <span>{t("Harita bağlantısı türü (isteğe bağlı)")}</span>
-            <select value={block.data.map_type || "none"} onChange={(event) => onChange({ ...block.data, map_type: event.target.value === "none" ? null : event.target.value, map_url: "" })}>
+            <select
+              value={block.data.map_type || "none"}
+              onChange={(event) =>
+                onChange({
+                  ...block.data,
+                  map_type:
+                    event.target.value === "none" ? null : event.target.value,
+                  map_url: "",
+                })
+              }
+            >
               <option value="none">{t("Harita bağlantısı ekleme")}</option>
               <option value="embed">Google Maps Embed</option>
               <option value="short">Google Maps kısa paylaşım linki</option>
-              {block.data.map_type === "legacy" && <option value="legacy">{t("Mevcut Google Maps bağlantısı")}</option>}
+              {block.data.map_type === "legacy" && (
+                <option value="legacy">
+                  {t("Mevcut Google Maps bağlantısı")}
+                </option>
+              )}
             </select>
           </label>
-          {block.data.map_type && <TextField label={t(block.data.map_type === "embed" ? "Google Maps iframe kodu veya embed URL'si" : block.data.map_type === "legacy" ? "Mevcut Google Maps bağlantısı" : "maps.app.goo.gl kısa bağlantısı")} value={block.data.map_url || ""} onChange={(event) => updateField("map_url", event.target.value)} />}
-          <p className="field-hint">{t("Adres, harita bağlantısı veya ikisini birlikte ekleyin. Iframe kodundan yalnızca güvenli Google Maps src adresi saklanır.")}</p>
+          {block.data.map_type && (
+            <TextField
+              label={t(
+                block.data.map_type === "embed"
+                  ? "Google Maps iframe kodu veya embed URL'si"
+                  : block.data.map_type === "legacy"
+                    ? "Mevcut Google Maps bağlantısı"
+                    : "maps.app.goo.gl kısa bağlantısı",
+              )}
+              value={block.data.map_url || ""}
+              onChange={(event) => updateField("map_url", event.target.value)}
+            />
+          )}
+          <p className="field-hint">
+            {t(
+              "Adres, harita bağlantısı veya ikisini birlikte ekleyin. Iframe kodundan yalnızca güvenli Google Maps src adresi saklanır.",
+            )}
+          </p>
         </>
       )}
       {fields.map(([key, label, type]) =>
@@ -3064,23 +3160,21 @@ function BlockEditor({ block, onChange, onAddLink, onRemoveLink }) {
       )}
       {block.type === "contact" && (
         <div className="block-contact-toggles">
-          {["phone", "sms", "whatsapp", "email"].map(
-            (key) => (
-              <label className="check-row" key={key}>
-                <input
-                  type="checkbox"
-                  checked={block.data.channels?.[key] !== false}
-                  onChange={(event) =>
-                    updateField("channels", {
-                      ...block.data.channels,
-                      [key]: event.target.checked,
-                    })
-                  }
-                />
-                <span>{t(`Kanal: ${key}`)}</span>
-              </label>
-            ),
-          )}
+          {["phone", "sms", "whatsapp", "email"].map((key) => (
+            <label className="check-row" key={key}>
+              <input
+                type="checkbox"
+                checked={block.data.channels?.[key] !== false}
+                onChange={(event) =>
+                  updateField("channels", {
+                    ...block.data.channels,
+                    [key]: event.target.checked,
+                  })
+                }
+              />
+              <span>{t(`Kanal: ${key}`)}</span>
+            </label>
+          ))}
         </div>
       )}
     </div>
@@ -3187,10 +3281,9 @@ function CardModal({
     const pendingId = pendingActionSourceId.current;
     const actionType = form.primary_action?.type;
     if (!pendingId || !actionType) return;
-    const source = getEligiblePrimaryActionSources(
-      { blocks },
-      actionType,
-    ).find((block) => block.id === pendingId);
+    const source = getEligiblePrimaryActionSources({ blocks }, actionType).find(
+      (block) => block.id === pendingId,
+    );
     if (!source) return;
     pendingActionSourceId.current = null;
     setForm((current) => {
@@ -3198,9 +3291,7 @@ function CardModal({
       const selectedSourceIsValid = getEligiblePrimaryActionSources(
         { blocks },
         actionType,
-      ).some(
-        (block) => block.id === current.primary_action.source_block_id,
-      );
+      ).some((block) => block.id === current.primary_action.source_block_id);
       if (selectedSourceIsValid) return current;
       return {
         ...current,
@@ -3290,7 +3381,9 @@ function CardModal({
     const tokens = validatePaletteTokens(customPaletteTokens);
     if (paletteContrastIssues(tokens).length) {
       throw new Error(
-        t("Özel temada metin ve düğme renkleri en az 4,5:1 kontrast sağlamalıdır."),
+        t(
+          "Özel temada metin ve düğme renkleri en az 4,5:1 kontrast sağlamalıdır.",
+        ),
       );
     }
     const name = customPaletteName.trim();
@@ -3605,14 +3698,15 @@ function CardModal({
       }
       if (form.access_mode === "public" && !contentReady) {
         throw new Error(
-          t("Kartı herkese açmadan önce ad ve slug dışında en az bir içerik ekleyin."),
+          t(
+            "Kartı herkese açmadan önce ad ve slug dışında en az bir içerik ekleyin.",
+          ),
         );
       }
-      if (
-        form.slug &&
-        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug)
-      ) {
-        throw new Error(t("Kısa bağlantı yalnızca küçük harf, rakam ve tire içerebilir."));
+      if (form.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(form.slug)) {
+        throw new Error(
+          t("Kısa bağlantı yalnızca küçük harf, rakam ve tire içerebilir."),
+        );
       }
       if (card?.compatibility?.errors?.length) {
         throw new Error(
@@ -3841,16 +3935,19 @@ function CardModal({
   );
   const invalidActionSource = Boolean(
     form.primary_action?.source_block_id &&
-      !eligibleActionSources.some(
-        (block) => block.id === form.primary_action.source_block_id,
-      ),
+    !eligibleActionSources.some(
+      (block) => block.id === form.primary_action.source_block_id,
+    ),
   );
   const publicReady = isCardReadyForPublic({ ...form, blocks });
   const savedAction = resolvePrimaryAction(card);
   const requiresSourceForAction = Boolean(
     form.primary_action?.type &&
-      !["custom_url", "copy_text"].includes(form.primary_action.type) &&
-      !(savedAction?.type === form.primary_action.type && !savedAction.source_block_id),
+    !["custom_url", "copy_text"].includes(form.primary_action.type) &&
+    !(
+      savedAction?.type === form.primary_action.type &&
+      !savedAction.source_block_id
+    ),
   );
   const previewCard = {
     ...form,
@@ -3877,16 +3974,47 @@ function CardModal({
         aria-labelledby="card-modal-title"
       >
         {card && (
-          <nav className="editor-sidebar" aria-label={t("Dashboard navigasyonu")}>
-            <a className="editor-brand" href="/dashboard" onClick={(event) => { event.preventDefault(); requestClose("overview"); }}>
-              <span className="brand-symbol">b.</span><span>bilgi</span>
+          <nav
+            className="editor-sidebar"
+            aria-label={t("Dashboard navigasyonu")}
+          >
+            <a
+              className="editor-brand"
+              href="/dashboard"
+              onClick={(event) => {
+                event.preventDefault();
+                requestClose("overview");
+              }}
+            >
+              <span className="brand-symbol">b.</span>
+              <span>bilgi</span>
             </a>
             <span className="editor-workspace-label">{t("Çalışma alanı")}</span>
-            <button type="button" onClick={() => requestClose("overview")}><LayoutDashboard size={17} />{t("Genel Bakış")}</button>
-            <button type="button" className="selected" aria-current="page" onClick={() => requestClose("cards")}><Smartphone size={17} />{t("Kartlarım")}</button>
-            <button type="button" onClick={() => requestClose("analytics")}><BarChart3 size={17} />{t("Analitik")}</button>
-            <button type="button" onClick={() => requestClose("feedback")}><FileText size={17} />{t("Geri bildirimler")}</button>
-            <button type="button" onClick={() => requestClose("settings")}><Settings size={17} />{t("Hesap ayarları")}</button>
+            <button type="button" onClick={() => requestClose("overview")}>
+              <LayoutDashboard size={17} />
+              {t("Genel Bakış")}
+            </button>
+            <button
+              type="button"
+              className="selected"
+              aria-current="page"
+              onClick={() => requestClose("cards")}
+            >
+              <Smartphone size={17} />
+              {t("Kartlarım")}
+            </button>
+            <button type="button" onClick={() => requestClose("analytics")}>
+              <BarChart3 size={17} />
+              {t("Analitik")}
+            </button>
+            <button type="button" onClick={() => requestClose("feedback")}>
+              <FileText size={17} />
+              {t("Geri bildirimler")}
+            </button>
+            <button type="button" onClick={() => requestClose("settings")}>
+              <Settings size={17} />
+              {t("Hesap ayarları")}
+            </button>
           </nav>
         )}
         <header className="modal-header editor-topbar">
@@ -3900,7 +4028,11 @@ function CardModal({
             {card && (
               <div className="editor-identity-meta">
                 <span>{card.is_active ? t("Etkin") : t("Devre dışı")}</span>
-                <span>{form.access_mode === "public" ? `/c/${form.slug}` : t("Gizli bağlantı")}</span>
+                <span>
+                  {form.access_mode === "public"
+                    ? `/c/${form.slug}`
+                    : t("Gizli bağlantı")}
+                </span>
               </div>
             )}
           </div>
@@ -3910,7 +4042,11 @@ function CardModal({
           {card && (
             <div className="editor-topbar-actions">
               <span className="editor-save-state" role="status">
-                {busy ? t("Kaydediliyor…") : isDirty ? t("Kaydedilmemiş değişiklikler") : t("Tüm değişiklikler kaydedildi")}
+                {busy
+                  ? t("Kaydediliyor…")
+                  : isDirty
+                    ? t("Kaydedilmemiş değişiklikler")
+                    : t("Tüm değişiklikler kaydedildi")}
               </span>
               <button
                 type="button"
@@ -3919,13 +4055,23 @@ function CardModal({
               >
                 {mobilePreviewOpen ? t("Düzenlemeye dön") : t("Önizleme")}
               </button>
-              <button type="submit" form="card-editor-form" className="button button-primary" disabled={busy || !supabaseConfigured}>
-                {busy ? <LoaderCircle className="spin" size={16} /> : null} {t("Değişiklikleri kaydet")}
+              <button
+                type="submit"
+                form="card-editor-form"
+                className="button button-primary"
+                disabled={busy || !supabaseConfigured}
+              >
+                {busy ? <LoaderCircle className="spin" size={16} /> : null}{" "}
+                {t("Değişiklikleri kaydet")}
               </button>
             </div>
           )}
         </header>
-        <form id="card-editor-form" className="modal-body editor-form" onSubmit={save}>
+        <form
+          id="card-editor-form"
+          className="modal-body editor-form"
+          onSubmit={save}
+        >
           {error && (
             <div className="inline-error" role="alert">
               {error}
@@ -3993,7 +4139,10 @@ function CardModal({
               )}
             </div>
           )}
-          <div className="form-section quick-create-basics" id="editor-settings">
+          <div
+            className="form-section quick-create-basics"
+            id="editor-settings"
+          >
             <h3>
               01 <span>{t("Temel bilgiler")}</span>
             </h3>
@@ -4010,7 +4159,13 @@ function CardModal({
                 className={form.access_mode === "public" ? "active" : ""}
                 onClick={() => update("access_mode", "public")}
                 disabled={!publicReady}
-                title={!publicReady ? t("Halka açmak için kart adına ek olarak en az bir içerik girin.") : undefined}
+                title={
+                  !publicReady
+                    ? t(
+                        "Halka açmak için kart adına ek olarak en az bir içerik girin.",
+                      )
+                    : undefined
+                }
               >
                 <Globe2 size={15} /> {t("Herkese açık")}
               </button>
@@ -4023,7 +4178,9 @@ function CardModal({
               </button>
             </div>
             <div className="slug-field">
-              <span>{form.access_mode === "public" ? `${appOrigin}/c/` : "Slug"}</span>
+              <span>
+                {form.access_mode === "public" ? `${appOrigin}/c/` : "Slug"}
+              </span>
               <input
                 value={form.slug}
                 onChange={(event) => {
@@ -4037,7 +4194,9 @@ function CardModal({
             </div>
             {!publicReady ? (
               <p className="field-hint" role="status">
-                {t("Bu kart yalnızca adı ve kısa bağlantısı içeriyor. Kaydedildiğinde gizli kalır; 48 saat sonra yönetim panelindeki inceleme listesine alınır. Slug otomatik silinmez veya gizleme kararı verilmez.")}
+                {t(
+                  "Bu kart yalnızca adı ve kısa bağlantısı içeriyor. Kaydedildiğinde gizli kalır; 48 saat sonra yönetim panelindeki inceleme listesine alınır. Slug otomatik silinmez veya gizleme kararı verilmez.",
+                )}
               </p>
             ) : form.access_mode === "private" ? (
               <p className="field-hint">
@@ -4047,7 +4206,10 @@ function CardModal({
               </p>
             ) : null}
           </div>
-          <section className="form-section presentation-mode-editor" id="editor-appearance">
+          <section
+            className="form-section presentation-mode-editor"
+            id="editor-appearance"
+          >
             <div className="section-heading-row">
               <h3>
                 02 <span>{t("Kart Görünümü")}</span>
@@ -4101,9 +4263,11 @@ function CardModal({
               ))}
             </div>
             <p className="mode-save-hint">
-              {t(card
-                ? "Mod seçimi önce canlı önizlemeyi değiştirir; ziyaretçilere yansıtmak için değişiklikleri kaydedin. Diğer kart içeriği korunur."
-                : "Modu seçin; kartı oluşturduğunuzda bu görünüm kaydedilir.")}
+              {t(
+                card
+                  ? "Mod seçimi önce canlı önizlemeyi değiştirir; ziyaretçilere yansıtmak için değişiklikleri kaydedin. Diğer kart içeriği korunur."
+                  : "Modu seçin; kartı oluşturduğunuzda bu görünüm kaydedilir.",
+              )}
             </p>
             <div className="primary-action-editor" id="editor-primary-action">
               <h4>{t("Ana işlem")}</h4>
@@ -4116,9 +4280,7 @@ function CardModal({
                 <span>{t("İşlem türü")}</span>
                 <select
                   value={form.primary_action?.type || ""}
-                  onChange={(event) =>
-                    selectPrimaryAction(event.target.value)
-                  }
+                  onChange={(event) => selectPrimaryAction(event.target.value)}
                 >
                   <option value="">{t("İşlem seçin")}</option>
                   {[
@@ -4143,8 +4305,8 @@ function CardModal({
                 <>
                   {!["custom_url", "copy_text"].includes(
                     form.primary_action.type,
-                  ) && (
-                    eligibleActionSources.length ? (
+                  ) &&
+                    (eligibleActionSources.length ? (
                       <label className="field">
                         <span>{t("İçerik kaynağı")}</span>
                         <select
@@ -4155,14 +4317,19 @@ function CardModal({
                         >
                           <option value="">{t("Kaynak seçin")}</option>
                           {invalidActionSource && (
-                            <option value={form.primary_action.source_block_id} disabled>
+                            <option
+                              value={form.primary_action.source_block_id}
+                              disabled
+                            >
                               {t("Önceki kaynak artık kullanılamıyor")}
                             </option>
                           )}
                           {eligibleActionSources.map((block) => (
                             <option key={block.id} value={block.id}>
                               {t(cardBlockLabels[block.type] || block.type)}
-                              {block.data?.name || block.data?.bank_name || block.data?.url
+                              {block.data?.name ||
+                              block.data?.bank_name ||
+                              block.data?.url
                                 ? ` · ${block.data.name || block.data.bank_name || block.data.url}`
                                 : ""}
                             </option>
@@ -4177,12 +4344,15 @@ function CardModal({
                                 "{block} bloğundaki zorunlu alanları tamamlayın; kaynak otomatik seçilecek.",
                                 {
                                   block: t(
-                                    cardBlockLabels[incompleteActionSource.type] ||
-                                      incompleteActionSource.type,
+                                    cardBlockLabels[
+                                      incompleteActionSource.type
+                                    ] || incompleteActionSource.type,
                                   ),
                                 },
                               )
-                            : t("Bu işlem için kullanılabilir bir içerik kaynağı yok. İlgili bloğu ekleyin veya gerekli alanlarını doldurun ve görünür yapın.")}
+                            : t(
+                                "Bu işlem için kullanılabilir bir içerik kaynağı yok. İlgili bloğu ekleyin veya gerekli alanlarını doldurun ve görünür yapın.",
+                              )}
                         </p>
                         <button
                           type="button"
@@ -4216,8 +4386,7 @@ function CardModal({
                             : t("İlgili bloğu ekle")}
                         </button>
                       </div>
-                    )
-                  )}
+                    ))}
                   {(() => {
                     const sourceBlock = blocks.find(
                       (block) =>
@@ -4306,7 +4475,10 @@ function CardModal({
               )}
             </div>
           </section>
-          <div className="form-section card-builder-section" id="editor-content">
+          <div
+            className="form-section card-builder-section"
+            id="editor-content"
+          >
             <div className="section-heading-row">
               <h3>
                 <span>{t("Kart blokları")}</span>
@@ -4348,103 +4520,115 @@ function CardModal({
                   .map((block, index) => {
                     const BlockIcon = cardBlockIcons[block.type] || FileText;
                     return (
-                    <div
-                      className={`card-builder-item ${block.visible ? "" : "is-hidden"} ${expandedBlockId === block.id ? "is-expanded" : ""}`}
-                      key={block.id}
-                      draggable
-                      onDragStart={() => setDraggedBlockId(block.id)}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => {
-                        reorderBlocks(draggedBlockId, block.id);
-                        setDraggedBlockId(null);
-                      }}
-                    >
-                      <div className="block-item-heading">
-                        <button
-                          type="button"
-                          className="block-expand-button"
-                          aria-expanded={expandedBlockId === block.id}
-                          onClick={() =>
-                            setExpandedBlockId(
-                              expandedBlockId === block.id ? null : block.id,
-                            )
-                          }
-                        >
-                          <span className="block-icon" aria-hidden="true"><BlockIcon size={18} /></span>
-                          <span className="block-copy">
-                            <strong>{t(cardBlockLabels[block.type] || block.type)}</strong>
-                            <small>{cardBlockPreviewText(block) || t("İçerik ekleyin")}</small>
-                          </span>
-                          <ChevronDown className="block-chevron" size={17} aria-hidden="true" />
-                        </button>
-                        <label className="check-row">
-                          <input
-                            type="checkbox"
-                            onClick={(event) => event.stopPropagation()}
-                            checked={block.visible}
-                            onChange={(event) =>
-                              setBlockVisible(block.id, event.target.checked)
+                      <div
+                        className={`card-builder-item ${block.visible ? "" : "is-hidden"} ${expandedBlockId === block.id ? "is-expanded" : ""}`}
+                        key={block.id}
+                        draggable
+                        onDragStart={() => setDraggedBlockId(block.id)}
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={() => {
+                          reorderBlocks(draggedBlockId, block.id);
+                          setDraggedBlockId(null);
+                        }}
+                      >
+                        <div className="block-item-heading">
+                          <button
+                            type="button"
+                            className="block-expand-button"
+                            aria-expanded={expandedBlockId === block.id}
+                            onClick={() =>
+                              setExpandedBlockId(
+                                expandedBlockId === block.id ? null : block.id,
+                              )
+                            }
+                          >
+                            <span className="block-icon" aria-hidden="true">
+                              <BlockIcon size={18} />
+                            </span>
+                            <span className="block-copy">
+                              <strong>
+                                {t(cardBlockLabels[block.type] || block.type)}
+                              </strong>
+                              <small>
+                                {cardBlockPreviewText(block) ||
+                                  t("İçerik ekleyin")}
+                              </small>
+                            </span>
+                            <ChevronDown
+                              className="block-chevron"
+                              size={17}
+                              aria-hidden="true"
+                            />
+                          </button>
+                          <label className="check-row">
+                            <input
+                              type="checkbox"
+                              onClick={(event) => event.stopPropagation()}
+                              checked={block.visible}
+                              onChange={(event) =>
+                                setBlockVisible(block.id, event.target.checked)
+                              }
+                            />
+                            <span>{t("Görünür")}</span>
+                          </label>
+                        </div>
+                        <div className="block-reorder-actions">
+                          <button
+                            type="button"
+                            className="text-button"
+                            disabled={index === 0}
+                            aria-label={`${t("Yukarı taşı")}: ${t(cardBlockLabels[block.type])}`}
+                            onClick={() => moveBlock(index, -1)}
+                          >
+                            {t("Yukarı")}
+                          </button>
+                          <button
+                            type="button"
+                            className="text-button"
+                            disabled={index === blocks.length - 1}
+                            aria-label={`${t("Aşağı taşı")}: ${t(cardBlockLabels[block.type])}`}
+                            onClick={() => moveBlock(index, 1)}
+                          >
+                            {t("Aşağı")}
+                          </button>
+                          <button
+                            type="button"
+                            className="text-button"
+                            disabled={!isSupportedCardBlock(block)}
+                            onClick={() => duplicateBlock(block)}
+                          >
+                            {t("Kopyala")}
+                          </button>
+                          <button
+                            type="button"
+                            className="text-button danger-text"
+                            disabled={
+                              block.type === "profile" ||
+                              !isSupportedCardBlock(block)
+                            }
+                            onClick={() => removeBlock(block.id)}
+                          >
+                            {t("Sil")}
+                          </button>
+                        </div>
+                        {expandedBlockId === block.id && (
+                          <BlockEditor
+                            block={block}
+                            onChange={(data) => updateBlock(block.id, data)}
+                            onAddLink={() => addBlockLink(block)}
+                            onRemoveLink={(linkIndex) =>
+                              updateBlock(block.id, {
+                                ...block.data,
+                                links: (block.data.links || []).filter(
+                                  (_, index) => index !== linkIndex,
+                                ),
+                              })
                             }
                           />
-                          <span>{t("Görünür")}</span>
-                        </label>
+                        )}
                       </div>
-                      <div className="block-reorder-actions">
-                        <button
-                          type="button"
-                          className="text-button"
-                          disabled={index === 0}
-                          aria-label={`${t("Yukarı taşı")}: ${t(cardBlockLabels[block.type])}`}
-                          onClick={() => moveBlock(index, -1)}
-                        >
-                          {t("Yukarı")}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-button"
-                          disabled={index === blocks.length - 1}
-                          aria-label={`${t("Aşağı taşı")}: ${t(cardBlockLabels[block.type])}`}
-                          onClick={() => moveBlock(index, 1)}
-                        >
-                          {t("Aşağı")}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-button"
-                          disabled={!isSupportedCardBlock(block)}
-                          onClick={() => duplicateBlock(block)}
-                        >
-                          {t("Kopyala")}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-button danger-text"
-                          disabled={
-                            block.type === "profile" ||
-                            !isSupportedCardBlock(block)
-                          }
-                          onClick={() => removeBlock(block.id)}
-                        >
-                          {t("Sil")}
-                        </button>
-                      </div>
-                      {expandedBlockId === block.id && (
-                        <BlockEditor
-                          block={block}
-                          onChange={(data) => updateBlock(block.id, data)}
-                          onAddLink={() => addBlockLink(block)}
-                          onRemoveLink={(linkIndex) =>
-                            updateBlock(block.id, {
-                              ...block.data,
-                              links: (block.data.links || []).filter(
-                                (_, index) => index !== linkIndex,
-                              ),
-                            })
-                          }
-                        />
-                      )}
-                    </div>
-                  );})}
+                    );
+                  })}
                 {blocks.length > 8 && (
                   <div className="inline-warning" role="status">
                     {t(
@@ -4519,50 +4703,54 @@ function CardModal({
                 <LoaderCircle className="spin" size={18} />
               ) : (
                 <>
-                  {[...palettes].sort((left, right) =>
-                    Number(right.is_default) - Number(left.is_default) ||
-                    paletteContrastIssues(left.tokens).length - paletteContrastIssues(right.tokens).length ||
-                    left.name.localeCompare(right.name),
-                  ).map((palette) => {
-                    const selected = form.palette_id === palette.id;
-                    return (
-                      <button
-                        type="button"
-                        className={`palette-option ${selected ? "selected" : ""}`}
-                        key={palette.id}
-                        aria-pressed={selected}
-                        onClick={() => {
-                          update("palette_id", palette.id);
-                          setSuggestedPalette(null);
-                        }}
-                      >
-                        <span
-                          className="palette-card-preview"
-                          aria-hidden="true"
-                          style={{
-                            "--sample-background": palette.tokens?.background,
-                            "--sample-surface": palette.tokens?.surface,
-                            "--sample-text": palette.tokens?.text,
-                            "--sample-primary": palette.tokens?.primary,
+                  {[...palettes]
+                    .sort(
+                      (left, right) =>
+                        Number(right.is_default) - Number(left.is_default) ||
+                        paletteContrastIssues(left.tokens).length -
+                          paletteContrastIssues(right.tokens).length ||
+                        left.name.localeCompare(right.name),
+                    )
+                    .map((palette) => {
+                      const selected = form.palette_id === palette.id;
+                      return (
+                        <button
+                          type="button"
+                          className={`palette-option ${selected ? "selected" : ""}`}
+                          key={palette.id}
+                          aria-pressed={selected}
+                          onClick={() => {
+                            update("palette_id", palette.id);
+                            setSuggestedPalette(null);
                           }}
                         >
-                          <i className="palette-sample-avatar" />
-                          <i className="palette-sample-line" />
-                          <i className="palette-sample-button" />
-                        </span>
-                        <span>
-                          <strong>{palette.name}</strong>
-                          <small>
-                            {palette.moderation_status === "pending"
-                              ? t("İnceleniyor")
-                              : paletteContrastIssues(palette.tokens).length
-                                ? t("Kontrastı düşük")
-                                : t("Erişilebilir kontrast")}
-                          </small>
-                        </span>
-                      </button>
-                    );
-                  })}
+                          <span
+                            className="palette-card-preview"
+                            aria-hidden="true"
+                            style={{
+                              "--sample-background": palette.tokens?.background,
+                              "--sample-surface": palette.tokens?.surface,
+                              "--sample-text": palette.tokens?.text,
+                              "--sample-primary": palette.tokens?.primary,
+                            }}
+                          >
+                            <i className="palette-sample-avatar" />
+                            <i className="palette-sample-line" />
+                            <i className="palette-sample-button" />
+                          </span>
+                          <span>
+                            <strong>{palette.name}</strong>
+                            <small>
+                              {palette.moderation_status === "pending"
+                                ? t("İnceleniyor")
+                                : paletteContrastIssues(palette.tokens).length
+                                  ? t("Kontrastı düşük")
+                                  : t("Erişilebilir kontrast")}
+                            </small>
+                          </span>
+                        </button>
+                      );
+                    })}
                   <button
                     type="button"
                     className={`palette-option palette-default-option ${!form.palette_id ? "selected" : ""}`}
@@ -4572,15 +4760,19 @@ function CardModal({
                       setSuggestedPalette(null);
                     }}
                   >
-                        <span className="palette-card-preview" aria-hidden="true" style={{
-                          "--sample-background": "#0F172A",
-                          "--sample-surface": "#1E293B",
-                          "--sample-text": "#F8FAFC",
-                          "--sample-primary": "#38BDF8",
-                        }}>
-                          <i className="palette-sample-avatar" />
-                          <i className="palette-sample-line" />
-                          <i className="palette-sample-button" />
+                    <span
+                      className="palette-card-preview"
+                      aria-hidden="true"
+                      style={{
+                        "--sample-background": "#0F172A",
+                        "--sample-surface": "#1E293B",
+                        "--sample-text": "#F8FAFC",
+                        "--sample-primary": "#38BDF8",
+                      }}
+                    >
+                      <i className="palette-sample-avatar" />
+                      <i className="palette-sample-line" />
+                      <i className="palette-sample-button" />
                     </span>
                     <span>
                       <strong>{t("Sistem varsayılanı")}</strong>
@@ -4906,7 +5098,9 @@ function Sidebar({
         <nav className="side-nav" aria-label={t("Yönetim menüsü")}>
           {isAdmin && (
             <button
-              className={section === "cards" && cardScope === "managed" ? "selected" : ""}
+              className={
+                section === "cards" && cardScope === "managed" ? "selected" : ""
+              }
               onClick={onManagedCards}
             >
               <Users size={17} /> {t("Müşteri kartları")}
@@ -5108,7 +5302,14 @@ function CardRow({
             </button>
           </>
         )}
-        {canManage && <button className="button button-quiet edit-action" onClick={() => onEdit(card)}>{t("Düzenle")}</button>}
+        {canManage && (
+          <button
+            className="button button-quiet edit-action"
+            onClick={() => onEdit(card)}
+          >
+            {t("Düzenle")}
+          </button>
+        )}
         {isAdmin && (
           <IconButton
             label={t(card.is_active ? "Kartı dondur" : "Kartı etkinleştir")}
@@ -5128,7 +5329,12 @@ function CardRow({
           {menuOpen && (
             <div className="action-menu">
               {canManage && (
-                <button onClick={() => { setMenuOpen(false); onViewFeedback(card); }}>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onViewFeedback(card);
+                  }}
+                >
                   <FileText size={15} /> {t("Geri bildirimler")}
                 </button>
               )}
@@ -5178,19 +5384,26 @@ function CardRow({
                 </button>
               )}
               {canManage && (
-                <button onClick={() => { setMenuOpen(false); onEdit(card); }}>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEdit(card);
+                  }}
+                >
                   <Settings size={15} /> {t("Kartı düzenle")}
                 </button>
               )}
-              {canManage && <button
-                className="menu-danger"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onDelete(card);
-                }}
-              >
-                <Trash2 size={15} /> {t("Kartı sil")}
-              </button>}
+              {canManage && (
+                <button
+                  className="menu-danger"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete(card);
+                  }}
+                >
+                  <Trash2 size={15} /> {t("Kartı sil")}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -5378,8 +5591,12 @@ function App() {
   const devEditorPreviewRoute =
     import.meta.env.DEV &&
     ["/__dev/card-editor", "/__dev/card-create"].includes(normalizedPath);
-  const editorRouteMatch = normalizedPath.match(/^\/dashboard\/cards\/([^/]+)\/edit$/);
-  const editorCardId = editorRouteMatch ? decodeRouteSegment(editorRouteMatch[1]) : null;
+  const editorRouteMatch = normalizedPath.match(
+    /^\/dashboard\/cards\/([^/]+)\/edit$/,
+  );
+  const editorCardId = editorRouteMatch
+    ? decodeRouteSegment(editorRouteMatch[1])
+    : null;
   const editorRoute = Boolean(editorCardId);
   const adminRoute = normalizedPath === "/admin";
   const dashboardRoute = /^\/dashboard(?:\/.*)?$/.test(normalizedPath);
@@ -5456,7 +5673,9 @@ function App() {
     if (!editorRoute || loading) return;
     const matchingCard = cards.find((item) => item.id === editorCardId);
     if (matchingCard) {
-      setModalCard((current) => current?.id === matchingCard.id ? current : matchingCard);
+      setModalCard((current) =>
+        current?.id === matchingCard.id ? current : matchingCard,
+      );
     }
   }, [cards, editorCardId, editorRoute, loading]);
   function openReport(context = {}) {
@@ -5649,7 +5868,9 @@ function App() {
       .select("permission_key")
       .eq("user_id", ownerId)
       .eq("status", "pending");
-    setUserPermissionRequests((ownPermissionRequests || []).map((item) => item.permission_key));
+    setUserPermissionRequests(
+      (ownPermissionRequests || []).map((item) => item.permission_key),
+    );
     if (!profileError && profileData)
       setOnboardingOpen(!profileData.onboarding_completed);
     const hasAdminAccess = isAdminProfile(profileData);
@@ -5669,13 +5890,17 @@ function App() {
             )
             .order("created_at", { ascending: false }),
         ),
-        (hasAdminAccess || ["on"].includes(profileData?.card_permissions?.card_view || "on") || ["on"].includes(profileData?.card_permissions?.card_manage || "on")) ? cachedRequest(feedbackKey, 60_000, () =>
-          supabase.rpc(
-            privilegedFeedbackAccess
-              ? "get_admin_card_feedback"
-              : "get_card_feedback",
-          ),
-        ) : Promise.resolve({ data: [], error: null }),
+        hasAdminAccess ||
+        ["on"].includes(profileData?.card_permissions?.card_view || "on") ||
+        ["on"].includes(profileData?.card_permissions?.card_manage || "on")
+          ? cachedRequest(feedbackKey, 60_000, () =>
+              supabase.rpc(
+                privilegedFeedbackAccess
+                  ? "get_admin_card_feedback"
+                  : "get_card_feedback",
+              ),
+            )
+          : Promise.resolve({ data: [], error: null }),
         hasAdminAccess
           ? cachedRequest(clientsKey, 60_000, () =>
               supabase
@@ -5855,7 +6080,12 @@ function App() {
           bad: true,
         }),
       );
-      loadPermissionRequests().catch((requestError) => setToast({ message: requestError.message || t("Erişim istekleri yüklenemedi."), bad: true }));
+      loadPermissionRequests().catch((requestError) =>
+        setToast({
+          message: requestError.message || t("Erişim istekleri yüklenemedi."),
+          bad: true,
+        }),
+      );
     }
   }, [section, canManageUsers]);
 
@@ -6142,7 +6372,9 @@ function App() {
       return;
     }
     updateCardsState((current) =>
-      current.map((item) => (item.id === card.id ? { ...item, ...data } : item)),
+      current.map((item) =>
+        item.id === card.id ? { ...item, ...data } : item,
+      ),
     );
     setToast({
       message:
@@ -6324,43 +6556,102 @@ function App() {
   async function requestCardPermission(permissionKey) {
     if (!session?.user?.id || !supabase) return;
     try {
-      const { error: requestError } = await supabase.from("card_permission_requests").insert({ user_id: session.user.id, permission_key: permissionKey });
+      const { error: requestError } = await supabase
+        .from("card_permission_requests")
+        .insert({ user_id: session.user.id, permission_key: permissionKey });
       if (requestError && requestError.code !== "23505") throw requestError;
-      setUserPermissionRequests((current) => [...new Set([...current, permissionKey])]);
+      setUserPermissionRequests((current) => [
+        ...new Set([...current, permissionKey]),
+      ]);
       setToast({ message: t("Erişim isteğiniz yöneticiye iletildi.") });
     } catch (requestError) {
-      setToast({ message: requestError.message || t("Erişim isteği gönderilemedi."), bad: true });
+      setToast({
+        message: requestError.message || t("Erişim isteği gönderilemedi."),
+        bad: true,
+      });
     }
   }
 
   async function changeCardPermission(targetUser, permissionKey, mode) {
     try {
-      const { error: permissionError } = await supabase.functions.invoke("admin-users", { body: { action: "set_card_permission", userId: targetUser.id, permissionKey, mode } });
+      const { error: permissionError } = await supabase.functions.invoke(
+        "admin-users",
+        {
+          body: {
+            action: "set_card_permission",
+            userId: targetUser.id,
+            permissionKey,
+            mode,
+          },
+        },
+      );
       if (permissionError) throw permissionError;
-      setAdminUsers((current) => current.map((item) => item.id === targetUser.id ? { ...item, card_permissions: { card_create: "on", card_manage: "on", card_view: "on", ...(item.card_permissions || {}), [permissionKey]: mode } } : item));
+      setAdminUsers((current) =>
+        current.map((item) =>
+          item.id === targetUser.id
+            ? {
+                ...item,
+                card_permissions: {
+                  card_create: "on",
+                  card_manage: "on",
+                  card_view: "on",
+                  ...(item.card_permissions || {}),
+                  [permissionKey]: mode,
+                },
+              }
+            : item,
+        ),
+      );
       setToast({ message: t("Kart erişim yetkisi güncellendi.") });
     } catch (permissionError) {
-      setToast({ message: permissionError.message || t("Kart erişim yetkisi güncellenemedi."), bad: true });
+      setToast({
+        message:
+          permissionError.message || t("Kart erişim yetkisi güncellenemedi."),
+        bad: true,
+      });
     }
   }
 
   async function loadPermissionRequests() {
     setPermissionRequestsBusy(true);
     try {
-      const { data, error: requestError } = await supabase.functions.invoke("admin-users", { body: { action: "list_permission_requests" } });
+      const { data, error: requestError } = await supabase.functions.invoke(
+        "admin-users",
+        { body: { action: "list_permission_requests" } },
+      );
       if (requestError) throw requestError;
       setPermissionRequests(Array.isArray(data?.requests) ? data.requests : []);
-    } finally { setPermissionRequestsBusy(false); }
+    } finally {
+      setPermissionRequestsBusy(false);
+    }
   }
 
   async function resolveCardPermissionRequest(request, approved) {
     try {
-      const { error: resolveError } = await supabase.functions.invoke("admin-users", { body: { action: "resolve_permission_request", requestId: request.id, approved } });
+      const { error: resolveError } = await supabase.functions.invoke(
+        "admin-users",
+        {
+          body: {
+            action: "resolve_permission_request",
+            requestId: request.id,
+            approved,
+          },
+        },
+      );
       if (resolveError) throw resolveError;
-      setPermissionRequests((current) => current.filter((item) => item.id !== request.id));
-      setToast({ message: t(approved ? "Erişim isteği onaylandı." : "Erişim isteği reddedildi.") });
+      setPermissionRequests((current) =>
+        current.filter((item) => item.id !== request.id),
+      );
+      setToast({
+        message: t(
+          approved ? "Erişim isteği onaylandı." : "Erişim isteği reddedildi.",
+        ),
+      });
     } catch (resolveError) {
-      setToast({ message: resolveError.message || t("İstek sonuçlandırılamadı."), bad: true });
+      setToast({
+        message: resolveError.message || t("İstek sonuçlandırılamadı."),
+        bad: true,
+      });
     }
   }
 
@@ -6467,9 +6758,18 @@ function App() {
     profile?.role === "reseller" ||
     profile?.is_super_user === true;
   const cardPermissions = profile?.card_permissions || {};
-  const canCreateCards = isAdmin || (cardPermissions.card_create !== "off" && cardPermissions.card_create !== "request");
-  const canManageCards = isAdmin || (cardPermissions.card_manage !== "off" && cardPermissions.card_manage !== "request");
-  const canViewCards = isAdmin || (cardPermissions.card_view !== "off" && cardPermissions.card_view !== "request");
+  const canCreateCards =
+    isAdmin ||
+    (cardPermissions.card_create !== "off" &&
+      cardPermissions.card_create !== "request");
+  const canManageCards =
+    isAdmin ||
+    (cardPermissions.card_manage !== "off" &&
+      cardPermissions.card_manage !== "request");
+  const canViewCards =
+    isAdmin ||
+    (cardPermissions.card_view !== "off" &&
+      cardPermissions.card_view !== "request");
   const pendingReports = abuseReports.filter(
     (report) => report.status === "pending",
   ).length;
@@ -6501,19 +6801,26 @@ function App() {
       .toLocaleLowerCase(language)
       .includes(query.toLocaleLowerCase(language)),
   );
-  const analyticsRows = visibleCards.map((card) => {
-    const responses = feedback.filter((item) => item.card_id === card.id);
-    const ratings = responses
-      .map((item) => Number(item.rating))
-      .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5);
-    return {
-      card,
-      responseCount: responses.length,
-      averageRating: ratings.length
-        ? (ratings.reduce((total, rating) => total + rating, 0) / ratings.length).toFixed(1)
-        : null,
-    };
-  }).sort((left, right) => right.responseCount - left.responseCount);
+  const analyticsRows = visibleCards
+    .map((card) => {
+      const responses = feedback.filter((item) => item.card_id === card.id);
+      const ratings = responses
+        .map((item) => Number(item.rating))
+        .filter(
+          (rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5,
+        );
+      return {
+        card,
+        responseCount: responses.length,
+        averageRating: ratings.length
+          ? (
+              ratings.reduce((total, rating) => total + rating, 0) /
+              ratings.length
+            ).toFixed(1)
+          : null,
+      };
+    })
+    .sort((left, right) => right.responseCount - left.responseCount);
   const heading = {
     overview: [t("Genel Bakış"), t("Dijital varlıklarınızın bugünkü özeti.")],
     cards: [
@@ -6655,16 +6962,28 @@ function App() {
                       <Plus size={17} /> {t("Müşteri için kart oluştur")}
                     </button>
                   )}
-                  {canCreateCards && <button
-                    className="button button-primary"
-                    onClick={() => {
-                      setStartManagedCard(false);
-                      setModalCard(null);
-                    }}
-                  >
-                    <Plus size={17} /> {t("Yeni kart oluştur")}
-                  </button>}
-                  {!canCreateCards && cardPermissions.card_create === "request" && <button className="button button-secondary" onClick={() => requestCardPermission("card_create")}>{userPermissionRequests.includes("card_create") ? t("İstek gönderildi") : t("Kart oluşturma erişimi iste")}</button>}
+                  {canCreateCards && (
+                    <button
+                      className="button button-primary"
+                      onClick={() => {
+                        setStartManagedCard(false);
+                        setModalCard(null);
+                      }}
+                    >
+                      <Plus size={17} /> {t("Yeni kart oluştur")}
+                    </button>
+                  )}
+                  {!canCreateCards &&
+                    cardPermissions.card_create === "request" && (
+                      <button
+                        className="button button-secondary"
+                        onClick={() => requestCardPermission("card_create")}
+                      >
+                        {userPermissionRequests.includes("card_create")
+                          ? t("İstek gönderildi")
+                          : t("Kart oluşturma erişimi iste")}
+                      </button>
+                    )}
                 </div>
               )}
           </div>
@@ -6860,7 +7179,9 @@ function App() {
                       <EmptyCards
                         canCreate={canCreateCards}
                         createPermissionMode={cardPermissions.card_create}
-                        requestSent={userPermissionRequests.includes("card_create")}
+                        requestSent={userPermissionRequests.includes(
+                          "card_create",
+                        )}
                         onRequest={() => requestCardPermission("card_create")}
                         onCreate={() => {
                           setStartManagedCard(false);
@@ -6942,9 +7263,42 @@ function App() {
                       </label>
                     </div>
                   </div>
-                  {!canViewCards && !canManageCards && <div className="permission-gate" role="status"><h3>{t("Kartlarını görüntüleme izniniz kapalı.")}</h3><p>{t("Kartlarınıza erişmek için yöneticinizden yetki isteyin.")}</p>{cardPermissions.card_view === "request" && <button className="button button-primary" onClick={() => requestCardPermission("card_view")}>{userPermissionRequests.includes("card_view") ? t("İstek gönderildi") : t("Kart görme erişimi iste")}</button>}</div>}
-                  {!canManageCards && cardPermissions.card_manage === "request" && <div className="permission-gate"><h3>{t("Kart yönetimi yetkisi gerekiyor.")}</h3><button className="button button-secondary" onClick={() => requestCardPermission("card_manage")}>{userPermissionRequests.includes("card_manage") ? t("İstek gönderildi") : t("Kart yönetimi erişimi iste")}</button></div>}
-                  {!canViewCards && !canManageCards ? null : filteredCards.length ? (
+                  {!canViewCards && !canManageCards && (
+                    <div className="permission-gate" role="status">
+                      <h3>{t("Kartlarını görüntüleme izniniz kapalı.")}</h3>
+                      <p>
+                        {t(
+                          "Kartlarınıza erişmek için yöneticinizden yetki isteyin.",
+                        )}
+                      </p>
+                      {cardPermissions.card_view === "request" && (
+                        <button
+                          className="button button-primary"
+                          onClick={() => requestCardPermission("card_view")}
+                        >
+                          {userPermissionRequests.includes("card_view")
+                            ? t("İstek gönderildi")
+                            : t("Kart görme erişimi iste")}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {!canManageCards &&
+                    cardPermissions.card_manage === "request" && (
+                      <div className="permission-gate">
+                        <h3>{t("Kart yönetimi yetkisi gerekiyor.")}</h3>
+                        <button
+                          className="button button-secondary"
+                          onClick={() => requestCardPermission("card_manage")}
+                        >
+                          {userPermissionRequests.includes("card_manage")
+                            ? t("İstek gönderildi")
+                            : t("Kart yönetimi erişimi iste")}
+                        </button>
+                      </div>
+                    )}
+                  {!canViewCards &&
+                  !canManageCards ? null : filteredCards.length ? (
                     filteredCards.map((card) => (
                       <CardRow
                         key={card.id}
@@ -6970,7 +7324,9 @@ function App() {
                     <EmptyCards
                       canCreate={canCreateCards}
                       createPermissionMode={cardPermissions.card_create}
-                      requestSent={userPermissionRequests.includes("card_create")}
+                      requestSent={userPermissionRequests.includes(
+                        "card_create",
+                      )}
                       onRequest={() => requestCardPermission("card_create")}
                       onCreate={() => {
                         setStartManagedCard(false);
@@ -6985,8 +7341,10 @@ function App() {
                   <div className="panel-heading">
                     <div>
                       <h2>
-                        {t("48 saatlik sürelerini geçiren kartlar")} {" "}
-                        <span className="count-pill">{expiredCards.length}</span>
+                        {t("48 saatlik sürelerini geçiren kartlar")}{" "}
+                        <span className="count-pill">
+                          {expiredCards.length}
+                        </span>
                       </h2>
                       <p>
                         {t(
@@ -7003,7 +7361,7 @@ function App() {
                             <strong>{card.title || t("Adsız kart")}</strong>
                             <span>/{card.slug}</span>
                             <small>
-                              {t("Süre dolumu")}: {" "}
+                              {t("Süre dolumu")}:{" "}
                               {new Intl.DateTimeFormat(
                                 language === "tr" ? "tr-TR" : "en-US",
                                 { dateStyle: "medium", timeStyle: "short" },
@@ -7048,32 +7406,66 @@ function App() {
                 </section>
               )}
               {section === "analytics" && (
-                <section className="panel analytics-panel" aria-label={t("Kart analitiği")}>
+                <section
+                  className="panel analytics-panel"
+                  aria-label={t("Kart analitiği")}
+                >
                   <div className="panel-heading">
                     <div>
                       <h2>{t("Kart başına geri bildirim")}</h2>
-                      <p>{t("Yalnızca alınan geri bildirimler ve puanlar gösterilir.")}</p>
+                      <p>
+                        {t(
+                          "Yalnızca alınan geri bildirimler ve puanlar gösterilir.",
+                        )}
+                      </p>
                     </div>
-                    <span className="count-pill">{feedbackTotal} {t("yanıt")}</span>
+                    <span className="count-pill">
+                      {feedbackTotal} {t("yanıt")}
+                    </span>
                   </div>
                   {analyticsRows.length ? (
                     <div className="analytics-list">
-                      {analyticsRows.map(({ card, responseCount, averageRating }) => (
-                        <div className="analytics-row" key={card.id}>
-                          <div>
-                            <strong>{card.title}</strong>
-                            <small>{card.access_mode === "public" ? t("Herkese açık") : t("Gizli")}</small>
+                      {analyticsRows.map(
+                        ({ card, responseCount, averageRating }) => (
+                          <div className="analytics-row" key={card.id}>
+                            <div>
+                              <strong>{card.title}</strong>
+                              <small>
+                                {card.access_mode === "public"
+                                  ? t("Herkese açık")
+                                  : t("Gizli")}
+                              </small>
+                            </div>
+                            <span>
+                              {responseCount} {t("yanıt")}
+                            </span>
+                            <span>
+                              {averageRating
+                                ? `${averageRating} / 5`
+                                : t("Puan yok")}
+                            </span>
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => {
+                                setFeedbackCardId(card.id);
+                                goTo("feedback");
+                              }}
+                            >
+                              {t("Geri bildirimleri gör")}{" "}
+                              <ArrowUpRight size={14} />
+                            </button>
                           </div>
-                          <span>{responseCount} {t("yanıt")}</span>
-                          <span>{averageRating ? `${averageRating} / 5` : t("Puan yok")}</span>
-                          <button type="button" className="text-button" onClick={() => {
-                            setFeedbackCardId(card.id);
-                            goTo("feedback");
-                          }}>{t("Geri bildirimleri gör")} <ArrowUpRight size={14} /></button>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
-                  ) : <p className="analytics-empty">{t("Henüz kart yok. Yeni kart oluşturduğunuzda geri bildirim özetleri burada görünür.")}</p>}
+                  ) : (
+                    <p className="analytics-empty">
+                      {t(
+                        "Henüz kart yok. Yeni kart oluşturduğunuzda geri bildirim özetleri burada görünür.",
+                      )}
+                    </p>
+                  )}
                 </section>
               )}
               {section === "feedback" && (
@@ -7389,15 +7781,41 @@ function App() {
                                       : t("Etkin")}
                                   </span>
                                 </td>
-                                {["card_create", "card_manage", "card_view"].map((permissionKey) => (
+                                {[
+                                  "card_create",
+                                  "card_manage",
+                                  "card_view",
+                                ].map((permissionKey) => (
                                   <td key={permissionKey}>
-                                    {adminUser.role === "user" && !adminUser.is_super_user ? (
-                                      <select aria-label={`${adminUser.full_name || adminUser.email} ${permissionKey}`} value={adminUser.card_permissions?.[permissionKey] || "on"} disabled={adminUsersBusy} onChange={(event) => changeCardPermission(adminUser, permissionKey, event.target.value)}>
+                                    {adminUser.role === "user" &&
+                                    !adminUser.is_super_user ? (
+                                      <select
+                                        aria-label={`${adminUser.full_name || adminUser.email} ${permissionKey}`}
+                                        value={
+                                          adminUser.card_permissions?.[
+                                            permissionKey
+                                          ] || "on"
+                                        }
+                                        disabled={adminUsersBusy}
+                                        onChange={(event) =>
+                                          changeCardPermission(
+                                            adminUser,
+                                            permissionKey,
+                                            event.target.value,
+                                          )
+                                        }
+                                      >
                                         <option value="on">{t("Açık")}</option>
-                                        <option value="off">{t("Kapalı")}</option>
-                                        <option value="request">{t("İstek gerekli")}</option>
+                                        <option value="off">
+                                          {t("Kapalı")}
+                                        </option>
+                                        <option value="request">
+                                          {t("İstek gerekli")}
+                                        </option>
                                       </select>
-                                    ) : <span>—</span>}
+                                    ) : (
+                                      <span>—</span>
+                                    )}
                                   </td>
                                 ))}
                                 <td>
@@ -7459,8 +7877,78 @@ function App() {
                     </div>
                   )}
                   <div className="permission-requests-panel">
-                    <div className="panel-heading"><div><h3>{t("Bekleyen kart erişim istekleri")}</h3><p>{t("Kullanıcıların istediği kart yetkilerini inceleyin.")}</p></div><button className="button button-secondary" disabled={permissionRequestsBusy} onClick={() => loadPermissionRequests().catch((requestError) => setToast({ message: requestError.message, bad: true }))}>{permissionRequestsBusy ? t("Yükleniyor") : t("Yenile")}</button></div>
-                    {permissionRequests.length ? permissionRequests.map((request) => <article className="permission-request-row" key={request.id}><div><strong>{request.profile?.full_name || request.profile?.email || request.user_id}</strong><small>{t(request.permission_key)} · {new Date(request.requested_at).toLocaleString(language === "tr" ? "tr-TR" : "en-US")}</small></div><div><button className="button button-primary" onClick={() => resolveCardPermissionRequest(request, true)}>{t("Onayla")}</button><button className="button button-danger" onClick={() => resolveCardPermissionRequest(request, false)}>{t("Reddet")}</button></div></article>) : <p>{t(permissionRequestsBusy ? "İstekler yükleniyor…" : "Bekleyen erişim isteği yok.")}</p>}
+                    <div className="panel-heading">
+                      <div>
+                        <h3>{t("Bekleyen kart erişim istekleri")}</h3>
+                        <p>
+                          {t(
+                            "Kullanıcıların istediği kart yetkilerini inceleyin.",
+                          )}
+                        </p>
+                      </div>
+                      <button
+                        className="button button-secondary"
+                        disabled={permissionRequestsBusy}
+                        onClick={() =>
+                          loadPermissionRequests().catch((requestError) =>
+                            setToast({
+                              message: requestError.message,
+                              bad: true,
+                            }),
+                          )
+                        }
+                      >
+                        {permissionRequestsBusy ? t("Yükleniyor") : t("Yenile")}
+                      </button>
+                    </div>
+                    {permissionRequests.length ? (
+                      permissionRequests.map((request) => (
+                        <article
+                          className="permission-request-row"
+                          key={request.id}
+                        >
+                          <div>
+                            <strong>
+                              {request.profile?.full_name ||
+                                request.profile?.email ||
+                                request.user_id}
+                            </strong>
+                            <small>
+                              {t(request.permission_key)} ·{" "}
+                              {new Date(request.requested_at).toLocaleString(
+                                language === "tr" ? "tr-TR" : "en-US",
+                              )}
+                            </small>
+                          </div>
+                          <div>
+                            <button
+                              className="button button-primary"
+                              onClick={() =>
+                                resolveCardPermissionRequest(request, true)
+                              }
+                            >
+                              {t("Onayla")}
+                            </button>
+                            <button
+                              className="button button-danger"
+                              onClick={() =>
+                                resolveCardPermissionRequest(request, false)
+                              }
+                            >
+                              {t("Reddet")}
+                            </button>
+                          </div>
+                        </article>
+                      ))
+                    ) : (
+                      <p>
+                        {t(
+                          permissionRequestsBusy
+                            ? "İstekler yükleniyor…"
+                            : "Bekleyen erişim isteği yok.",
+                        )}
+                      </p>
+                    )}
                   </div>
                 </section>
               )}
@@ -7721,7 +8209,10 @@ function App() {
               const savedCard = hydrateCardFromBlocks(saved);
               setModalCard(savedCard);
               setStartManagedCard(false);
-              setAppPath(`/dashboard/cards/${encodeURIComponent(saved.id)}/edit`, true);
+              setAppPath(
+                `/dashboard/cards/${encodeURIComponent(saved.id)}/edit`,
+                true,
+              );
             }
             setToast({
               message:
@@ -7818,7 +8309,13 @@ function App() {
   );
 }
 
-function EmptyCards({ onCreate, canCreate = true, createPermissionMode = "off", requestSent = false, onRequest }) {
+function EmptyCards({
+  onCreate,
+  canCreate = true,
+  createPermissionMode = "off",
+  requestSent = false,
+  onRequest,
+}) {
   const { t } = useTranslation();
   return (
     <div className="empty-state">
@@ -7827,7 +8324,19 @@ function EmptyCards({ onCreate, canCreate = true, createPermissionMode = "off", 
       </div>
       <h3>{t("İlk kartınızı oluşturun")}</h3>
       <p>{t("İşletmenizin dijital profilini birkaç adımda hazırlayın.")}</p>
-      {canCreate ? <button className="button button-primary" onClick={onCreate}><Plus size={16} /> {t("Kart oluştur")}</button> : createPermissionMode === "request" ? <button className="button button-secondary" onClick={onRequest}>{requestSent ? t("İstek gönderildi") : t("Kart oluşturma erişimi iste")}</button> : <p>{t("Kart oluşturma yetkiniz yönetici tarafından kapalı.")}</p>}
+      {canCreate ? (
+        <button className="button button-primary" onClick={onCreate}>
+          <Plus size={16} /> {t("Kart oluştur")}
+        </button>
+      ) : createPermissionMode === "request" ? (
+        <button className="button button-secondary" onClick={onRequest}>
+          {requestSent
+            ? t("İstek gönderildi")
+            : t("Kart oluşturma erişimi iste")}
+        </button>
+      ) : (
+        <p>{t("Kart oluşturma yetkiniz yönetici tarafından kapalı.")}</p>
+      )}
     </div>
   );
 }
